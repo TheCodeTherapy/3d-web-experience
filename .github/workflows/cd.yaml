@@ -23,7 +23,7 @@ jobs:
           script: |
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            cd /home/${{ secrets.USERNAME }}/${{ secrets.PROJECT_DIR }}
+            cd /home/${{ secrets.USERNAME }}/${{ secrets.BASE_DIR }}/${{ secrets.PROJECT_DIR }}
             git status --porcelain | grep 'M package-lock.json' && git restore package-lock.json
             git pull
             nvm install $(cat .nvmrc)
