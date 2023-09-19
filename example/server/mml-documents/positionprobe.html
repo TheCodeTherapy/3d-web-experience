@@ -1,0 +1,95 @@
+<!-- Author: Marcus Longmuir - https://twitter.com/MarcusLongmuir -->
+<m-group>
+  <m-label id="users-connected" content="0" x="-6" y="0.2" z="0" ry="90" font-size="30" width="12" alignment="center" height="0.5" color="#ffffff"></m-label>
+  <m-position-probe range="7" id="my-probe" interval="100"></m-position-probe>
+  <m-cube id="m-position-ground" sx="9.75" sy="0.1" sz="9.75" y="-0.1" color="#eebbbb"></m-cube>
+  <m-group id="user-presence-holder"></m-group>
+</m-group>
+
+<script>
+  const connectedUsers = new Map();
+  const userPresenceHolder = document.getElementById("user-presence-holder");
+  const positionProbe = document.getElementById("my-probe");
+  const ground = document.getElementById("m-position-ground");
+  const label = document.getElementById("users-connected");
+
+  function getOrCreateUser(connectionId, position, rotation) {
+    const user = connectedUsers.get(connectionId);
+    if (user) {
+      user.position = position;
+      user.rotation = rotation;
+      return user;
+    }
+    const userCube = document.createElement("m-cube");
+    userCube.setAttribute("collide", false);
+    userCube.setAttribute("width", 0.5);
+    userCube.setAttribute("height", 0.5);
+    userCube.setAttribute("depth", 0.5);
+    userCube.setAttribute("color", `#${(Math.floor(Math.random() * 0xffffff) + 0x1000000).toString(16).substring(1)}`);
+    
+    userPresenceHolder.append(userCube);
+    const newUser = {
+      cube: userCube,
+      position,
+      rotation,
+    };
+    connectedUsers.set(connectionId, newUser);
+    return newUser;
+  }
+
+  function clearUser(connectionId) {
+    const user = connectedUsers.get(connectionId);
+    if (!user) return;
+    user.cube.remove();
+    connectedUsers.delete(connectionId);
+  }
+
+  function hasUsers() {
+    const usersAmount = connectedUsers.size;
+    label.setAttribute("content", `${usersAmount} user${usersAmount === 1 ? "" : "s"}`);
+    if (connectedUsers.size > 0) {
+      ground.setAttribute("color", "#bbeebb");
+    } else {
+      ground.setAttribute("color", "#eebbbb");
+    }
+  }
+
+  function setCubePosition(connectionId, position, rotation) {
+    const user = getOrCreateUser(connectionId, position, rotation);
+    user.cube.setAttribute("x", position.x);
+    user.cube.setAttribute("y", position.y + 2);
+    user.cube.setAttribute("z", position.z);
+    user.cube.setAttribute("rx", rotation.x);
+    user.cube.setAttribute("ry", rotation.y);
+    user.cube.setAttribute("rz", rotation.z);
+  }
+
+  window.addEventListener("disconnected", (event) => {
+    const { connectionId } = event.detail;
+    clearUser(connectionId);
+    hasUsers();
+  });
+
+  positionProbe.addEventListener("positionenter", (event) => {
+    const { connectionId, elementRelative, documentRelative } = event.detail;
+    setCubePosition(connectionId, elementRelative.position, elementRelative.rotation);
+    hasUsers();
+  });
+
+  positionProbe.addEventListener("positionmove", (event) => {
+    const { connectionId, elementRelative, documentRelative } = event.detail;
+    /*
+       It's possible to receive an update without an explicit enter event if this user is already in the range of
+       this element when the document is reloaded. In this case, we need to create the user as if this is an
+       enter event.
+      */
+    setCubePosition(connectionId, elementRelative.position, elementRelative.rotation);
+    hasUsers();
+  });
+
+  positionProbe.addEventListener("positionleave", (event) => {
+    const { connectionId } = event.detail;
+    clearUser(connectionId);
+    hasUsers();
+  });
+</script>

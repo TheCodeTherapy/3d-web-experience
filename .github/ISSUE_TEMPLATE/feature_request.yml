@@ -1,0 +1,29 @@
+name: Feature request
+description: Request a feature
+title: "[Feature]: "
+labels:
+  - "feature"
+body:
+  - type: textarea
+    attributes:
+      label: Describe your idea
+      description:
+        What you want to happen? Please describe the solution you'd like and add any potential
+        issues or drawbacks.
+    validations:
+      required: true
+
+  - type: checkboxes
+    attributes:
+      label: "Is there already an issue that is proposing this?"
+      description: "Please search [here](../issues?q=is%3Aissue) to check."
+      options:
+        - label: "I have checked the existing issues"
+          required: true
+
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: "What is the motivation behind this request?"
+      description: "Describe the reasons or the concrete use cases that motivated your proposal."

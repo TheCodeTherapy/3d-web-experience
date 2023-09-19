@@ -1,0 +1,79 @@
+<!-- Author: Marco Gomez - https://twitter.com/TheCodeTherapy -->
+<m-label id="latitude" content="latitude" z="2.5" y="3.5" ry="90" font-size="50" width="5" alignment="center" height="1.5" color="#dddddd"></m-label>
+<m-label id="longitude" content="longitude" z="-2.5" y="3.5" ry="90" font-size="50" width="5" alignment="center" height="1.5" color="#dddddd"></m-label>
+<m-label id="windspeed" content="wind speed" x="0" y="2.5" ry="90" font-size="60" width="10" alignment="center" height="1" color="#dddddd"></m-label>
+<m-label id="temperature" content="temperature" x="0" y="1.5" ry="90" font-size="60" width="10" alignment="center" height="1" color="#dddddd"></m-label>
+<m-label id="weather" content="weather" x="0" y="0.5" ry="90" font-size="60" width="10" alignment="center" height="1" color="#ddddff"></m-label>
+
+<script>
+  const latLabel = document.getElementById("latitude");
+  const longLabel = document.getElementById("longitude")
+  const windSpeedLabel = document.getElementById("windspeed");
+  const temperatureLabel = document.getElementById("temperature");
+  const weatherLabel = document.getElementById("weather");
+
+  const weatherCode = {
+    0: "Clear sky",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Fog",
+    48: "Depositing rime fog",
+    51: "Light drizzle",
+    53: "Moderate drizzle",
+    55: "Dense drizzle",
+    56: "Light freezing drizzle",
+    57: "Dense freezing drizzle",
+    61: "Light rain",
+    63: "Moderate rain",
+    65: "Heavy rain",
+    66: "Light freezing rain",
+    67: "Heavy freezing rain",
+    71: "Light snow fall",
+    73: "Moderate snow fall",
+    75: "Heavy snow fall",
+    77: "Snow grains",
+    80: "Light rain showers",
+    81: "Moderate rain showers",
+    82: "Violent rain showers",
+    85: "Light snow showers",
+    86: "Heavy snow showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm",
+    97: "Thunderstorm",
+    98: "Thunderstorm",
+    99: "Thunderstorm",
+  }
+
+  function fetchAPIData() {
+    const latitude = 53.745;
+    const longitude = -1.528;
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&hourly=temperature_2m,relativehumidity_2m,windspeed_10m`, true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4 && xhr.status === 200) {
+        latLabel.setAttribute("content", `LAT: ${latitude}°N`);
+        longLabel.setAttribute("content", `LON: ${longitude}°W`);
+        const json = JSON.parse(xhr.responseText);
+        const floatTemp = parseFloat(json["current_weather"].temperature);
+        const color = (floatTemp > 15)
+          ? (floatTemp > 25)
+            ? "#ffcccc"
+            : "#ccffcc"
+          : "#ccccff"
+        const temperature = `${floatTemp}°C`;
+        temperatureLabel.setAttribute("content", `Temp: ${temperature}`);
+        temperatureLabel.setAttribute("color", color);
+        const windSpeed = `${json["current_weather"].windspeed} km/h`;
+        windSpeedLabel.setAttribute("content", `Wind: ${windSpeed}`);
+        const weather = parseInt(json["current_weather"].weathercode);
+        weatherLabel.setAttribute("content", weatherCode[weather])
+      }
+    }
+    xhr.send();
+  }
+  fetchAPIData();
+  setInterval(() => {
+    fetchAPIData()
+  }, 5 * 60 * 1000);
+</script>

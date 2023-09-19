@@ -1,0 +1,110 @@
+<!-- Author: Marcus Longmuir - https://twitter.com/MarcusLongmuir -->
+<m-group sx="0.4" sy="0.4" ry="90">
+  <m-video
+    id="music-video"
+    y="7.8"
+    width="25"
+    height="14"
+    loop="true"
+    start-time="0"
+    paused-time="0"
+    src="/assets/out_of_time.mp4"
+    collide="true"
+  >
+  <m-group y="-7.4" z="0.3">
+  <m-label
+    onclick="pause(event.currentTarget.parentNode.parentNode)" content="pause"
+    x="-10" rx="-35" font-size="70" width="5" alignment="center" height="1.0"
+    color="#ffffff"
+  ></m-label>
+  <m-label
+    onclick="unpause(event.currentTarget.parentNode.parentNode)" content="unpause"
+    x="-5" rx="-35" font-size="70" width="5" alignment="center" height="1.0"
+    color="#dddddd"
+  ></m-label>
+  <m-label
+    onclick="toggleEnabled(event.currentTarget.parentNode.parentNode)" content="enable"
+    x="0" rx="-35" font-size="70" width="5" alignment="center" height="1.0"
+    color="#ffffff"
+  ></m-label>
+  <m-label
+    onclick="resume(event.currentTarget.parentNode.parentNode)" content="resume"
+    x="5" rx="-35" font-size="70" width="5" alignment="center" height="1.0"
+    color="#dddddd"
+  ></m-label>
+  <m-label
+    onclick="restart(event.currentTarget.parentNode.parentNode)" content="restart"
+    x="10" rx="-35" font-size="70" width="5" alignment="center" height="1.0"
+    color="#ffffff"
+  ></m-label>
+  </m-group>
+  <m-label
+    class="attributes-label"
+    content="attrs:"
+    x="0"
+    y="7.5"
+    z="0"
+    rx="0"
+    padding="10"
+    font-size="60"
+    width="25"
+    height="1"
+    alignment="center"
+    height="2"
+    color="#cccccc"
+    font-color="black"
+  ></m-label>
+  </m-video>
+</m-group>
+<script>
+  function updateAttributesLabel(videoTag) {
+    const attributes = [];
+    for (const attr of videoTag.getAttributeNames()) {
+      const val = videoTag.getAttribute(attr);
+      if (!["src", "width", "height", "x", "y", "z", "id"].includes(attr)) attributes.push(`${attr}="${val}"`);
+    }
+    const attributesLabel = videoTag.querySelector(".attributes-label");
+    if (attributesLabel) {
+      attributesLabel.setAttribute("content", `${attributes.join(" ")}`);
+    }
+  }
+
+  function restart(videoTag) {
+    videoTag.setAttribute("pause-time", document.timeline.currentTime);
+    videoTag.setAttribute("start-time", document.timeline.currentTime);
+    videoTag.removeAttribute("pause-time");
+    updateAttributesLabel(videoTag);
+  }
+
+  function toggleEnabled(videoTag) {
+    const enabled = videoTag.getAttribute("enabled") !== "false";
+    videoTag.setAttribute("enabled", (!enabled).toString());
+    updateAttributesLabel(videoTag);
+  }
+
+  function pause(videoTag) {
+    videoTag.setAttribute("pause-time", document.timeline.currentTime);
+    updateAttributesLabel(videoTag);
+  }
+
+  function unpause(videoTag) {
+    videoTag.removeAttribute("pause-time");
+    updateAttributesLabel(videoTag);
+  }
+
+  function resume(videoTag) {
+    if (!videoTag.hasAttribute("pause-time")) return;
+    const startTime = parseFloat(videoTag.getAttribute("start-time")) || 0;
+    const pauseTime = parseFloat(videoTag.getAttribute("pause-time")) || 0;
+    const playedDuration = pauseTime - startTime;
+    const newStartTime = document.timeline.currentTime - playedDuration;
+    videoTag.removeAttribute("pause-time");
+    videoTag.setAttribute("start-time", newStartTime);
+    updateAttributesLabel(videoTag);
+  }
+
+  for (const video of document.querySelectorAll("m-video")) {
+    video.setAttribute("pause-time", document.timeline.currentTime);
+    updateAttributesLabel(video);
+  }
+</script>

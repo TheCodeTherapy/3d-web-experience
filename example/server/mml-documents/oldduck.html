@@ -1,0 +1,24 @@
+<!-- Author: Marcus Longmuir - https://twitter.com/MarcusLongmuir -->
+<m-model
+  id="duck"
+  src="/assets/duck.glb"
+  rx="180"
+  rz="180"
+  sx="2"
+  sy="2"
+  sz="2"
+  y="-0.3"
+  ry="-45"
+  z="0"
+  x="0"
+  collide="true"
+></m-model>
+
+<script>
+  let r = 0;
+  function rotateDuck() {
+    r += 22.5;
+    document.getElementById("duck").setAttribute("ry", r);
+  }
+  setInterval(() => rotateDuck(), 300);
+</script>

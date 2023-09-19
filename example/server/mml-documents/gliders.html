@@ -1,0 +1,193 @@
+<!-- Author: Marco Gomez - https://twitter.com/TheCodeTherapy -->
+<m-group>
+  <m-cube sx="0.5" sy="10" sz="0.5" y="5.5" z="-5.25" color="#000000"></m-cube>
+  <m-cube sx="0.5" sy="10" sz="0.5" y="5.5" z="5.25" color="#000000"></m-cube>
+  <m-cube sx="0.5" sy="0.5" sz="11" y="10.75" z="0" color="#000000"></m-cube>
+  <m-cube sx="0.5" sy="0.5" sz="11" y="0.25" z="0" color="#000000"></m-cube>
+</m-group>
+
+<script>
+  const parent = document.getElementsByTagName("m-group")[0];
+  const prevStateHashes = new Set();
+  const maxPrevStates = 4;
+  let world = [];
+  const worldSize = 20;
+  const cellSize = 0.5;
+  let stepCount = 0;
+
+  for (let x = 0; x < worldSize; x++) {
+    world[x] = [];
+    for (let y = 0; y < worldSize; y++) {
+      world[x][y] = 0; // Math.random() < 0.25 ? 1 : 0;
+      if (world[x][y]) createCube(x, y);
+    }
+  }
+
+  function rgbToHsl(r, g, b) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    let max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if(max === min) {
+      h = s = 0;
+    } else {
+      let diff = max - min;
+      s = l > 0.5 ? diff / (2 - max - min) : diff / (max + min);
+      switch(max) {
+        case r: h = (g - b) / diff + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / diff + 2; break;
+        case b: h = (r - g) / diff + 4; break;
+      }
+      h /= 6;
+    }
+    return [ h, s, l ];
+  }
+
+  function hslToRgb(h, s, l) {
+    let r, g, b;
+    if(s === 0) {
+      r = g = b = l;
+    } else {
+      let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      let p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1 / 3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1 / 3);
+    }
+    return [ r * 255, g * 255, b * 255 ];
+  }
+
+  function hue2rgb(p, q, t) {
+    if(t < 0) t += 1;
+    if(t > 1) t -= 1;
+    if(t < 1 / 6) return p + (q - p) * 6 * t;
+    if(t < 1 / 2) return q;
+    if(t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  }
+
+  function rotateHue(r, g, b, angle) {
+    let [h, s, l] = rgbToHsl(r, g, b);
+    h = (h + angle / 360) % 1;
+    [r, g, b] = hslToRgb(h, s, l);
+    return [Math.floor(r), Math.floor(g), Math.floor(b)];
+  }
+
+  function createCube(x, y) {
+    const cube = document.createElement("m-cube");
+    let red = Math.floor((x / worldSize) * 255);
+    let green = Math.floor((y / worldSize) * 255);
+    let blue = 128;
+    [red, green, blue] = rotateHue(red, green, blue, stepCount * 4);
+    const redHex = ("0" + red.toString(16)).slice(-2);
+    const greenHex = ("0" + green.toString(16)).slice(-2);
+    const blueHex = ("0" + blue.toString(16)).slice(-2);
+    const color = "#" + redHex + greenHex + blueHex;
+    cube.setAttribute("x", 0);
+    cube.setAttribute("y", (cellSize * 2 + x * cellSize) - cellSize / 2);
+    cube.setAttribute("z", ((y - worldSize / 2) * cellSize) + cellSize / 2);
+    cube.setAttribute("color", color);
+    cube.setAttribute("sx", "0.5");
+    cube.setAttribute("sy", "0.5");
+    cube.setAttribute("sz", "0.5");
+    cube.setAttribute("id", `${x}:${y}`);
+    cube.setAttribute("collide", "true");
+    document.body.appendChild(cube);
+  }
+
+  function deleteCube(x, y) {
+    const cubeToDelete = document.getElementById(`${x}:${y}`);
+    cubeToDelete.remove();
+  }
+
+  function createGliderBRTL(newWorld) {
+    const gx = Math.floor(Math.random() * (worldSize - 3));
+    const gy = Math.floor(Math.random() * (worldSize - 3));
+    const glider = [
+      [0, 1, 0],
+      [0, 0, 1],
+      [1, 1, 1]
+    ];
+    for (let x = 0; x < 3; x++) {
+      for (let y = 0; y < 3; y++) {
+        newWorld[gx + x][gy + y] = glider[x][y];
+        if (glider[x][y]) createCube(gx + x, gy + y);
+      }
+    }
+  }
+
+  function createGliderBLTR(newWorld) {
+    const gx = Math.floor(Math.random() * (worldSize - 3));
+    const gy = Math.floor(Math.random() * (worldSize - 3));
+    const glider = [
+      [1, 1, 1],
+      [1, 0, 0],
+      [0, 1, 0]
+    ];
+    for (let x = 0; x < 3; x++) {
+      for (let y = 0; y < 3; y++) {
+        newWorld[gx + x][gy + y] = glider[x][y];
+        if (glider[x][y]) createCube(gx + x, gy + y);
+      }
+    }
+  }
+
+  function update() {
+    const newWorld = [];
+    let stateHash = "";
+    for (let x = 0; x < worldSize; x++) {
+      newWorld[x] = [];
+      for (let y = 0; y < worldSize; y++) {
+        const nn = countNeighbours(x, y);
+        const alive = world[x][y] === 1;
+        if (alive && (nn < 2 || nn > 3)) {
+          newWorld[x][y] = 0;
+        } else if (!alive && nn === 3) {
+          newWorld[x][y] = 1;
+        } else {
+          newWorld[x][y] = world[x][y];
+        }
+        stateHash += newWorld[x][y];
+        if (newWorld[x][y]) {
+          if (!alive) createCube(x, y);
+        } else if (alive) {
+          deleteCube(x, y);
+        }
+      }
+    }
+
+    if (prevStateHashes.has(stateHash)) {
+      if (Math.random() < 0.5) {
+        createGliderBLTR(newWorld);
+        createGliderBLTR(newWorld);
+      } else {
+        createGliderBRTL(newWorld);
+        createGliderBRTL(newWorld);
+      }      
+    } else {
+      prevStateHashes.add(stateHash);
+      if (prevStateHashes.size > maxPrevStates) {
+        prevStateHashes.delete(Array.from(prevStateHashes)[0]);
+      }
+    }
+    // const count = newWorld.reduce((sum, row) => sum + row.filter(x => x === 1).length, 0);
+    // if (count < 21) createGlider(newWorld);
+    world = newWorld;
+    stepCount++;
+  }
+
+  function countNeighbours(x, y) {
+    let count = 0;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = (x + dx + worldSize) % worldSize;
+        const ny = (y + dy + worldSize) % worldSize;
+        count += world[nx][ny];
+      }
+    }
+    return count;
+  }
+  window.setInterval(update, 120);
+</script>

@@ -1,0 +1,26 @@
+{
+  "name": "@example/playground",
+  "version": "0.7.0",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "type": "module",
+  "files": [
+    "/build"
+  ],
+  "scripts": {
+    "build": "tsx ./build.ts --build",
+    "iterate": "tsx ./build.ts --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
+    "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "esbuild-css-modules-plugin": "3.0.1",
+    "@types/react": "^18.2.21",
+    "@types/react-dom": "^18.2.7"
+  }
+}

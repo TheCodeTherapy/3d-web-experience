@@ -1,0 +1,536 @@
+<m-group y="-0.099">
+  <!-- <m-group y="-0.099"></m-group> -->
+
+  <m-group id="office-group" ry="-90">
+    <m-model src="/assets/office.glb"></m-model>
+
+    <m-group id="sliding-door-group">
+      <m-cube
+        id="door"
+        x="-23.5"  y="1.5" z="4"
+        sx="0.025" sz="8.2" sy="3"
+        collide="false"
+        color="#888888"
+        visible="false"
+        cast-shadows="false"
+        opacity="0.01"
+      ></m-cube>
+  
+      <m-cube x="-20.5" y="1.5" z="4" sx="11" sy="1.7" sz="7" collide="false" color="#000000" visible="false">
+        <m-position-probe id="door-probe" range="1" debug="false" interval="100"></m-position-probe>
+      </m-cube>
+  
+      <m-cube id="door-left" x="-23.5"  y="1.5" z="6.15" sx="0.1" sz="4.1" sy="3" collide="true" color="#888888" opacity="0.4">
+        <m-cube z="-0.48" sx="1.1" sz="0.05" sx="2" collide="true" color="#666666"></m-cube>
+        <m-attr-anim id="door-left-z" attr="z" ping-pong="false" easing="easeInOutQuad" start="6.15" end="6.15" loop="false" start-time="0" duration="0"></m-attr-anim>
+      </m-cube>
+  
+      <m-cube id="door-right" x="-23.5" y="1.5" z="2.05" sx="0.1" sz="4.1" sy="3" collide="true" color="#888888" opacity="0.4">
+        <m-cube z="0.48" sx="1.1" sz="0.05" sx="2" collide="true" color="#666666"></m-cube>
+        <m-attr-anim id="door-right-z" attr="z" ping-pong="false" easing="easeInOutQuad" start="2.05" end="2.05" loop="false" start-time="0" duration="0"></m-attr-anim>
+      </m-cube>
+  
+      <m-audio id="open-sound" x="-23.5" y="1.5" z="4.1" src="/assets/open.mp3" enabled="false" loop="false" start-time="0" pause-time="0"></m-audio>
+    <m-audio id="close-sound" x="-23.5" y="1.5" z="4.1" src="/assets/close.mp3" enabled="false" loop="false" start-time="0" pause-time="0"></m-audio>
+    </m-group>
+
+    <m-group id="dice-group" x="20" y="1.5" z="-12" sx="0.5" sy="0.5" sz="0.5">
+      <m-model id="dice" src="/assets/dice2.glb" y="1" collide="true" onclick="rollDice()">
+        <m-attr-anim id="rx" attr="rx" ping-pong="false" easing="linear" start="0" end="0" loop="false" start-time="0" duration="1"></m-attr-anim>
+        <m-attr-anim id="ry" attr="ry" ping-pong="false" easing="linear" start="0" end="0" loop="false" start-time="0" duration="1"></m-attr-anim>
+        <m-attr-anim id="rz" attr="rz" ping-pong="false" easing="linear" start="0" end="0" loop="false" start-time="0" duration="1"></m-attr-anim>
+        <m-attr-anim id="y" attr="y" ping-pong="false" easing="linear" start="1" end="1" loop="false" start-time="0" duration="1"></m-attr-anim>
+      </m-model>
+    </m-group>
+
+    <m-group id="ceiling"></m-group>
+
+    <m-group id="ceiling-control">
+
+      <m-audio id="ceiling-motor-sound" src="/assets/motor.mp3" start-time="0" pause-time="5200" loop="false"></m-audio>
+
+      <!-- <m-cube x="15.89" y="1.5" z="-2" sx="1.5" sy="1" sz="0.2" color="#999999" ry="90"></m-cube> -->
+      <m-cylinder x="15.89" y="1.5" z="-2" sx="1.5" sz="1.5" height="0.2" rz="90" color="#999999"></m-cylinder>
+      <m-label
+        id="ceiling-control-label"
+        x="15.789" y="1.5" z="-2"
+        ry="-90"
+        width="1.5"
+        height="0.3"
+        sx="1"
+        sy="1"
+        sz="1"
+        ry="180"
+        color="#bbbbbb"
+        alignment="center"
+        padding="0"
+        content="😎 ceiling"
+      ></m-label>
+
+    </m-group>
+
+    <m-group id="flat-screen"
+      x="4.0"
+      y="3.8"
+      z="-23.695"
+    >
+      <!-- <m-light
+        y="3.15"
+        z="0"
+        color="#eeccee"
+        type="spotlight"
+        debug="false"
+        angle="65"
+        rx="0"
+        intensity="1.4"
+        distance="20"
+      ></m-light> -->
+      <m-video
+        y="0.05"
+        id="video-player"
+        width="7.95"
+        height="3.5"
+        loop="true"
+        start-time="0"
+        paused-time="0"
+        src="/assets/out_of_time.mp4"
+        collide="true"
+        volume="0.8"
+      ></m-video>
+      <m-group id="control-labels" x="4.19" y="-0.05" z="-0.06">
+        <m-label id="play" y="0.8" content="⏯️" color="black" width="0.4" height="0.4"></m-label>
+        <m-label id="rewind" y="0.4" content="⏮️" color="black" width="0.4" height="0.4"></m-label>
+        <m-label id="mute" y="0" content="🔈" color="black" width="0.4" height="0.4"></m-label>
+      </m-group>
+      <m-group id="status-labels" x="4.19" y="-0.05" z="-0.06">
+        <m-label
+          id="playtime-label"
+          x="-7.68"
+          y="-1.97"
+          z="0.056"
+          color="#898989"
+          width="0.85"
+          height="0.25"
+          font-size="20"
+          font-color="white"
+          padding="0"
+          alignment="center"
+          content=""
+        ></m-label>
+        <m-label
+          id="paused-label"
+          x="-4.2"
+          y="-1.97"
+          z="0.056"
+          color="#898989"
+          width="0.85"
+          height="0.25"
+          font-size="20"
+          font-color="white"
+          padding="0"
+          alignment="center"
+          visible="false"
+          content=""
+        ></m-label>
+        <m-label
+          id="muted-label"
+          x="-0.68"
+          y="-1.97"
+          z="0.056"
+          color="#898989"
+          width="0.85"
+          height="0.25"
+          font-size="17"
+          font-color="white"
+          padding="0"
+          alignment="center"
+          content="muted"
+        ></m-label>
+    </m-group>
+  </m-group>
+
+  </m-group>
+</m-group>
+
+<script>
+  // Video Player
+  {
+    const videoPlayer = document.getElementById("video-player");
+    const playPause = document.getElementById("play");
+    const rewind = document.getElementById("rewind");
+    const mute = document.getElementById("mute");
+    const playTimeLabel = document.getElementById("playtime-label");
+    const pausedLabel = document.getElementById("paused-label");
+    const mutedLabel = document.getElementById("muted-label");
+    const initialVolume = videoPlayer.getAttribute("volume");
+
+    let muted = false;
+    let paused = false;
+    let playedDuration = 0;
+    let lastPausedTime = 0;
+    let totalPausedTime = 0;
+
+    function humanReadableTimeStamp(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      const formattedMinutes = String(minutes).padStart(2, '0');
+      const formattedSeconds = String(remainingSeconds).padStart(2, '0');
+      return `${formattedMinutes}:${formattedSeconds}`;
+    }
+
+    function pauseVideo() {
+      lastPausedTime = document.timeline.currentTime;
+      videoPlayer.setAttribute("pause-time", lastPausedTime);
+      pausedLabel.setAttribute("content", "paused");
+      pausedLabel.setAttribute("visible", true);
+    }
+
+    function unpauseVideo() {
+      totalPausedTime += document.timeline.currentTime - lastPausedTime;
+      videoPlayer.removeAttribute("pause-time");
+      pausedLabel.setAttribute("content", "");
+      pausedLabel.setAttribute("visible", false);
+    }
+
+    function toggleVideoPause() {
+      if (paused) {
+        this.unpauseVideo();
+      } else {
+        this.pauseVideo();
+      }
+      paused = !paused;
+    }
+
+    function toggleVideoMute() {
+      muted = !muted;
+      mute.setAttribute("content", muted ? "🔇" : "🔈");
+      videoPlayer.setAttribute("volume", muted ? 0 : initialVolume);
+      mutedLabel.setAttribute("content", muted ? "muted" : "");
+      mutedLabel.setAttribute("visible", muted ? true : false);
+    }
+
+    function restartVideo() {
+      videoPlayer.setAttribute("start-time", document.timeline.currentTime);
+      videoPlayer.setAttribute("pause-time", null);
+      playedDuration = 0;
+      totalPausedTime = 0;
+      lastPausedTime = document.timeline.currentTime;
+    }
+
+    mute.addEventListener("click", () => toggleVideoMute());
+    playPause.addEventListener("click", () => toggleVideoPause());
+    rewind.addEventListener("click", () => restartVideo());
+
+    setInterval(() => {
+      const startTime = parseFloat(videoPlayer.getAttribute("start-time")) || 0;
+      if (!paused) {
+        playedDuration = (document.timeline.currentTime - startTime) - totalPausedTime;
+        const humanReadablePlayTime = humanReadableTimeStamp(Math.round(playedDuration / 1000));
+        playTimeLabel.setAttribute("content", humanReadablePlayTime);
+        if (playedDuration >= 295 * 1000) {
+          restartVideo();
+        }
+      }
+    }, 1000);
+
+    toggleVideoMute();
+  }
+
+  // Sliding Door
+  {
+    const connectedUsers = new Map();
+    const door = document.getElementById("door");
+    const leftDoor = document.getElementById("door-left");
+    const rightDoor = document.getElementById("door-right");
+    const leftDoorClosedZ = 6.15;
+    const rightDoorClosedZ = 2.05;
+    const leftDoorOpenZ = leftDoorClosedZ + parseFloat(leftDoor.getAttribute("sz")) - 0.04;
+    const rightDoorOpenZ = rightDoorClosedZ - parseFloat(rightDoor.getAttribute("sz")) + 0.01;
+    const leftDoorAnim = document.getElementById("door-left-z");
+    const rightDoorAnim = document.getElementById("door-right-z");
+    const doorProbe = document.getElementById("door-probe");
+    const doorOpenSound = document.getElementById("open-sound");
+    const doorCloseSound = document.getElementById("close-sound");
+    const doorSlideDuration = 1250;
+
+    let doorsOpen = false;
+    let doorsMoving = false;
+
+    function openDoors() {
+      if (doorsOpen === true || doorsMoving === true) return;
+      doorsOpen = true;
+      doorsMoving = true;
+      door.setAttribute("visible", "false");
+      doorOpenSound.setAttribute("enabled", "true");
+      doorOpenSound.setAttribute("loop", "false");
+      doorOpenSound.setAttribute("start-time", document.timeline.currentTime);
+      doorOpenSound.setAttribute("pause-time", document.timeline.currentTime + 2000);
+
+      leftDoorAnim.setAttribute("start-time", document.timeline.currentTime);
+      leftDoorAnim.setAttribute("start", leftDoorClosedZ);
+      leftDoorAnim.setAttribute("end", leftDoorOpenZ);
+      leftDoorAnim.setAttribute("duration", doorSlideDuration);
+
+      rightDoorAnim.setAttribute("start-time", document.timeline.currentTime);
+      rightDoorAnim.setAttribute("end", rightDoorOpenZ);
+      rightDoorAnim.setAttribute("start", rightDoorClosedZ);
+      rightDoorAnim.setAttribute("duration", doorSlideDuration);
+      setTimeout(() => {
+        doorsMoving = false;
+      }, doorSlideDuration);
+    }
+
+    function closeDoors() {
+      if (doorsOpen === false || doorsMoving === true) return;
+      doorsOpen = false;
+      doorsMoving = true;
+      doorCloseSound.setAttribute("enabled", "true");
+      doorCloseSound.setAttribute("loop", "false");
+      doorCloseSound.setAttribute("start-time", document.timeline.currentTime);
+      doorCloseSound.setAttribute("pause-time", document.timeline.currentTime + 2000);
+
+      leftDoorAnim.setAttribute("start-time", document.timeline.currentTime);
+      leftDoorAnim.setAttribute("start", leftDoorOpenZ);
+      leftDoorAnim.setAttribute("end", leftDoorClosedZ);
+      leftDoorAnim.setAttribute("duration", doorSlideDuration);
+
+      rightDoorAnim.setAttribute("start-time", document.timeline.currentTime);
+      rightDoorAnim.setAttribute("start", rightDoorOpenZ);
+      rightDoorAnim.setAttribute("end", rightDoorClosedZ);
+      rightDoorAnim.setAttribute("duration", doorSlideDuration);
+      setTimeout(() => {
+        door.setAttribute("visible", "true");
+        doorsMoving = false;
+      }, doorSlideDuration);
+    }
+
+    setInterval(() => {
+      if (connectedUsers.size === 0) {
+        closeDoors();
+      }
+    }, 200);
+
+    function getOrCreateUser(connectionId, position, rotation) {
+      const user = connectedUsers.get(connectionId);
+      if (user) {
+        user.position = position;
+        user.rotation = rotation;
+        return user;
+      }
+
+      if (position && rotation) {
+        const newUser = { position, rotation };
+        connectedUsers.set(connectionId, newUser);
+        return newUser;
+      }
+    }
+
+    function clearUser(connectionId) {
+      const user = connectedUsers.get(connectionId);
+      if (!user) return;
+      connectedUsers.delete(connectionId);
+    }
+
+    function hasUsers(eventDetail) {
+      const { connectionId, elementRelative, documentRelative } = eventDetail;
+      if (elementRelative && documentRelative) {
+        getOrCreateUser(connectionId, elementRelative.position, elementRelative.rotation);
+      }
+      if (connectedUsers.size > 0) {
+        openDoors();
+      }
+    }
+
+    window.addEventListener("disconnected", (event) => {
+      const { connectionId } = event.detail;
+      clearUser(connectionId);
+      hasUsers(event.detail);
+    });
+
+    doorProbe.addEventListener("positionenter", (event) => {
+      hasUsers(event.detail);
+    });
+
+    doorProbe.addEventListener("positionmove", (event) => {
+      const { connectionId, elementRelative, documentRelative } = event.detail;
+      hasUsers(event.detail);
+    });
+
+    doorProbe.addEventListener("positionleave", (event) => {
+      const { connectionId } = event.detail;
+      clearUser(connectionId);
+      hasUsers(event.detail);
+    });
+  }
+
+  // Ceiling
+  {
+    let ceilingOpen = true;
+    let ceilingMoving = false;
+    const ceilingMovementDuration = 2000;
+    const ceilingClosedRotation = 4.5;
+    const ceilingOpenRotation = 53;
+
+    const ceilingControl = document.getElementById("ceiling-control");
+    const ceilingControlLabel = document.getElementById("ceiling-control-label");
+    const ceilingMotorSound = document.getElementById("ceiling-motor-sound");
+    const ceilingSoundDuration = 5100;
+
+    const ceiling = document.getElementById("ceiling");
+    const roofTiles = new Map();
+    const ceilingAnimations = new Map();
+
+    let roofTileId = 0;
+
+    function closeCeiling() {
+      if (ceilingMoving === true) return;
+      ceilingMoving = true;
+      ceilingControlLabel.setAttribute("content", "🤓 ceiling");
+      ceilingMotorSound.setAttribute("start-time", document.timeline.currentTime);
+      ceilingMotorSound.setAttribute("pause-time", document.timeline.currentTime + ceilingSoundDuration);
+      for (let id = 0; id < ceilingAnimations.size; id++) {
+        const animation = ceilingAnimations.get(id);
+        const offsetOpenTime = (id + 1) * 100;
+        animation.setAttribute("start", ceilingOpenRotation);
+        animation.setAttribute("end", ceilingClosedRotation);
+        animation.setAttribute("start-time", document.timeline.currentTime + offsetOpenTime);
+        animation.setAttribute("duration", ceilingMovementDuration);
+      }
+    }
+
+    function openCeiling() {
+      if (ceilingMoving === true) return;
+      ceilingMoving = true;
+      ceilingControlLabel.setAttribute("content", "😎 ceiling");
+      ceilingMotorSound.setAttribute("start-time", document.timeline.currentTime);
+      ceilingMotorSound.setAttribute("pause-time", document.timeline.currentTime + ceilingSoundDuration);
+      for (let id = 0; id < ceilingAnimations.size; id++) {
+        const animation = ceilingAnimations.get(id);
+        const offsetOpenTime = (id + 1) * 100;
+        animation.setAttribute("start", ceilingClosedRotation);
+        animation.setAttribute("end", ceilingOpenRotation);
+        animation.setAttribute("start-time", document.timeline.currentTime + offsetOpenTime);
+        animation.setAttribute("duration", ceilingMovementDuration);
+      }
+    }
+
+    for (let i = -22; i <= 25; i+= 1.5) {
+      const roofTile = document.createElement("m-cube");
+      const roofTileAnim = document.createElement("m-attr-anim");
+
+      roofTile.setAttribute("id", roofTileId);
+      roofTile.setAttribute("x", i);
+      roofTile.setAttribute("y", "9.1");
+      roofTile.setAttribute("z", i < -3 ? "3" : "-4");
+      roofTile.setAttribute("sx", "2");
+      roofTile.setAttribute("sy", "0.04");
+      roofTile.setAttribute("sz", i < -3 ? "21" : "35");
+      roofTile.setAttribute("rz", ceilingClosedRotation);
+      roofTile.setAttribute("opacity", "1");
+      roofTile.setAttribute("collide", "false");
+      roofTile.setAttribute("color", "#bbaa99");
+
+      const offsetOpenTime = (roofTileId + 1) * 100;
+      roofTileAnim.setAttribute("id", `anim-${roofTileId}`);
+      roofTileAnim.setAttribute("attr", "rz");
+      roofTileAnim.setAttribute("start", ceilingClosedRotation);
+      roofTileAnim.setAttribute("end", ceilingOpenRotation);
+      roofTileAnim.setAttribute("start-time", document.timeline.currentTime + offsetOpenTime);
+      roofTileAnim.setAttribute("duration", ceilingMovementDuration);
+      roofTileAnim.setAttribute("loop", "false");
+      roofTileAnim.setAttribute("ping-pong", "false");
+      roofTileAnim.setAttribute("easing", "linear");
+      ceilingAnimations.set(roofTileId, roofTileAnim);
+
+      roofTile.appendChild(roofTileAnim);
+      roofTiles.set(roofTileId, roofTile);
+      ceiling.appendChild(roofTiles.get(roofTileId));
+
+      ceilingMoving = true;
+      setTimeout(() => {
+        ceilingMoving = false;
+      }, ceilingMovementDuration + 2900);
+
+      roofTileId++;
+    }
+
+    ceilingControl.addEventListener("click", () => {
+      if (ceilingMoving === true) return;
+      ceilingOpen = !ceilingOpen;
+      if (ceilingOpen === true) {
+        openCeiling();
+      } else {
+        closeCeiling();
+      }
+      
+      setTimeout(() => {
+        ceilingMoving = false;
+      }, ceilingMovementDuration + 2900);
+    });
+
+    setInterval(() => {
+      ceilingControlLabel.setAttribute("color", ceilingMoving ? "#dddddd" : "#bbbbbb");
+    }, 50);
+  }
+
+  // Dice
+  {
+    let rolling = false;
+    let rollResult = 1;
+    let rollDuration = 750;
+    let rollHeight = 2.8;
+
+    function radToDeg(radians) {
+      return radians * (180 / Math.PI);
+    }
+
+    function animate(attr, easing, targetRotation, duration) {
+      rolling = true;
+      const mAttrAnim = document.getElementById(attr);
+      const newStart = mAttrAnim.getAttribute("end");
+      mAttrAnim.setAttribute("easing", easing);
+      mAttrAnim.setAttribute("start", newStart);
+      mAttrAnim.setAttribute("end", targetRotation);
+      mAttrAnim.setAttribute("loop", "false");
+      mAttrAnim.setAttribute("duration", duration);
+      mAttrAnim.setAttribute("start-time", document.timeline.currentTime);
+      setTimeout(() => {
+        rolling = false;
+      }, duration + 10);
+    }
+
+    function rollDice() {
+      if (rolling) return;
+      const rollMap = {
+        1: { rx: 0, ry: 0, rz: 0 },
+        2: { rx: 0, ry: 0, rz: radToDeg(-Math.PI / 2) },
+        3: { rx: radToDeg(-Math.PI / 2), ry: 0, rz: 0 },
+        4: { rx: radToDeg(Math.PI / 2), ry: 0, rz: 0 },
+        5: { rx: 0, ry: 0, rz: radToDeg(Math.PI / 2) },
+        6: { rx: radToDeg(Math.PI), ry: 0, rz: 0 },
+      };
+      const diceElement = document.getElementById("dice");
+
+      let newRoll = Math.floor(Math.random() * 6) + 1;
+      while (newRoll === rollResult) {
+        newRoll = Math.floor(Math.random() * 6) + 1;
+      }
+      rollResult = newRoll;
+
+      const targetRotation = rollMap[rollResult];
+      const startRotation = {
+        rx: parseFloat(diceElement.getAttribute("rx")),
+        ry: parseFloat(diceElement.getAttribute("ry")),
+        rz: parseFloat(diceElement.getAttribute("rz")),
+      };
+
+      animate("rx", "easeOutCubic", targetRotation.rx, rollDuration);
+      animate("ry", "easeOutCubic", targetRotation.ry, rollDuration);
+      animate("rz", "easeOutCubic", targetRotation.rz, rollDuration);
+      animate("y", "easeOutQuint", rollHeight, rollDuration * 0.35);
+      setTimeout(() => {
+        animate("y", "easeOutBounce", 1, rollDuration * 0.65);
+      }, rollDuration * 0.35);
+    }
+  }
+</script>

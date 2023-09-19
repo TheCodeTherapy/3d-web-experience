@@ -1,0 +1,39 @@
+{
+  "name": "@example/server",
+  "private": true,
+  "version": "0.7.0",
+  "engines": {
+    "node": "18.x"
+  },
+  "main": "./src/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "rimraf ./build && tsx ./build.ts --build",
+    "iterate": "concurrently \"tsx ./build.ts --watch\" \"nodemon\"",
+    "start": "NODE_ENV=production node build/index.js",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
+    "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
+  },
+  "dependencies": {
+    "@example/web-client": "^0.7.0",
+    "@mml-io/3d-web-text-chat": "^0.7.0",
+    "@mml-io/3d-web-user-networking": "^0.7.0",
+    "@dolbyio/dolbyio-rest-apis-client": "4.0.0",
+    "chokidar": "^3.5.3",
+    "cors": "^2.8.5",
+    "express": "4.18.2",
+    "express-ws": "5.0.2",
+    "http-proxy": "^1.18.1",
+    "networked-dom-server": "0.7.0",
+    "ws": "8.13.0"
+  },
+  "devDependencies": {
+    "@types/cors": "2.8.14",
+    "@types/express": "^4.17.17",
+    "@types/express-ws": "^3.0.1",
+    "@types/http-proxy": "^1.17.11",
+    "@types/node": "^20.5.9",
+    "nodemon": "^3.0.1"
+  }
+}

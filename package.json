@@ -1,0 +1,53 @@
+{
+  "name": "3d-web-experience",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "18.x"
+  },
+  "scripts": {
+    "preinstall": "node check-node-version.js",
+    "build": "lerna run --stream build",
+    "start": "npm run start -w @example/server",
+    "iterate": "npm run build && lerna run --parallel --stream iterate",
+    "type-check-all": "lerna run --stream type-check",
+    "test-all": "lerna run --parallel --stream --no-bail test",
+    "lint-all": "lerna run --stream lint",
+    "lint-fix-all": "lerna run --stream lint-fix",
+    "link-all": "lerna exec \"npm link\" --no-private && npm run print-links",
+    "print-links": "echo \"Run this command in the package you would like to link this repo's packages to:\n\"; echo \"npm link\" $(lerna ls --loglevel=error)",
+    "version": "lerna version --no-push --force-publish"
+  },
+  "workspaces": [
+    "packages/*",
+    "example/*"
+  ],
+  "devDependencies": {
+    "@types/jest": "29.5.4",
+    "@typescript-eslint/eslint-plugin": "^6.5.0",
+    "@typescript-eslint/parser": "^6.5.0",
+    "concurrently": "^8.2.1",
+    "esbuild": "0.19.2",
+    "esbuild-jest": "0.5.0",
+    "esbuild-plugin-copy": "2.1.1",
+    "jju": "^1.4.0",
+    "@types/jju": "^1.4.2",
+    "tmp": "^0.2.1",
+    "@types/tmp": "^0.2.3",
+    "eslint": "^8.48.0",
+    "eslint-config-airbnb-typescript": "^17.1.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.28.1",
+    "eslint-plugin-prettier": "^5.0.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "jest": "29.6.4",
+    "jest-environment-jsdom": "29.6.4",
+    "lerna": "7.2.0",
+    "prettier": "^3.0.3",
+    "rimraf": "^5.0.1",
+    "ts-node": "^10.9.1",
+    "tsx": "3.12.8",
+    "typescript": "^5.2.2"
+  }
+}

@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: Ask a general MML question
+    url: https://github.com/mml-io/mml/discussions
+    about: Ask questions and discuss MML with other community members.

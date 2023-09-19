@@ -1,0 +1,37 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types:
+      - completed
+
+jobs:
+  build:
+    name: Deploy
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Deploy using SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.PRIVATE_KEY }}
+          port: 22
+          script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            cd /home/${{ secrets.USERNAME }}/${{ secrets.PROJECT_DIR }}
+            git status --porcelain | grep 'M package-lock.json' && git restore package-lock.json
+            git pull
+            nvm install $(cat .nvmrc)
+            echo -e "DOLBY_APP_KEY=\"${{ secrets.DOLBY_KEY }}\"\n" > ./example/server/.env
+            echo -e "DOLBY_APP_SECRET=\"${{ secrets.DOLBY_SECRET }}\"\n" >> ./example/server/.env
+            echo -e "PASS=\"${{ secrets.DOLBY_PASSWD }}\"\n" >> ./example/server/.env
+            echo -e "\n" >> ./example/server/.env
+            pm2 stop all
+            npm install
+            npm run build
+            pm2 start npm -- run start

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://codesandbox.io/schemas/tasks.json",
+  "setupTasks": [
+    {
+      "name": "Install Dependencies",
+      "command": "npm install"
+    }
+  ],
+  "tasks": {
+    "start": {
+      "name": "Start",
+      "command": "npm run iterate",
+      "runAtStart": true,
+      "restartOn": {
+        "branch": true
+      },
+      "preview": {
+        "port": 8080
+      }
+    }
+  }
+}
