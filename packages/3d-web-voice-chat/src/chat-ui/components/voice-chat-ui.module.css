@@ -164,27 +164,35 @@
   opacity: 1;
 }
 
-.modalOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-}
-
 .modal {
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.75);
   color: white;
   width: 300px;
-  padding: 20px;
+  padding: 12px 30px;
   position: fixed;
   top: 12px;
   left: 12px;
-  border-radius: 12px;
+  border-radius: 7px;
   box-shadow: 3px 3px 3px rgba(0, 0, 0, 0.9);
+}
+
+.modal h3 {
+  margin: 12px 0px;
+}
+
+.inputWrapper {
+  width: 100%;
+  margin-bottom: 21px;
+}
+
+.inputWrapper input {
+  width: 75%;
+  font-size: 15px;
+}
+
+.inputWrapper button {
+  width: 20%;
+  padding: 2px;
+  top: -1px;
+  margin-left: 3px;
 }

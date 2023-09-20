@@ -42,15 +42,17 @@ const PasswordModal = ({ onSubmit }: { onSubmit: (password: string) => void }) =
 
   return (
     <div className={styles.modal}>
-      <h2>Password for Voice Chat</h2>
-      <input
-        ref={inputRef}
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Enter your password..."
-      />
-      <button onClick={() => onSubmit(password)}>Submit</button>
+      <h3>Password for Voice Chat</h3>
+      <div className={styles.inputWrapper}>
+        <input
+          ref={inputRef}
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Enter your password..."
+        />
+        <button onClick={() => onSubmit(password)}>Submit</button>
+      </div>
     </div>
   );
 };

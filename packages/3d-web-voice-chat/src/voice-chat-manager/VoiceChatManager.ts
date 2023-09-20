@@ -39,6 +39,8 @@ export enum SessionStatus {
 
 const RETRY_DELAY = 3000;
 
+const UPDATE_INTERVAL = 333;
+
 export class VoiceChatManager {
   private debug = false;
 
@@ -88,7 +90,7 @@ export class VoiceChatManager {
 
     if (this.autoJoin === true) {
       this.init();
-      this.tickInterval = setInterval(() => this.tick(), 1000);
+      this.tickInterval = setInterval(() => this.tick(), UPDATE_INTERVAL);
     }
   }
 
@@ -145,7 +147,6 @@ export class VoiceChatManager {
     if (this.password === null) return null;
     try {
       this.status = SessionStatus.Connecting;
-      console.log(this.password);
       const response = await fetch(`/voice-token/${this.userId.toString(10)}`, {
         headers: {
           "x-custom-auth": this.password,
@@ -230,7 +231,7 @@ export class VoiceChatManager {
         await this.openSession();
         this.createAndJoinConference();
         if (this.tickInterval === null) {
-          this.tickInterval = setInterval(() => this.tick(), 1000);
+          this.tickInterval = setInterval(() => this.tick(), UPDATE_INTERVAL);
         }
       } else {
         this.status = SessionStatus.Unavailable;
