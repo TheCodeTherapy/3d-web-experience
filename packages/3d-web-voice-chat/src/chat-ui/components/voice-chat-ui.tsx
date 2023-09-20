@@ -70,9 +70,9 @@ const VoiceChatUIComponent = (props: VoiceChatUIComponentProps) => {
     if (status === SessionStatus.Connecting) {
       return <img src={`data:image/svg+xml;utf8,${encodeURIComponent(HourGlass)}`} />;
     } else if (status === SessionStatus.Connected && speaking === false) {
-      return <img src={`data:image/svg+xml;utf8,${encodeURIComponent(MicrophoneOn)}`} />;
-    } else if (status === SessionStatus.Connected && speaking === true) {
       return <img src={`data:image/svg+xml;utf8,${encodeURIComponent(MicrophoneOff)}`} />;
+    } else if (status === SessionStatus.Connected && speaking === true) {
+      return <img src={`data:image/svg+xml;utf8,${encodeURIComponent(MicrophoneOn)}`} />;
     } else {
       return <img src={`data:image/svg+xml;utf8,${encodeURIComponent(HeadSet)}`} />;
     }
