@@ -206,7 +206,7 @@ export class App {
   public update(): void {
     this.timeManager.update();
     this.characterManager.update();
-    this.voiceChatManager?.speakingParticipants.forEach((value, id) => {
+    this.voiceChatManager?.speakingParticipants.forEach((value: boolean, id: number) => {
       this.characterManager.setSpeakingCharacter(id, value);
     });
     this.cameraManager.update();

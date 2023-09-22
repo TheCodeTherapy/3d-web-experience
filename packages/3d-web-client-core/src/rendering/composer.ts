@@ -24,7 +24,6 @@ import {
   HalfFloatType,
   LinearSRGBColorSpace,
   LoadingManager,
-  Object3D,
   PMREMGenerator,
   PerspectiveCamera,
   Scene,

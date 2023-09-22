@@ -6,7 +6,6 @@ import {
   Object3D,
   RawShaderMaterial,
   Scene,
-  Vector2,
   Vector3,
 } from "three";
 
