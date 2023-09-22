@@ -120,6 +120,7 @@ export class App {
     );
 
     this.characterManager = new CharacterManager(
+      this.composer,
       this.collisionsManager,
       this.cameraManager,
       this.timeManager,
@@ -205,6 +206,9 @@ export class App {
   public update(): void {
     this.timeManager.update();
     this.characterManager.update();
+    this.voiceChatManager?.speakingParticipants.forEach((value, id) => {
+      this.characterManager.setSpeakingCharacter(id, value);
+    });
     this.cameraManager.update();
     if (this.sun) {
       this.sun.updateCharacterPosition(this.characterManager.character?.position);

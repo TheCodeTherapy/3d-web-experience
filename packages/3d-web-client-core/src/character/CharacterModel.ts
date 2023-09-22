@@ -2,6 +2,7 @@ import {
   AnimationAction,
   AnimationClip,
   AnimationMixer,
+  Bone,
   LoopRepeat,
   Mesh,
   MeshStandardMaterial,
@@ -19,6 +20,7 @@ export class CharacterModel {
 
   public mesh: Object3D | null = null;
   public material: CharacterMaterial = new CharacterMaterial();
+  public headBone: Bone | null = null;
 
   public animations: Record<string, AnimationAction> = {};
   public animationMixer: AnimationMixer | null = null;
@@ -57,6 +59,9 @@ export class CharacterModel {
   public hideMaterialByMeshName(meshName: any): void {
     if (!this.mesh) return;
     this.mesh.traverse((child: Object3D) => {
+      if (child.type === "Bone" && child.name === "mixamorigHeadTop_End") {
+        this.headBone = child as Bone;
+      }
       if (child.type === "SkinnedMesh" && child.name === meshName) {
         (child as Mesh).material = new MeshStandardMaterial({
           color: 0xff0000,

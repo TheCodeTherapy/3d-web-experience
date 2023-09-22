@@ -3,8 +3,9 @@ import { Camera, Group, Object3D, PerspectiveCamera, Vector3 } from "three";
 
 import { CameraManager } from "../camera/CameraManager";
 import { CollisionsManager } from "../collisions/CollisionsManager";
-import { ease, getSpawnPositionInsideCircle } from "../helpers/math-helpers";
+import { ease, getSpawnPositionInsideCircle, toArray } from "../helpers/math-helpers";
 import { KeyInputManager } from "../input/KeyInputManager";
+import { Composer } from "../rendering/composer";
 import { TimeManager } from "../time/TimeManager";
 
 import { Character, CharacterDescription } from "./Character";
@@ -13,10 +14,10 @@ import { RemoteController } from "./RemoteController";
 
 function encodeCharacterAndCamera(character: Object3D, camera: PerspectiveCamera): string {
   return [
-    ...character.position.toArray(),
-    ...character.quaternion.toArray(),
-    ...camera.position.toArray(),
-    ...camera.quaternion.toArray(),
+    ...toArray(character.position),
+    ...toArray(character.quaternion),
+    ...toArray(camera.position),
+    ...toArray(camera.quaternion),
   ].join(",");
 }
 
@@ -36,6 +37,8 @@ export class CharacterManager {
   */
   private updateLocationHash = false;
 
+  private id: number = 0;
+
   public loadingCharacters: Map<number, Promise<Character>> = new Map();
 
   public remoteCharacters: Map<number, Character> = new Map();
@@ -47,9 +50,12 @@ export class CharacterManager {
   private cameraOffsetTarget: number = 0;
   private cameraOffset: number = 0;
 
+  private speakingCharacters: Map<number, boolean> = new Map();
+
   public readonly group: Group;
 
   constructor(
+    private readonly composer: Composer,
     private readonly collisionsManager: CollisionsManager,
     private readonly cameraManager: CameraManager,
     private readonly timeManager: TimeManager,
@@ -109,6 +115,7 @@ export class CharacterManager {
           this.group.add(character.model!.mesh!);
 
           if (isLocal) {
+            this.id = id;
             this.character = character;
             this.character.tooltip?.setText(`${id}`);
           } else {
@@ -144,6 +151,7 @@ export class CharacterManager {
         this.inputManager,
         this.cameraManager,
         this.timeManager,
+        this.composer,
       );
     });
 
@@ -177,9 +185,16 @@ export class CharacterManager {
     this.loadingCharacters.clear();
   }
 
+  public setSpeakingCharacter(id: number, value: boolean) {
+    this.speakingCharacters.set(id, value);
+  }
+
   public update() {
     if (this.character) {
       this.character.update(this.timeManager.time);
+      if (this.speakingCharacters.has(this.id)) {
+        this.character.speakingIndicator?.setSpeaking(this.speakingCharacters.get(this.id)!);
+      }
 
       if (this.character.model?.mesh) {
         this.cameraOffsetTarget = this.cameraManager.targetDistance <= 0.4 ? 0.13 : 0;
@@ -197,6 +212,10 @@ export class CharacterManager {
       }
 
       for (const [id, update] of this.clientStates) {
+        if (this.remoteCharacters.has(id) && this.speakingCharacters.has(id)) {
+          const character = this.remoteCharacters.get(id);
+          character?.speakingIndicator?.setSpeaking(this.speakingCharacters.get(id)!);
+        }
         const { position } = update;
         if (!this.remoteCharacters.has(id) && !this.loadingCharacters.has(id)) {
           this.spawnCharacter(
@@ -217,6 +236,7 @@ export class CharacterManager {
 
       for (const [id, character] of this.remoteCharacters) {
         if (!this.clientStates.has(id)) {
+          character.speakingIndicator?.dispose();
           this.group.remove(character.model!.mesh!);
           this.remoteCharacters.delete(id);
           this.remoteCharacterControllers.delete(id);

@@ -58,6 +58,8 @@ export class VoiceChatManager {
   private participants = new Map<string, string>();
   private activeSpeakers: number = 0;
 
+  public speakingParticipants = new Map<number, boolean>();
+
   private voiceChatUI: VoiceChatUI;
 
   private conference: Conference | null = null;
@@ -101,6 +103,11 @@ export class VoiceChatManager {
       for (const [, participant] of VoxeetSDK.conference.participants) {
         const parsed = parseInt(participant.info.name!, 10);
         if (!parsed) break;
+        // eslint-disable-next-line @typescript-eslint/no-loop-func
+        VoxeetSDK.conference.isSpeaking(participant, (value: boolean) => {
+          this.speakingParticipants.set(parsed, value);
+        });
+
         if (participant.status === "Connected" && participant.audioTransmitting === true) {
           activeSpeakers++;
         }
@@ -277,7 +284,7 @@ export class VoiceChatManager {
         params: {
           audioOnly: true,
           dolbyVoice: true,
-          liveRecording: true,
+          liveRecording: false,
           spatialAudioStyle: "individual" as SpatialAudioStyle,
           stats: true,
           ttl: 0,

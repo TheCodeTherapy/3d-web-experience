@@ -3,9 +3,11 @@ import { Color, Vector3 } from "three";
 import { CameraManager } from "../camera/CameraManager";
 import { CollisionsManager } from "../collisions/CollisionsManager";
 import { KeyInputManager } from "../input/KeyInputManager";
+import { Composer } from "../rendering/composer";
 import { TimeManager } from "../time/TimeManager";
 
 import { CharacterModel } from "./CharacterModel";
+import { CharacterSpeakingIndicator } from "./CharacterSpeakingIndicator";
 import { CharacterTooltip } from "./CharacterTooltip";
 import { LocalController } from "./LocalController";
 
@@ -28,6 +30,7 @@ export class Character {
   public position: Vector3 = new Vector3();
 
   public tooltip: CharacterTooltip | null = null;
+  public speakingIndicator: CharacterSpeakingIndicator | null = null;
 
   constructor(
     private readonly characterDescription: CharacterDescription,
@@ -38,6 +41,7 @@ export class Character {
     private readonly keyInputManager: KeyInputManager,
     private readonly cameraManager: CameraManager,
     private readonly timeManager: TimeManager,
+    private readonly composer: Composer,
   ) {
     this.load();
   }
@@ -47,6 +51,9 @@ export class Character {
     await this.model.init();
     if (this.tooltip === null) {
       this.tooltip = new CharacterTooltip(this.model.mesh!);
+    }
+    if (this.speakingIndicator === null) {
+      this.speakingIndicator = new CharacterSpeakingIndicator(this.composer.postPostScene);
     }
     this.color = this.model.material.colorsCube216[this.id];
     if (this.isLocal) {
@@ -66,6 +73,15 @@ export class Character {
     if (!this.model) return;
     if (this.tooltip) {
       this.tooltip.update(this.cameraManager.camera);
+    }
+    if (this.speakingIndicator) {
+      this.speakingIndicator.setTime(time);
+      if (this.model.mesh && this.model.headBone) {
+        this.speakingIndicator.setBillboarding(
+          this.model.headBone?.getWorldPosition(new Vector3()),
+          this.cameraManager.camera,
+        );
+      }
     }
     this.model.mesh!.getWorldPosition(this.position);
     if (typeof this.model.material.uniforms.time !== "undefined") {
