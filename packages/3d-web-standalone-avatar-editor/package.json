@@ -1,0 +1,37 @@
+{
+  "name": "@mml-io/3d-web-standalone-avatar-editor",
+  "version": "0.15.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "type": "module",
+  "files": [
+    "/build"
+  ],
+  "scripts": {
+    "build": "tsx ./build.ts --build",
+    "iterate": "tsx ./build.ts --watch",
+    "start": "NODE_ENV=production node build/index.js 2>error.log",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
+    "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
+  },
+  "dependencies": {
+    "@mml-io/model-loader": "0.14.0",
+    "@mml-io/3d-web-avatar": "0.15.0",
+    "@mml-io/3d-web-avatar-editor-ui": "0.15.0",
+    "@mml-io/3d-web-client-core": "0.15.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "three": "0.163.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@types/react": "^18.2.79",
+    "@types/react-dom": "^18.2.25",
+    "@types/three": "0.163.0",
+    "esbuild-css-modules-plugin": "3.1.0"
+  }
+}

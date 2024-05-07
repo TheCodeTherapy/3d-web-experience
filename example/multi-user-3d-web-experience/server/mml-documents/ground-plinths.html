@@ -1,0 +1,45 @@
+<m-group id="ground-floor-plinths" ry="180" z="40"></m-group>
+
+<script>
+  const exampleDocuments = [
+    "example-video.html",
+    "example-magic-stairs.html",
+    "example-magic-stairs.html",
+    "example-gliders.html",
+    "glass-bridge.html",
+    "example-dice.html",
+    "example-moving-platform.html",
+    "example-piano.html",
+    "example-cars.html",
+  ];
+
+  const groundFloorPlinths = document.getElementById("ground-floor-plinths");
+
+  const examples = exampleDocuments.length;
+  const radius = 55;
+
+  for (let i = 0; i < examples; i++) {
+    const mirrored = true;
+    const angleStep = (2 * Math.PI) / examples;
+    const theta = angleStep * i;
+    const plinth = document.createElement("m-cylinder");
+    const px = Math.sin(theta) * radius;
+    const pz = Math.cos(theta) * radius;
+    let ry = (theta * 180) / -Math.PI;
+    ry = mirrored === true ? (ry + 180) % 360 : ry;
+    plinth.setAttribute("radius", 7.5);
+    plinth.setAttribute("height", 0.1);
+    plinth.setAttribute("color", "#cccccc");
+    plinth.setAttribute("x", px);
+    plinth.setAttribute("z", pz);
+    // plinth.setAttribute("ry", ry);
+    groundFloorPlinths.appendChild(plinth);
+
+    const frame = document.createElement("m-frame");
+    frame.setAttribute("x", px);
+    frame.setAttribute("z", pz);
+    // frame.setAttribute("ry", ry);
+    frame.setAttribute("src", `wss:///mml-documents/${exampleDocuments[i]}`);
+    groundFloorPlinths.appendChild(frame);
+  }
+</script>

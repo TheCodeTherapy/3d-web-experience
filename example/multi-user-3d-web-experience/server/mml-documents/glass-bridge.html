@@ -1,0 +1,840 @@
+<!-- Author: Marco Gomez - https://twitter.com/TheCodeTherapy -->
+<m-group y="0.0" ry="-90">
+  <m-group id="glass-bridge"></m-group>
+  <m-label
+    id="users-connected"
+    content="0"
+    x="-6"
+    y="0.2"
+    z="0"
+    ry="90"
+    font-size="30"
+    width="12"
+    alignment="center"
+    height="0.5"
+    color="#ffffff"
+  ></m-label>
+  <m-model src="/assets/playground/stairs.glb"></m-model>
+</m-group>
+
+<script>
+  const glassBridge = document.getElementById("glass-bridge");
+
+  let gameInProgress = false;
+  let gameEnded = false;
+
+  const requiredParticipants = 1;
+
+  const useLabelClock = true;
+  const minutesToCross = 4;
+  let secondsToFinish = 60 * minutesToCross;
+  let clockInterval = null;
+
+  const gamePrepareProbe = document.createElement("m-position-probe");
+
+  const bridgeLength = 7;
+  const bridgeLights = true;
+
+  const bridgeSlabSX = 4.2;
+  const bridgeSlabSY = 0.1;
+  const bridgeSlabSZ = 3;
+  const bridgeSlabGapX = 3.5;
+  const bridgeSlabGapZ = 2;
+  const bridgeStartX = bridgeSlabSX * 2;
+  const bridgeStartY = 31.0;
+  const bridgeStartZ = -bridgeSlabSX * 2 + bridgeSlabGapZ / 2;
+
+  const railHeight = bridgeSlabSY;
+  const railThickness = 0.2;
+  const railLength =
+    bridgeLength * bridgeSlabSX + (bridgeLength - 1) * bridgeSlabGapX + bridgeSlabSX;
+  const railColor = "#000000";
+  const railY = bridgeStartY;
+
+  const connectedUsers = new Map();
+
+  const label = document.getElementById("users-connected");
+
+  const bridgeRails = new Map();
+  const bridgeRailsLights = new Map();
+  const bridgeColliders = new Map();
+  const bridgeGlassModels = new Map();
+  const bridgeBreakableGlassModels = new Map();
+  const bridgeAudioPlayers = new Map();
+  const glassBreakingAudioClips = new Map();
+
+  const extraGameElements = new Map();
+
+  const gameStart = document.getElementById("game-start-pad");
+
+  let gameMusicPlaying = false;
+  let gameMusic = null;
+
+  function removeAllMapEntriesFromBridge(myMap, mapContentDescription) {
+    if (myMap.size > 0) {
+      for (let [key, value] of myMap.entries()) {
+        const elementId = myMap.get(key).getAttribute("id");
+        const element = document.getElementById(elementId);
+        if (element) {
+          const parentId = element.parentElement.id;
+          if (parentId) {
+            const parent = document.getElementById(parentId);
+            if (parent) {
+              parent.removeChild(value);
+            } else {
+              console.log(
+                `ERROR: parent not found for ${parentId} on [${key}] key of map ${mapContentDescription}`,
+              );
+            }
+          } else {
+            console.log(
+              `ERROR: parentId not found for element ${elementId} on [${key}] of map ${mapContentDescription}`,
+            );
+          }
+        } else {
+          console.log(
+            `ERROR: element not found for ${elementId} on [${key}] of map ${mapContentDescription}`,
+          );
+        }
+      }
+      myMap.clear();
+    }
+  }
+
+  function removeRails() {
+    if (bridgeRails.size > 0) {
+      removeAllMapEntriesFromBridge(bridgeRails, "rail");
+    }
+    if (bridgeLights && bridgeRailsLights.size > 0) {
+      removeAllMapEntriesFromBridge(bridgeRailsLights, "light");
+    }
+  }
+
+  function spawnRails(x, z, left = true) {
+    if (bridgeRails.size > 3) {
+      removeRails();
+    }
+    const railId = `rail-${bridgeRails.size + 1}`;
+    const rail = document.createElement("m-cube");
+    const railPosX = x + railLength / 2 - bridgeSlabSX;
+    const railPosZ = left
+      ? z - bridgeSlabSZ / 2 - railThickness / 2
+      : z + bridgeSlabSZ / 2 + railThickness / 2;
+    rail.setAttribute("id", railId);
+    rail.setAttribute("sz", railThickness);
+    rail.setAttribute("sy", railHeight);
+    rail.setAttribute("sx", railLength);
+    rail.setAttribute("x", railPosX);
+    rail.setAttribute("y", railY);
+    rail.setAttribute("z", railPosZ);
+    rail.setAttribute("color", railColor);
+    rail.setAttribute("collide", "false");
+    bridgeRails.set(railId, rail);
+    glassBridge.appendChild(rail);
+
+    if (bridgeLights === true) {
+      for (i = railPosX - railLength / 2; i < railPosX + railLength / 2; i += 4) {
+        const lampId = `brigeLight-${bridgeRailsLights.size + 1}`;
+        const lamp = document.createElement("m-sphere");
+        lamp.setAttribute("id", lampId);
+        lamp.setAttribute("x", i);
+        lamp.setAttribute("y", railY + 0.1);
+        lamp.setAttribute("z", railPosZ);
+        lamp.setAttribute("color", "#ffffff");
+        lamp.setAttribute("radius", "0.07");
+        lamp.setAttribute("collide", "false");
+        lamp.setAttribute("collide", "false");
+        lamp.setAttribute("cast-shadows", "false");
+        bridgeRailsLights.set(lampId, lamp);
+        glassBridge.appendChild(lamp);
+      }
+    }
+  }
+
+  function removeBridgeColliders() {
+    if (bridgeColliders.size > 0) {
+      removeAllMapEntriesFromBridge(bridgeColliders, "bridgeCollider");
+    }
+  }
+
+  function removeBridgeGlassModels() {
+    if (bridgeGlassModels.size > 0) {
+      removeAllMapEntriesFromBridge(bridgeGlassModels, "bridgeGlassModel");
+    }
+  }
+
+  function removeBridgeAudioPlayers() {
+    if (bridgeAudioPlayers.size > 0) {
+      removeAllMapEntriesFromBridge(bridgeAudioPlayers, "bridgeAudioPlayer");
+    }
+  }
+
+  function removeBreakableGlassModels() {
+    if (bridgeBreakableGlassModels.size > 0) {
+      removeAllMapEntriesFromBridge(bridgeBreakableGlassModels, "bridgeBreakableGlassModel");
+    }
+  }
+
+  function removeGlassBreakingAudioClips() {
+    if (glassBreakingAudioClips.size > 0) {
+      removeAllMapEntriesFromBridge(glassBreakingAudioClips, "glassBreakingAudioClip");
+    }
+  }
+
+  function breakRemainingGlasses() {
+    if (bridgeGlassModels.size > 0) {
+      let timeoutValuesStart = 0;
+      const timeOutValues = [];
+      for (let i = 0; i < bridgeGlassModels.size; i++) {
+        const randomOffset = 70 + Math.random() * 150;
+        const newValue = timeoutValuesStart + randomOffset;
+        timeOutValues.push(newValue);
+        timeoutValuesStart += randomOffset;
+      }
+
+      for (let [key, value] of bridgeGlassModels.entries()) {
+        const remainingGlassModel = bridgeGlassModels.get(key);
+        const posX = remainingGlassModel.getAttribute("x");
+        const posY = remainingGlassModel.getAttribute("y");
+        const posZ = remainingGlassModel.getAttribute("z");
+
+        const bridgeGlassModelId = bridgeGlassModels.get(key).getAttribute("id");
+        if (bridgeGlassModelId) {
+          const bridgeGlassModel = document.getElementById(bridgeGlassModelId);
+          if (bridgeGlassModel) {
+            const parent = document.getElementById(bridgeGlassModel.parentElement.id);
+            if (parent) {
+              const audioPlayer = document.createElement("m-group");
+              const audioPlayerId = `audioPlayer-${bridgeGlassModelId}`;
+              audioPlayer.setAttribute("id", audioPlayerId);
+              audioPlayer.setAttribute("x", posX);
+              audioPlayer.setAttribute("y", bridgeStartY);
+              audioPlayer.setAttribute("z", posZ);
+              bridgeAudioPlayers.set(audioPlayerId, audioPlayer);
+              glassBridge.appendChild(audioPlayer);
+
+              setTimeout(() => {
+                let activeAudioPlayer = bridgeAudioPlayers.get(audioPlayerId);
+                if (activeAudioPlayer) {
+                  const breakableGlassModel = document.createElement("m-model");
+                  const breakableGlassModelId = `breakableGlassModel-${bridgeGlassModelId}`;
+                  breakableGlassModel.setAttribute("id", breakableGlassModelId);
+                  breakableGlassModel.setAttribute("collide", "false");
+                  breakableGlassModel.setAttribute("anim-loop", "false");
+                  breakableGlassModel.setAttribute("anim-enabled", "false");
+                  breakableGlassModel.setAttribute("x", posX);
+                  breakableGlassModel.setAttribute("y", bridgeStartY);
+                  breakableGlassModel.setAttribute("z", posZ);
+                  breakableGlassModel.setAttribute("ry", Math.random() < 0.5 ? "180" : "0");
+                  breakableGlassModel.setAttribute("src", "/assets/playground/slab.glb");
+                  breakableGlassModel.setAttribute("anim", "/assets/playground/slab.glb");
+                  breakableGlassModel.setAttribute("anim-enabled", "true");
+                  breakableGlassModel.setAttribute(
+                    "anim-start-time",
+                    document.timeline.currentTime,
+                  );
+                  breakableGlassModel.setAttribute(
+                    "anim-pause-time",
+                    document.timeline.currentTime + 3000,
+                  );
+
+                  parent.removeChild(bridgeGlassModel);
+                  bridgeGlassModels.delete(bridgeGlassModelId);
+                  glassBridge.appendChild(breakableGlassModel);
+                  bridgeBreakableGlassModels.set(breakableGlassModelId, breakableGlassModel);
+
+                  const glassBreakingAudioClip = document.createElement("m-audio");
+                  const glassBreakingAudioClipId = `audio-from-${audioPlayerId}`;
+                  const audioType = Math.random() < 0.5 ? "A" : "B";
+                  const audioDuration = audioType === "A" ? 2328 : 2136;
+                  glassBreakingAudioClip.setAttribute("id", glassBreakingAudioClipId);
+                  glassBreakingAudioClip.setAttribute("loop", "false");
+                  glassBreakingAudioClip.setAttribute(
+                    "src",
+                    `/assets/playground/glass${audioType}.mp3`,
+                  );
+                  glassBreakingAudioClip.setAttribute("start-time", document.timeline.currentTime);
+                  glassBreakingAudioClip.setAttribute(
+                    "pause-time",
+                    document.timeline.currentTime + audioDuration + 40,
+                  );
+                  setTimeout(() => {
+                    glassBreakingAudioClip.setAttribute("enabled", "false");
+                  }, audioDuration + 45);
+                  activeAudioPlayer.appendChild(glassBreakingAudioClip);
+                  glassBreakingAudioClips.set(glassBreakingAudioClipId, glassBreakingAudioClip);
+                }
+              }, timeOutValues.pop());
+            } else {
+              console.log(
+                `Error: cannor find parent element for ${bridgeGlassModelId} for [${key}] on bridgeGlassModels map`,
+              );
+            }
+          } else {
+            console.log(
+              `Error: cannot find bridgeGlassModel element for ${bridgeGlassModelId} id for [${key}] on bridgeGlassModels map`,
+            );
+          }
+        } else {
+          console.log(
+            `ERROR: cannot find bridgeGlassModelId for [${key}] key on bridgeGlassModels map`,
+          );
+        }
+      }
+    }
+  }
+
+  function spawnGlassSlab(x, y, breakable) {
+    const posX = bridgeStartX + x * (bridgeSlabSX + bridgeSlabGapX);
+    const posZ = bridgeStartZ + y * (bridgeSlabSZ + bridgeSlabGapZ);
+
+    if (x == 1) {
+      spawnRails(posX, posZ);
+      spawnRails(posX, posZ, false);
+    }
+
+    const bridgeCollider = document.createElement("m-cube");
+    const bridgeColliderId = `collider-${x}${y}`;
+    bridgeCollider.setAttribute("id", bridgeColliderId);
+    bridgeCollider.setAttribute("sx", bridgeSlabSX);
+    bridgeCollider.setAttribute("sy", bridgeSlabSY);
+    bridgeCollider.setAttribute("sz", bridgeSlabSZ);
+    bridgeCollider.setAttribute("x", posX);
+    bridgeCollider.setAttribute("y", bridgeStartY);
+    bridgeCollider.setAttribute("z", posZ);
+    bridgeCollider.setAttribute("cast-shadows", "false");
+    bridgeCollider.setAttribute("color", "#000000");
+    bridgeCollider.setAttribute("opacity", 1.0);
+    bridgeCollider.setAttribute("visible", false);
+    bridgeCollider.setAttribute("collide", "true");
+    bridgeCollider.setAttribute("collision-interval", "100");
+    bridgeColliders.set(bridgeColliderId, bridgeCollider);
+    glassBridge.appendChild(bridgeCollider);
+
+    const glassModel = document.createElement("m-model");
+    const glassModelId = `glassModel-${bridgeGlassModels.size + 1}`;
+    glassModel.setAttribute("id", glassModelId);
+    glassModel.setAttribute("x", posX);
+    glassModel.setAttribute("y", bridgeStartY);
+    glassModel.setAttribute("z", posZ);
+    glassModel.setAttribute("src", "/assets/playground/slab.glb");
+    glassModel.setAttribute("collide", "false");
+    bridgeGlassModels.set(glassModelId, glassModel);
+    glassBridge.appendChild(glassModel);
+
+    if (breakable) {
+      const audioPlayer = document.createElement("m-group");
+      const audioPlayerId = `audioPlayer-${bridgeAudioPlayers.size + 1}`;
+      audioPlayer.setAttribute("id", audioPlayerId);
+      audioPlayer.setAttribute("x", posX);
+      audioPlayer.setAttribute("y", bridgeStartY);
+      audioPlayer.setAttribute("z", posZ);
+      bridgeAudioPlayers.set(audioPlayerId, audioPlayer);
+      glassBridge.appendChild(audioPlayer);
+
+      bridgeCollider.addEventListener("collisionstart", (event) => {
+        const breakableGlassModel = document.createElement("m-model");
+        const breakableGlassModelId = `breakableGlassModel-${bridgeBreakableGlassModels.size + 1}`;
+        breakableGlassModel.setAttribute("id", breakableGlassModelId);
+        breakableGlassModel.setAttribute("collide", "false");
+        breakableGlassModel.setAttribute("anim-loop", "false");
+        breakableGlassModel.setAttribute("anim-enabled", "false");
+        breakableGlassModel.setAttribute("x", posX);
+        breakableGlassModel.setAttribute("y", bridgeStartY);
+        breakableGlassModel.setAttribute("ry", Math.random() < 0.5 ? "180" : "0");
+        breakableGlassModel.setAttribute("z", posZ);
+        breakableGlassModel.setAttribute("src", "/assets/playground/slab.glb");
+        breakableGlassModel.setAttribute("anim", "/assets/playground/slab.glb");
+        breakableGlassModel.setAttribute("anim-enabled", "true");
+        breakableGlassModel.setAttribute("anim-start-time", document.timeline.currentTime);
+        breakableGlassModel.setAttribute("anim-pause-time", document.timeline.currentTime + 3000);
+
+        glassBridge.removeChild(glassModel);
+        bridgeGlassModels.delete(glassModelId);
+
+        glassBridge.appendChild(breakableGlassModel);
+        bridgeBreakableGlassModels.set(breakableGlassModelId, breakableGlassModel);
+
+        const glassBreakingAudioClip = document.createElement("m-audio");
+        const glassBreakingAudioClipId = `audio-from-${audioPlayerId}`;
+        const audioType = Math.random() < 0.5 ? "A" : "B";
+        const audioDuration = audioType === "A" ? 2328 : 2136;
+        glassBreakingAudioClip.setAttribute("id", glassBreakingAudioClipId);
+        glassBreakingAudioClip.setAttribute("loop", "false");
+        glassBreakingAudioClip.setAttribute("src", `/assets/playground/glass${audioType}.mp3`);
+        glassBreakingAudioClip.setAttribute(
+          "pause-time",
+          document.timeline.currentTime + audioDuration,
+        );
+        glassBreakingAudioClip.setAttribute("start-time", document.timeline.currentTime);
+        audioPlayer.appendChild(glassBreakingAudioClip);
+        glassBreakingAudioClips.set(glassBreakingAudioClipId, glassBreakingAudioClip);
+        setTimeout(() => {
+          glassBridge.removeChild(breakableGlassModel);
+          bridgeBreakableGlassModels.delete(breakableGlassModelId);
+        }, 2000);
+        setTimeout(() => {
+          console.log(`removing audio ${glassBreakingAudioClipId}`);
+          audioPlayer.removeChild(glassBreakingAudioClip);
+          glassBreakingAudioClips.delete(glassBreakingAudioClipId);
+        }, 2000);
+
+        bridgeColliders.delete(bridgeColliderId);
+        glassBridge.removeChild(bridgeCollider);
+      });
+    }
+  }
+
+  function startGameMusic(x, z) {
+    gameMusic = document.createElement("m-audio");
+    gameMusic.setAttribute("enabled", "false");
+    const ostX = bridgeStartX + x * (bridgeSlabSX + bridgeSlabGapX);
+    const ostZ = bridgeStartZ + z * (bridgeSlabSZ + bridgeSlabGapZ) + bridgeSlabSZ / 2;
+    gameMusic.setAttribute("enabled", "true");
+    gameMusic.setAttribute("x", ostX);
+    gameMusic.setAttribute("y", bridgeStartY);
+    gameMusic.setAttribute("z", ostZ);
+    gameMusic.setAttribute("src", "/assets/playground/suspense.mp3");
+    gameMusic.setAttribute("loop", "true");
+    gameMusic.setAttribute("autoplay", "true");
+    gameMusic.setAttribute("start-time", document.timeline.currentTime);
+    glassBridge.appendChild(gameMusic);
+    gameMusicPlaying = true;
+  }
+
+  function stopGameMusic() {
+    if (gameMusic === null) return;
+    if (gameMusicPlaying === false) return;
+    gameMusic.setAttribute("enabled", "false");
+    glassBridge.removeChild(gameMusic);
+    gameMusicPlaying = false;
+  }
+
+  function spawnGlassBridge() {
+    for (let i = 1; i <= bridgeLength; i++) {
+      const coinFlipOnLeftSide = Math.random() < 0.5;
+      let leftIsBreakable = false;
+      let rightIsBreakable = false;
+      if (coinFlipOnLeftSide) {
+        leftIsBreakable = Math.random() < 0.3334;
+        rightIsBreakable = leftIsBreakable ? false : Math.random() < 0.6667;
+      } else {
+        rightIsBreakable = Math.random() < 0.3334;
+        leftIsBreakable = rightIsBreakable ? false : Math.random() < 0.6667;
+      }
+
+      for (let j = 1; j < 3; j++) {
+        spawnGlassSlab(i, j, j === 1 ? leftIsBreakable : rightIsBreakable);
+      }
+    }
+  }
+
+  function spawnGameStartPoint() {
+    const posX = 9.52;
+    const posY = bridgeStartY + 0.15;
+    const posZ = 0;
+    const sx = 7.05;
+    const sy = 0.1;
+    const sz = 16;
+    const probeRange = 8;
+    const probeInterval = 250;
+
+    const gameStartFloor = document.createElement("m-cube");
+    const gameStartFloorId = "game-start-floor";
+    gameStartFloor.setAttribute("id", gameStartFloorId);
+    gameStartFloor.setAttribute("x", posX);
+    gameStartFloor.setAttribute("y", posY);
+    gameStartFloor.setAttribute("z", posZ);
+    gameStartFloor.setAttribute("sx", sx);
+    gameStartFloor.setAttribute("sy", sy);
+    gameStartFloor.setAttribute("sz", sz);
+    gameStartFloor.setAttribute("color", "#898989");
+    gameStartFloor.setAttribute("collide", "true");
+    extraGameElements.set(gameStartFloorId, gameStartFloor);
+    glassBridge.appendChild(gameStartFloor);
+
+    const gameStartProbe = document.createElement("m-position-probe");
+    const gameStartProbeId = "game-start-probe";
+    gameStartProbe.setAttribute("id", gameStartProbeId);
+    gameStartProbe.setAttribute("debug", "false");
+    gameStartProbe.setAttribute("range", probeRange.toString());
+    gameStartProbe.setAttribute("interval", probeInterval.toString());
+    gameStartProbe.setAttribute("x", posX);
+    gameStartProbe.setAttribute("y", posY);
+    gameStartProbe.setAttribute("z", posZ);
+    extraGameElements.set(gameStartProbeId, gameStartProbe);
+    glassBridge.appendChild(gameStartProbe);
+
+    gameStartProbe.addEventListener("positionenter", (event) => {
+      if (gameMusicPlaying === false) {
+        gameMusicPlaying = true;
+        startGameMusic(1, bridgeLength - 1);
+        createGameClock(
+          20,
+          8,
+          -90,
+          bridgeStartX + railLength + bridgeSlabSX + bridgeSlabGapX * 2.5 + 10,
+          bridgeStartY + 4,
+          0,
+        );
+        setTimeout(() => {
+          updateClock();
+        }, 1000);
+      }
+    });
+  }
+
+  function spawnGameEndPoint() {
+    const gameEndFloor = document.createElement("m-cube");
+    const gameEndFloorId = "game-end-floor";
+    const posX = bridgeStartX + railLength + bridgeSlabSX + bridgeSlabGapX * 2.5;
+    gameEndFloor.setAttribute("id", gameEndFloorId);
+    gameEndFloor.setAttribute("x", posX);
+    gameEndFloor.setAttribute("y", bridgeStartY + 0.05);
+    gameEndFloor.setAttribute("z", 0);
+    gameEndFloor.setAttribute("sx", 20);
+    gameEndFloor.setAttribute("sy", 0.1);
+    gameEndFloor.setAttribute("sz", 20);
+    gameEndFloor.setAttribute("color", "#898989");
+    extraGameElements.set(gameEndFloorId, gameEndFloor);
+    glassBridge.appendChild(gameEndFloor);
+
+    const gameEndProbeObject = document.createElement("m-sphere");
+    const gameEndProbeObjectId = "game-end-probe-object";
+    gameEndProbeObject.setAttribute("id", gameEndProbeObjectId);
+    gameEndProbeObject.setAttribute("x", posX + 1);
+    gameEndProbeObject.setAttribute("y", bridgeStartY + 0.105);
+    gameEndProbeObject.setAttribute("z", 0);
+    gameEndProbeObject.setAttribute("sx", 19.5);
+    gameEndProbeObject.setAttribute("sy", 0.1);
+    gameEndProbeObject.setAttribute("sz", 19.5);
+    gameEndProbeObject.setAttribute("color", "#99aa99");
+    extraGameElements.set(gameEndProbeObjectId, gameEndProbeObject);
+    glassBridge.appendChild(gameEndProbeObject);
+
+    const gameEndProbe = document.createElement("m-position-probe");
+    const gameEndProbeId = "game-end-probe";
+    gameEndProbe.setAttribute("id", gameEndProbeId);
+    gameEndProbe.setAttribute("x", posX + 1);
+    gameEndProbe.setAttribute("y", bridgeStartY + 0.05);
+    gameEndProbe.setAttribute("z", 0);
+    gameEndProbe.setAttribute("debug", "false");
+    gameEndProbe.setAttribute("range", "10");
+    gameEndProbe.addEventListener("positionenter", (event) => {
+      secondsToFinish = 10;
+      setTimeout(() => endGame(), secondsToFinish * 1000);
+    });
+    extraGameElements.set(gameEndProbeId, gameEndProbe);
+    glassBridge.appendChild(gameEndProbe);
+  }
+
+  function createGameClock(width, height, yRotation, x, y, z) {
+    const colorA = "#aaffaa";
+    const colorB = "#052205";
+
+    if (useLabelClock === true) {
+      const gameClockLabel = document.createElement("m-label");
+      gameClockLabel.setAttribute("id", "game-clock-label");
+      gameClockLabel.setAttribute("width", width);
+      gameClockLabel.setAttribute("height", height);
+      gameClockLabel.setAttribute("font-size", 600);
+      gameClockLabel.setAttribute("alignment", "center");
+      gameClockLabel.setAttribute("color", colorB);
+      gameClockLabel.setAttribute("font-color", colorA);
+      gameClockLabel.setAttribute("x", x - 1);
+      gameClockLabel.setAttribute("y", y);
+      gameClockLabel.setAttribute("z", z);
+      gameClockLabel.setAttribute("ry", -89.99);
+      gameClockLabel.setAttribute("content", humanReadableTimeStamp(secondsToFinish));
+      glassBridge.appendChild(gameClockLabel);
+    }
+
+    const gameClock = document.createElement("m-image");
+    const invisibleImage = document.createElement("m-image");
+    const html = document.createElement("div");
+    const wrappingDiv = document.createElement("div");
+    const innerHTML = document.createElement("div");
+
+    gameClock.setAttribute("id", "game-clock");
+    gameClock.setAttribute("width", width);
+    gameClock.setAttribute("height", height);
+    gameClock.setAttribute("x", x);
+    gameClock.setAttribute("y", y);
+    gameClock.setAttribute("z", z);
+    gameClock.setAttribute("ry", yRotation);
+    gameClock.setAttribute(
+      "src",
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAABhWlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AYht+2SkupONhBpEOG6mRBVESctApFqBBqhVYdTC79gyYNSYqLo+BacPBnserg4qyrg6sgCP6AuLo4KbpIid8lhRYx3nHcw3vf+3L3HeBvVplq9owBqmYZmVRSyOVXheArQgjTjGFGYqY+J4ppeI6ve/j4fpfgWd51f44+pWAywCcQzzLdsIg3iKc2LZ3zPnGUlSWF+Jx41KALEj9yXXb5jXPJYT/PjBrZzDxxlFgodbHcxaxsqMSTxHFF1Sjfn3NZ4bzFWa3WWfue/IWRgrayzHVaMaSwiCWIECCjjgqqsJCgXSPFRIbOkx7+IccvkksmVwWMHAuoQYXk+MH/4HdvzeLEuJsUSQK9L7b9MQwEd4FWw7a/j227dQIEnoErreOvNYHpT9IbHS1+BPRvAxfXHU3eAy53gMEnXTIkRwrQ8heLwPsZfVMeGLgFwmtu39rnOH0AstSr9A1wcAiMlCh73ePdoe6+/VvT7t8PjjpyskforEMAAAAJcEhZcwAALiMAAC4jAXilP3YAAAAHdElNRQfnCAoKHS0vfJ+AAAAAGXRFWHRDb21tZW50AENyZWF0ZWQgd2l0aCBHSU1QV4EOFwAAAAxJREFUCNdjYGBgAAAABAABJzQnCgAAAABJRU5ErkJggg==",
+    );
+
+    invisibleImage.setAttribute("id", "invisible-image");
+    invisibleImage.setAttribute("visible-to", "-1");
+
+    html.setAttribute("id", "html");
+    html.setAttribute("style", `width: ${width * 100}px; height: ${height * 100}px;`);
+    invisibleImage.appendChild(html);
+
+    wrappingDiv.setAttribute("id", "wrapping-div");
+    wrappingDiv.setAttribute(
+      "style",
+      `background-color: ${colorA}; width: 100%; height: 100%; padding: 0px; margin: 0px;`,
+    );
+    html.appendChild(wrappingDiv);
+
+    innerHTML.setAttribute("id", "inner-html");
+    innerHTML.setAttribute(
+      "style",
+      `
+      position: relative;
+      font-family: Verdana, sans-serif;
+      font-size: 500px;
+      line-height: 700px;
+      width: ${width * 100 - 10}px;
+      height: 95%;
+      top: 10px;
+      margin: auto;
+      font-weight: 900;
+      vertical-align: middle;
+      text-align: center;
+      color: ${colorA};
+      background-color: ${colorB};
+    `,
+    );
+    wrappingDiv.appendChild(innerHTML);
+    glassBridge.appendChild(gameClock);
+    glassBridge.appendChild(invisibleImage);
+  }
+
+  function removeClock() {
+    if (clockInterval !== null) {
+      clearInterval(clockInterval);
+      clockInterval = null;
+    }
+    if (useLabelClock === true) {
+      const gameClockLabel = document.getElementById("game-clock-label");
+      glassBridge.removeChild(gameClockLabel);
+    }
+    const gameClock = document.getElementById("game-clock");
+    const invisibleImage = document.getElementById("invisible-image");
+    const html = document.getElementById("html");
+    const wrappingDiv = document.getElementById("wrapping-div");
+    const innerHTML = document.getElementById("inner-html");
+    if (innerHTML && wrappingDiv) {
+      wrappingDiv.removeChild(innerHTML);
+    }
+    if (wrappingDiv && html) {
+      html.removeChild(wrappingDiv);
+    }
+    if (html && invisibleImage) {
+      invisibleImage.removeChild(html);
+    }
+    if (gameClock) {
+      gameClock.parentElement.removeChild(gameClock);
+    }
+    if (invisibleImage) {
+      invisibleImage.parentElement.removeChild(invisibleImage);
+    }
+  }
+
+  function makeSVGWithForeignObject(fragment, width, height) {
+    width = parseInt(width.replace("px", ""));
+    height = parseInt(height.replace("px", ""));
+    const svgFragment = `
+<svg viewBox='0 0 ${width} ${height}' width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+  <foreignObject x="0" y="0" width="${width}" height="${height}">
+    <div xmlns="http://www.w3.org/1999/xhtml">
+      ${fragment}
+    </div>
+  </foreignObject>
+</svg>
+    `;
+    return svgFragment;
+  }
+
+  function makeCanvasFromSVG(fragment) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas);
+      };
+      img.onerror = () => reject(new Error("could not draw SVG fragment into canvas"));
+      img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(fragment)));
+      console.log(img.src);
+    });
+  }
+
+  async function createCanvas(encodedSVG) {
+    try {
+      const canvasFromSVG = await makeCanvasFromSVG(encodedSVG);
+      htmlImage.setAttribute("src", canvas.toDataURL());
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function humanReadableTimeStamp(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    const formattedMinutes = String(minutes).padStart(2, "0");
+    const formattedSeconds = String(remainingSeconds).padStart(2, "0");
+    return `${formattedMinutes}:${formattedSeconds}`;
+  }
+
+  function updateClock() {
+    if (clockInterval === null) {
+      clockInterval = setInterval(() => {
+        secondsToFinish--;
+        if (secondsToFinish < -2) {
+          secondsToFinish = -3;
+          endGame();
+        } else if (secondsToFinish >= 0) {
+          if (useLabelClock === true) {
+            const gameClockLabel = document.getElementById("game-clock-label");
+            const timeStamp = humanReadableTimeStamp(secondsToFinish);
+            gameClockLabel.setAttribute("content", timeStamp);
+          } else {
+            const htmlImage = document.getElementById("game-clock");
+            const html = document.getElementById("html");
+            const innerHTML = document.getElementById("inner-html");
+            const timeStamp = humanReadableTimeStamp(secondsToFinish);
+            innerHTML.innerHTML = timeStamp;
+            const svg = makeSVGWithForeignObject(
+              html.outerHTML,
+              html.style.width,
+              html.style.height,
+            );
+            const encodedSVG = encodeURIComponent(svg);
+            htmlImage.setAttribute("src", `data:image/svg+xml,${encodedSVG}`);
+          }
+        }
+      }, 1000);
+    }
+  }
+
+  function removeExtraGameElements() {
+    if (extraGameElements.size > 0) {
+      removeAllMapEntriesFromBridge(extraGameElements, "extraGameElement");
+    }
+  }
+
+  function endGame() {
+    if (gameEnded === false) {
+      console.log("Game ended! Cleaning up.");
+      removeClock();
+      stopGameMusic();
+      removeBridgeColliders();
+      breakRemainingGlasses();
+      setTimeout(() => {
+        removeBreakableGlassModels();
+        removeGlassBreakingAudioClips();
+        removeRails();
+        removeBridgeGlassModels();
+        removeBridgeAudioPlayers();
+        removeExtraGameElements();
+        gameEnded = true;
+        gameInProgress = false;
+        secondsToFinish = 60 * minutesToCross;
+      }, 6000);
+    }
+  }
+
+  function startGame() {
+    gameEnded = false;
+    spawnGameStartPoint();
+    spawnGameEndPoint();
+    spawnGlassBridge();
+
+    connectedUsers.clear();
+    label.setAttribute("content", "0 users");
+  }
+
+  function prepareGame() {
+    if (gameInProgress === false) {
+      gameInProgress = true;
+      startGame();
+    }
+  }
+
+  function getOrCreateUser(connectionId, position, rotation) {
+    const user = connectedUsers.get(connectionId);
+    if (user) {
+      user.position = position;
+      user.rotation = rotation;
+      return user;
+    }
+
+    if (position && rotation) {
+      const newUser = {
+        position,
+        rotation,
+      };
+
+      connectedUsers.set(connectionId, newUser);
+      return newUser;
+    }
+  }
+
+  function clearUser(connectionId) {
+    const user = connectedUsers.get(connectionId);
+    if (!user) return;
+    connectedUsers.delete(connectionId);
+  }
+
+  function hasUsers(eventDetail) {
+    const { connectionId, elementRelative, documentRelative } = eventDetail;
+    if (elementRelative && documentRelative) {
+      getOrCreateUser(connectionId, elementRelative.position, elementRelative.rotation);
+    }
+    const usersAmount = connectedUsers.size;
+    label.setAttribute("content", `${usersAmount}/${requiredParticipants} players`);
+    if (connectedUsers.size > 0) {
+      if (connectedUsers.size >= requiredParticipants) {
+        prepareGame();
+      }
+    }
+  }
+
+  function spawnGamePreparePoint() {
+    const gamePrepareProbeId = "game-prepare-probe";
+    gamePrepareProbe.setAttribute("id", gamePrepareProbeId);
+    gamePrepareProbe.setAttribute("debug", "false");
+    gamePrepareProbe.setAttribute("range", 6);
+    gamePrepareProbe.setAttribute("interval", 200);
+    gamePrepareProbe.setAttribute("x", -0.85);
+    gamePrepareProbe.setAttribute("y", 0);
+    gamePrepareProbe.setAttribute("z", 0);
+    glassBridge.appendChild(gamePrepareProbe);
+    gamePrepareProbe.addEventListener("positionmove", (event) => {
+      const { connectionId, elementRelative, documentRelative } = event.detail;
+      hasUsers(event.detail);
+    });
+  }
+
+  spawnGamePreparePoint();
+
+  window.addEventListener("disconnected", (event) => {
+    const { connectionId } = event.detail;
+    clearUser(connectionId);
+    hasUsers(event.detail);
+  });
+
+  gamePrepareProbe.addEventListener("positionenter", (event) => {
+    hasUsers(event.detail);
+  });
+
+  gamePrepareProbe.addEventListener("positionmove", (event) => {
+    const { connectionId, elementRelative, documentRelative } = event.detail;
+    hasUsers(event.detail);
+  });
+
+  gamePrepareProbe.addEventListener("positionleave", (event) => {
+    const { connectionId } = event.detail;
+    clearUser(connectionId);
+    hasUsers(event.detail);
+  });
+</script>

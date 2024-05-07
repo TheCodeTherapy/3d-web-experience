@@ -1,0 +1,409 @@
+<m-group x="2.5" z="-2.1">
+  <m-model
+    id="blue-client"
+    src="/assets/playground/knee_and_point_blue.glb"
+    anim="/assets/playground/knee_and_point_skeleton.glb"
+    x="-0.2"
+    y="0.05"
+    z="0.1"
+    ry="-20"
+    anim-loop="false"
+    anim-start-time="-3600"
+    visible="false"
+  ></m-model>
+
+  <m-model
+    id="green-client"
+    src="/assets/playground/knee_and_point_green.glb"
+    anim="/assets/playground/knee_and_point_skeleton.glb"
+    anim-loop="false"
+    anim-start-time="-3600"
+    x="-0.2"
+    y="1.425"
+    z="0.1"
+    ry="-20"
+    visible="false"
+  ></m-model>
+
+  <!-- <m-light
+    color="#aaaaaa"
+    x="0.1"
+    y="1.3"
+    z="3.6"
+    rx="90"
+    rz="-25"
+    distance="4.9"
+    angle="30"
+    intensity="20"
+  ></m-light> -->
+
+  <m-cube color="#424242" x="-0.85" y="1.35" z="-0.65" sx="2.5" sy="2.7" sz="0.1"></m-cube>
+  <m-cube color="#bbbbbb" x="-0.85" y="0.025" sx="2.5" sy="0.05" sz="1.4"></m-cube>
+  <m-cube color="#bbbbbb" x="-0.85" y="1.400" sx="2.5" sy="0.05" sz="1.4"></m-cube>
+  <m-cube color="#bbbbbb" x="-0.85" y="2.700" sx="2.5" sy="0.05" sz="1.4"></m-cube>
+  <m-cube color="#bbbbbb" x="0.4" y="1.3625" sx="0.05" sy="2.725" sz="1.4"></m-cube>
+</m-group>
+
+<m-cube color="#dddddd" id="green-client-cube" x="0.87" y="2.05" z="-2.1" visible="false"></m-cube>
+<m-cube color="#dddddd" id="blue-client-cube" x="0.87" y="0.70" z="-2.1" visible="false"></m-cube>
+
+<m-model
+  id="m-document"
+  visible="false"
+  sx="0.001"
+  sy="0.001"
+  sz="0.001"
+  src="/assets/playground/mml_document.glb"
+  x="-2.5"
+  y="1.05"
+  z="-2"
+>
+  <m-image
+    id="document-code"
+    src="/assets/playground/code_cube_doc.jpg"
+    width="5"
+    y="2"
+    z="-0.181"
+    visible="false"
+  ></m-image>
+  <m-image
+    id="document-code-click"
+    src="/assets/playground/code_cube_click.jpg"
+    width="5"
+    y="2"
+    z="-0.18"
+    visible="false"
+  ></m-image>
+  <m-attr-anim
+    attr="y"
+    start="1.55"
+    end="1.65"
+    loop="true"
+    ping-pong="true"
+    easing="easeInOutQuad"
+    duration="6000"
+  ></m-attr-anim>
+</m-model>
+
+<!-- <m-frame src="wss:///mml-documents/obj_lamp-blue.html" x="-14" y="0" z="3" ry="15"></m-frame> -->
+<!-- <m-frame src="wss:///mml-documents/obj_lamp-red.html" x="14" y="0" z="3" ry="165"></m-frame> -->
+
+<m-cube x="0" y="2" z="2" sx="0.8" sy="0.2" sz="0.7" collide="false" visible="false">
+  <m-position-probe id="demo-trigger" range="11" interval="500" debug="false"></m-position-probe>
+</m-cube>
+
+<m-group x="-2.5" y="0.9" z="-2.75">
+  <m-cube width="5.2" height="1.7" depth="0.01" z="-0.01" color="black"></m-cube>
+  <m-audio
+    id="audio-track"
+    src="/assets/playground/how_mml_works.mp3"
+    loop="false"
+    start-time="-81000"
+    pause-time="0"
+    x="2"
+    y="5"
+    z="-2"
+    rx="50"
+    cone-angle="40"
+    cone-falloff-angle="100"
+    debug="false"
+    volume="3"
+  ></m-audio>
+  <m-video
+    id="video-track"
+    class="not-playing"
+    src="/assets/playground/how_mml_works.mp4"
+    loop="false"
+    start-time="-81000"
+    pause-time="0"
+    width="5"
+    volume="0"
+  ></m-video>
+</m-group>
+
+<m-model
+  id="connection-blue"
+  src="/assets/playground/light_ball.glb"
+  x="0.393"
+  y="0.7"
+  z="-2"
+  sx="0.001"
+  sy="0.001"
+  sz="0.001"
+></m-model>
+
+<m-model
+  id="connection-green"
+  src="/assets/playground/light_ball.glb"
+  x="0.393"
+  y="2"
+  z="-2"
+  sx="0.001"
+  sy="0.001"
+  sz="0.001"
+></m-model>
+
+<script>
+  const videoDuration = 80.2 * 1000;
+
+  const mDocument = document.getElementById("m-document");
+
+  const blueClient = document.getElementById("blue-client");
+  const blueClientCube = document.getElementById("blue-client-cube");
+  const greenClient = document.getElementById("green-client");
+  const greenClientCube = document.getElementById("green-client-cube");
+  const documentCode = document.getElementById("document-code");
+  const documentCodeClick = document.getElementById("document-code-click");
+
+  const connectionBlue = document.getElementById("connection-blue");
+  const connectionGreen = document.getElementById("connection-green");
+
+  const demoTrigger = document.getElementById("demo-trigger");
+  const videoTrack = document.getElementById("video-track");
+  const audioTrack = document.getElementById("audio-track");
+
+  const playersInProbe = new Set();
+
+  let videoPlaying = false;
+  let videoFinished = false;
+
+  function animate(element, attr, start, end, duration, easing) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("start-time", document.timeline.currentTime);
+    anim.setAttribute("end-time", document.timeline.currentTime + duration);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("easing", easing);
+    anim.setAttribute("loop", false);
+    element.appendChild(anim);
+    setTimeout(() => {
+      element.setAttribute(attr, end);
+      element.removeChild(anim);
+    }, duration);
+  }
+
+  function showClients() {
+    blueClient.setAttribute("visible", true);
+    greenClient.setAttribute("visible", true);
+  }
+
+  function hideClients() {
+    blueClient.setAttribute("visible", false);
+    greenClient.setAttribute("visible", false);
+  }
+
+  function showClientsCube() {
+    blueClientCube.setAttribute("visible", true);
+    greenClientCube.setAttribute("visible", true);
+  }
+
+  function hideClientsCube() {
+    blueClientCube.setAttribute("visible", false);
+    greenClientCube.setAttribute("visible", false);
+  }
+
+  function touchCubeWithBlueClient() {
+    blueClient.setAttribute("anim-start-time", document.timeline.currentTime);
+  }
+
+  function touchCubeWithGreenClient() {
+    greenClient.setAttribute("anim-start-time", document.timeline.currentTime);
+  }
+
+  function showDocumentCode(click = false) {
+    if (click) {
+      documentCodeClick.setAttribute("visible", true);
+      documentCode.setAttribute("visible", false);
+      return;
+    }
+    documentCode.setAttribute("visible", true);
+    documentCodeClick.setAttribute("visible", false);
+  }
+
+  function hideDocumentCode() {
+    documentCode.setAttribute("visible", false);
+    documentCodeClick.setAttribute("visible", false);
+  }
+
+  function showMDocument() {
+    mDocument.setAttribute("visible", true);
+    animate(mDocument, "sx", 0.001, 1, 1000, "easeOutBack");
+    animate(mDocument, "sy", 0.001, 1, 1000, "easeOutBack");
+    animate(mDocument, "sz", 0.001, 1, 1000, "easeOutBack");
+  }
+
+  function hideMDocument() {
+    animate(mDocument, "sx", 1, 0.001, 1000, "easeInOutQuint");
+    animate(mDocument, "sy", 1, 0.001, 1000, "easeInOutQuint");
+    animate(mDocument, "sz", 1, 0.001, 1000, "easeInOutQuint");
+    setTimeout(() => {
+      mDocument.setAttribute("visible", false);
+    }, 1001);
+  }
+
+  function resetBlueConnection() {
+    const posX = parseFloat(connectionBlue.getAttribute("x"));
+    const posY = parseFloat(connectionBlue.getAttribute("y"));
+    const scale = parseFloat(connectionBlue.getAttribute("sx"));
+    if (Math.abs(posX - 0.393) > 0.01 && Math.abs(posY - 0.7) > 0.01) {
+      animate(connectionBlue, "sx", 1, 0.001, 2000, "easeInOutQuint");
+      animate(connectionBlue, "sy", 1, 0.001, 2000, "easeInOutQuint");
+      animate(connectionBlue, "sz", 1, 0.001, 2000, "easeInOutQuint");
+      animate(connectionBlue, "x", posX, 0.393, 1500, "easeInOutQuint");
+      animate(connectionBlue, "y", posY, 0.7, 1500, "easeInOutQuint");
+      animate(connectionBlue, "sx", scale, 0.001, "easeInOutQuint");
+    }
+  }
+
+  function resetGreenConnection() {
+    const posX = parseFloat(connectionGreen.getAttribute("x"));
+    const posY = parseFloat(connectionGreen.getAttribute("y"));
+    const scale = parseFloat(connectionGreen.getAttribute("sx"));
+    if (Math.abs(posX - 0.393) > 0.01 && Math.abs(posY - 2) > 0.01) {
+      animate(connectionGreen, "sx", 1, 0.001, 2000, "easeInOutQuint");
+      animate(connectionGreen, "sy", 1, 0.001, 2000, "easeInOutQuint");
+      animate(connectionGreen, "sz", 1, 0.001, 2000, "easeInOutQuint");
+      animate(connectionGreen, "x", posX, 0.393, 1500, "easeInOutQuint");
+      animate(connectionGreen, "y", posY, 2, 1500, "easeInOutQuint");
+      animate(connectionGreen, "sx", scale, 0.001, "easeInOutQuint");
+    }
+  }
+
+  function sendMMLMessageToClients() {
+    resetBlueConnection();
+    resetGreenConnection();
+  }
+
+  function sendBlueToMML() {
+    animate(connectionBlue, "sx", 0.001, 1, 500, "easeInOutQuint");
+    animate(connectionBlue, "sy", 0.001, 1, 500, "easeInOutQuint");
+    animate(connectionBlue, "sz", 0.001, 1, 500, "easeInOutQuint");
+    animate(connectionBlue, "x", 0.393, -2, 1500, "easeInOutQuint");
+    animate(connectionBlue, "y", 0.7, 2.25, 1500, "easeInOutQuint");
+    setTimeout(() => {
+      connectionGreen.setAttribute("sx", 1);
+      connectionGreen.setAttribute("sy", 1);
+      connectionGreen.setAttribute("sz", 1);
+      connectionGreen.setAttribute("x", -2);
+      connectionGreen.setAttribute("y", 2.25);
+    }, 1500);
+  }
+
+  function sendGreenToMML() {
+    animate(connectionGreen, "sx", 0.001, 1, 500, "easeInOutQuint");
+    animate(connectionGreen, "sy", 0.001, 1, 500, "easeInOutQuint");
+    animate(connectionGreen, "sz", 0.001, 1, 500, "easeInOutQuint");
+    animate(connectionGreen, "x", 0.393, -2, 1500, "easeInOutQuint");
+    animate(connectionGreen, "y", 2, 2.25, 1500, "easeInOutQuint");
+    setTimeout(() => {
+      connectionBlue.setAttribute("sx", 1);
+      connectionBlue.setAttribute("sy", 1);
+      connectionBlue.setAttribute("sz", 1);
+      connectionBlue.setAttribute("x", -2);
+      connectionBlue.setAttribute("y", 2.25);
+    }, 1500);
+  }
+
+  function setCubesGreen() {
+    blueClientCube.setAttribute("color", "green");
+    greenClientCube.setAttribute("color", "green");
+  }
+
+  function setCubesRed() {
+    blueClientCube.setAttribute("color", "red");
+    greenClientCube.setAttribute("color", "red");
+  }
+
+  function resetCubes() {
+    blueClientCube.setAttribute("color", "#dddddd");
+    greenClientCube.setAttribute("color", "#dddddd");
+  }
+
+  function playVideo() {
+    videoTrack.setAttribute("class", "is-playing");
+    videoTrack.setAttribute("start-time", document.timeline.currentTime);
+    videoTrack.setAttribute("pause-time", document.timeline.currentTime + videoDuration);
+    audioTrack.setAttribute("start-time", document.timeline.currentTime);
+    audioTrack.setAttribute("pause-time", document.timeline.currentTime + videoDuration);
+
+    setTimeout(() => showMDocument(), 1000);
+    setTimeout(() => showDocumentCode(), 10500);
+    setTimeout(() => showClients(), 13000);
+    setTimeout(() => showClientsCube(), 20000);
+
+    setTimeout(() => touchCubeWithBlueClient(), 51000);
+    setTimeout(() => sendBlueToMML(), 53000);
+
+    setTimeout(() => showDocumentCode(true), 59000);
+    setTimeout(() => showDocumentCode(), 66000);
+
+    setTimeout(() => sendMMLMessageToClients(), 67000);
+
+    setTimeout(() => setCubesGreen(), 68500);
+
+    setTimeout(() => touchCubeWithGreenClient(), 72000);
+    setTimeout(() => sendGreenToMML(), 74000);
+    setTimeout(() => sendMMLMessageToClients(), 76000);
+
+    setTimeout(() => setCubesRed(), 77500);
+
+    setTimeout(() => {
+      resetCubes();
+      hideDocumentCode();
+      videoFinished = true;
+    }, videoDuration);
+  }
+
+  function stopVideo() {
+    videoTrack.setAttribute("class", "not-playing");
+    videoTrack.setAttribute("start-time", -videoDuration);
+    videoTrack.setAttribute("pause-time", document.timeline.currentTime);
+    audioTrack.setAttribute("start-time", -videoDuration);
+    audioTrack.setAttribute("pause-time", document.timeline.currentTime);
+  }
+
+  demoTrigger.addEventListener("positionenter", (event) => {
+    if (!playersInProbe.has(event.detail.connectionId)) {
+      playersInProbe.add(event.detail.connectionId);
+    }
+  });
+
+  demoTrigger.addEventListener("positionmove", (event) => {
+    if (!playersInProbe.has(event.detail.connectionId)) {
+      playersInProbe.add(event.detail.connectionId);
+    }
+  });
+
+  demoTrigger.addEventListener("positionleave", (event) => {
+    if (playersInProbe.has(event.detail.connectionId)) {
+      playersInProbe.delete(event.detail.connectionId);
+    }
+  });
+
+  window.addEventListener("disconnected", (event) => {
+    if (playersInProbe.has(event.detail.connectionId)) {
+      playersInProbe.delete(event.detail.connectionId);
+    }
+  });
+
+  setInterval(() => {
+    const videoPlaying = videoTrack.getAttribute("class") === "is-playing";
+    const hasPlayers = playersInProbe.size > 0;
+
+    if (hasPlayers && !videoPlaying) {
+      playVideo();
+    }
+
+    if (!hasPlayers && videoPlaying && videoFinished === true) {
+      videoFinished = false;
+      stopVideo();
+      hideMDocument();
+      hideClients();
+      hideClientsCube();
+      resetBlueConnection();
+      resetGreenConnection();
+    }
+  }, 1000 / 3);
+</script>

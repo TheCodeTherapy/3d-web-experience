@@ -1,0 +1,11 @@
+{
+  "version": "0.15.0",
+  "npmClient": "npm",
+  "command": {
+    "bootstrap": {
+      "ignore": "component-*",
+      "npmClientArgs": ["--no-package-lock"]
+    }
+  },
+  "$schema": "node_modules/lerna/schemas/lerna-schema.json"
+}

@@ -1,0 +1,267 @@
+<m-group id="piano-group" sx="0.8w" sy="1" sz="1.2" y="-0.4">
+  <m-group id="piano-keys" x="-4" y="-0.3" z="12" ry="90"></m-group>
+</m-group>
+
+<script>
+  const pianoKeysGroup = document.getElementById("piano-keys");
+
+  const numberOfOctaves = 3;
+
+  const whiteKeyWidth = 1.29;
+  const blackKeyOffset = whiteKeyWidth * 0.5 + 0.32;
+
+  const whiteKeyTypes = ["left", "middle", "right", "left", "middle", "middle", "right"];
+  const blackKeyPositions = [0, 1, 3, 4, 5];
+  const whiteKeysOffsets = [0, 1.28, 2.56, 3.61, 4.89, 6.09, 7.37];
+  const blackKeysOffsets = [0.68, 1.89, 4.29, 5.49, 6.7, 10, 10, 10];
+
+  const mp3NotesFiles = [
+    "C3.mp3",
+    "D3.mp3",
+    "E3.mp3",
+    "F3.mp3",
+    "G3.mp3",
+    "A3.mp3",
+    "B3.mp3",
+    "Db3.mp3",
+    "Eb3.mp3",
+    "Gb3.mp3",
+    "Ab3.mp3",
+    "Bb3.mp3",
+    "C4.mp3",
+    "D4.mp3",
+    "E4.mp3",
+    "F4.mp3",
+    "G4.mp3",
+    "A4.mp3",
+    "B4.mp3",
+    "Db4.mp3",
+    "Eb4.mp3",
+    "Gb4.mp3",
+    "Ab4.mp3",
+    "Bb4.mp3",
+    "C5.mp3",
+    "D5.mp3",
+    "E5.mp3",
+    "F5.mp3",
+    "G5.mp3",
+    "A5.mp3",
+    "B5.mp3",
+    "Db5.mp3",
+    "Eb5.mp3",
+    "Gb5.mp3",
+    "Ab5.mp3",
+    "Bb5.mp3",
+  ];
+
+  let totalKeys = 0;
+
+  const keyboard = new Map();
+  const playerCollisionRemovalSchedule = new Map();
+  const collisionRemovalDelay = 250;
+  const mp3Notes = new Map();
+
+  const pressRotation = 1.25;
+
+  window.addEventListener("disconnected", (e) => {
+    handleDisconnection(e.detail.connectionId);
+  });
+
+  function createNote(xPos) {
+    if (typeof mp3NotesFiles[totalKeys] === "undefined") {
+      console.log("HELP!!!!!!! WE HAVE UNDEFINED SHIT!!!");
+    }
+    const now = document.timeline.currentTime;
+    const note = document.createElement("m-audio");
+    const url = `/assets/playground/notes/${mp3NotesFiles[totalKeys]}`;
+    note.setAttribute("src", url);
+    note.setAttribute("x", xPos);
+    note.setAttribute("y", 1);
+    note.setAttribute("z", 0);
+    note.setAttribute("loop", false);
+    note.setAttribute("volume", 0);
+    mp3Notes.set(totalKeys, {
+      url: url,
+      id: totalKeys,
+      note: note,
+    });
+    pianoKeysGroup.appendChild(note);
+  }
+
+  function playNote(id) {
+    const noteObject = mp3Notes.get(id);
+    console.log(`trying to play note ${noteObject.url}`);
+    const now = document.timeline.currentTime;
+    noteObject.note.setAttribute("start-time", now);
+    noteObject.note.removeAttribute("pause-time");
+    noteObject.note.setAttribute("volume", 1);
+  }
+
+  function createKey(keyType, xPosition) {
+    const fileName = keyType === "black" ? "black" : `white_${keyType}`;
+    const url = `/assets/playground/piano_${fileName}.glb`;
+    const key = document.createElement("m-model");
+    const id = totalKeys;
+    key.setAttribute("id", id);
+    key.setAttribute("src", url);
+    key.setAttribute("x", xPosition);
+    key.setAttribute("y", keyType === "black" ? -0.3 : 0);
+    key.setAttribute("z", keyType === "black" ? 0.15 : 0);
+    key.setAttribute("collision-interval", 50);
+    pianoKeysGroup.appendChild(key);
+    key.addEventListener("click", (e) => handleClickOnKey(id));
+    key.addEventListener("collisionstart", ({ detail }) =>
+      handleCollisionEnter(id, detail.connectionId),
+    );
+    key.addEventListener("collisionmove", ({ detail }) =>
+      handleCollisionEnter(id, detail.connectionId),
+    );
+    key.addEventListener("collisionend", ({ detail }) =>
+      handleCollisionLeave(id, detail.connectionId),
+    );
+    keyboard.set(totalKeys, {
+      id: totalKeys,
+      key: key,
+      playersColliding: new Set(),
+      isPressed: false,
+    });
+    createNote(xPosition, 0);
+    totalKeys++;
+  }
+
+  function handleCollisionEnter(id, connectionId) {
+    const keyObject = keyboard.get(id);
+    if (!keyObject.playersColliding.has(connectionId)) {
+      keyObject.playersColliding.add(connectionId);
+    }
+
+    // Update the removal time in the schedule without deleting
+    const scheduleKey = `${id}-${connectionId}`;
+    playerCollisionRemovalSchedule.set(scheduleKey, {
+      keyId: id,
+      playerId: connectionId,
+      removalTime: Date.now() + collisionRemovalDelay,
+    });
+
+    keyPress(keyObject);
+  }
+
+  function handleCollisionLeave(id, connectionId) {
+    const keyObject = keyboard.get(id);
+    schedulePlayerCollisionRemoval(id, connectionId);
+    keyRelease(keyObject);
+  }
+
+  function schedulePlayerCollisionRemoval(id, connectionId) {
+    const scheduleKey = `${id}-${connectionId}`;
+    const removalTime = Date.now() + collisionRemovalDelay;
+
+    playerCollisionRemovalSchedule.set(scheduleKey, {
+      keyId: id,
+      playerId: connectionId,
+      removalTime: removalTime,
+    });
+  }
+
+  function handleDisconnection(id) {
+    keyboard.forEach((keyObject) => {
+      if (keyObject.playersColliding.has(id)) {
+        keyObject.playersColliding.delete(id);
+      }
+    });
+  }
+
+  function animate(element, attr, start, end, duration, easing, callback) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("start-time", document.timeline.currentTime);
+    anim.setAttribute("end-time", document.timeline.currentTime + duration);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("easing", easing);
+    anim.setAttribute("loop", false);
+    element.appendChild(anim);
+    setTimeout(() => {
+      element.setAttribute(attr, end);
+      element.removeChild(anim);
+      if (typeof callback !== "undefined" && callback !== null) {
+        callback();
+      }
+    }, duration);
+  }
+
+  function keyRelease(keyObject) {
+    if (keyObject.playersColliding.size > 0) return;
+    animate(keyObject.key, "rx", pressRotation, 0, 100, "easeInOutQuad", () => {
+      keyObject.isPressed = false;
+    });
+  }
+
+  function keyPress(keyObject) {
+    if (keyObject.isPressed) return;
+    animate(keyObject.key, "rx", 0, pressRotation, 100, "easeInOutQuad", () => {
+      playNote(keyObject.id);
+      keyObject.isPressed = true;
+    });
+    if (keyObject.playersColliding.size === 0) {
+      setTimeout(() => keyRelease(keyObject), 100);
+    }
+  }
+
+  function handleClickOnKey(id) {
+    const keyObject = keyboard.get(id);
+    keyPress(keyObject);
+  }
+
+  function createKeys() {
+    let xPosition = 0;
+    const width = 8.44 * numberOfOctaves;
+    const body = document.createElement("m-cube");
+    body.setAttribute("color", "#303030");
+    body.setAttribute("width", width);
+    body.setAttribute("height", 1.75);
+    body.setAttribute("depth", 1.5);
+    body.setAttribute("x", width / 2 - 0.5);
+    body.setAttribute("y", 1.25);
+    body.setAttribute("z", -0.5);
+    pianoKeysGroup.appendChild(body);
+
+    for (let octave = 0; octave < numberOfOctaves; octave++) {
+      whiteKeyTypes.forEach((keyType, index) => {
+        const offset = whiteKeysOffsets[index];
+        const xPosition = octave > 0 ? offset + 8.42 * octave : offset;
+        createKey(keyType, xPosition);
+      });
+
+      // Create black keys
+      blackKeyPositions.forEach((position, index) => {
+        const offset = blackKeysOffsets[index];
+        const xPosition = octave > 0 ? offset + 8.42 * octave : offset;
+        createKey("black", xPosition);
+      });
+    }
+  }
+
+  setInterval(() => {
+    const currentTime = Date.now();
+    const toRemove = [];
+
+    playerCollisionRemovalSchedule.forEach((schedule, key) => {
+      if (currentTime >= schedule.removalTime) {
+        const keyObject = keyboard.get(schedule.keyId);
+        if (keyObject) {
+          keyObject.playersColliding.delete(schedule.playerId);
+        }
+        keyRelease(keyObject);
+        toRemove.push(key);
+      }
+    });
+
+    toRemove.forEach((key) => {
+      playerCollisionRemovalSchedule.delete(key);
+    });
+  }, 100);
+
+  createKeys();
+</script>

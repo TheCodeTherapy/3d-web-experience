@@ -1,0 +1,361 @@
+<m-group ry="180" y="0.025">
+  <m-model src="/assets/playground/tv.glb" sx="2" sy="2" sz="2"></m-model>
+  <m-video
+    src="/assets/playground/sonic_ghz.mp4"
+    id="my-video-player"
+    x="0"
+    y="2.25"
+    z="1.082"
+    width="3.55"
+    height="2.85"
+  ></m-video>
+</m-group>
+
+<m-group id="attributes-label-group" x="-4.7" y="0" z="-1" ry="160">
+  <m-group id="control-buttons-group" rx="-55" y="-0.3" z="1"> </m-group>
+  <m-cube
+    id="attributes-label-frame"
+    color="#88ccff"
+    width="5.9"
+    height="3.5"
+    depth="0.09"
+    z="-0.155"
+  ></m-cube>
+  <m-cube
+    id="attributes-label-frame-border"
+    color="#212121"
+    width="6.1"
+    height="3.9"
+    depth="0.1"
+    z="-0.156"
+  ></m-cube>
+</m-group>
+
+<script>
+  const myVideo = document.getElementById("my-video-player");
+
+  const attributesLabelGroup = document.getElementById("attributes-label-group");
+  const attributesLabelFrame = document.getElementById("attributes-label-frame");
+  const attributesLabelBorder = document.getElementById("attributes-label-frame-border");
+  const controlButtonsGroup = document.getElementById("control-buttons-group");
+
+  const currentAttributeLabels = new Map();
+  const controlButtons = new Map();
+
+  const labelWidth = 4.3;
+  const labelHeight = 0.26;
+  const borderWidth = 0.17;
+  const labelsYOffset = 0.42;
+
+  const buttonWidth = 0.87;
+  const buttonHeight = 0.3;
+
+  let videoIndex = 0;
+  const videos = ["/assets/playground/sonic_ghz.mp4", "/assets/playground/sonic_ss.mp4"];
+
+  let paused = false;
+  let muted = true;
+  let startedAt = document.timeline.currentTime;
+  let lastPaused = document.timeline.currentTime;
+
+  function createLabel(str, amount, index) {
+    const y = amount * labelHeight - index * labelHeight;
+    const frameHeight = (amount + 1) * labelHeight;
+    const frameY = y - 0.5;
+    const borderHeight = frameHeight + borderWidth;
+
+    const firstOrLast = index === amount - 1 || index === 0;
+
+    attributesLabelFrame.setAttribute("width", labelWidth);
+    attributesLabelFrame.setAttribute("height", frameHeight);
+    attributesLabelFrame.setAttribute("y", frameHeight / 2 + borderWidth + labelsYOffset + frameY);
+    attributesLabelBorder.setAttribute("width", labelWidth + borderWidth);
+    attributesLabelBorder.setAttribute("height", borderHeight);
+    attributesLabelBorder.setAttribute(
+      "y",
+      borderHeight / 2 + borderWidth / 2 + labelsYOffset + frameY,
+    );
+
+    if (str.includes("/assets/playground/")) {
+      str = str.replace("/assets/playground/", "https://mml.io/");
+    }
+
+    const label = document.createElement("m-label");
+    label.setAttribute("font-size", 22);
+    label.setAttribute("color", "#88ccff");
+    label.setAttribute("content", firstOrLast ? ` ${str}` : `    ${str}`);
+    label.setAttribute("padding", 0);
+    label.setAttribute("alignment", "left");
+    label.setAttribute("width", labelWidth);
+    label.setAttribute("height", 0.3);
+    label.setAttribute("y", y + labelsYOffset);
+    label.setAttribute("z", -0.1);
+    currentAttributeLabels.set(index, label);
+    return label;
+  }
+
+  function createLabels(attributes) {
+    currentAttributeLabels.forEach((label) => label.remove());
+    currentAttributeLabels.clear();
+    for (let i = 0; i < attributes.length; i++) {
+      const label = createLabel(attributes[i], attributes.length, i);
+      attributesLabelGroup.appendChild(label);
+    }
+  }
+
+  function updateAttributesLabel() {
+    const attributes = [];
+    for (const attr of myVideo.getAttributeNames()) {
+      const val = myVideo.getAttribute(attr);
+      attributes.push(`${attr}="${val}"`);
+    }
+    attributes.unshift("<m-video");
+    attributes.push("></m-video>");
+    createLabels(attributes);
+  }
+
+  function createButton(callback, text, amount, index, color) {
+    const xOffset = (index + buttonWidth / 2) * buttonWidth;
+    const centerOffset = (amount * buttonWidth) / 2 - 0.05;
+
+    const button = document.createElement("m-label");
+    button.setAttribute("padding", 0);
+    button.setAttribute("font-size", 20);
+    button.setAttribute("width", buttonWidth);
+    button.setAttribute("height", buttonHeight);
+    button.setAttribute("z", 0.016);
+    button.setAttribute("x", xOffset - centerOffset);
+    button.setAttribute("alignment", "center");
+    button.setAttribute("content", text);
+    button.setAttribute("color", color);
+    button.addEventListener("click", callback);
+    return button;
+  }
+
+  function createButtons() {
+    controlButtons.set("restart", {
+      label: "restart",
+      cb: restart,
+      button: null,
+      color: "#aaaaaa",
+    });
+    controlButtons.set("next", {
+      label: "next",
+      cb: next,
+      button: null,
+      color: "#aaaaaa",
+    });
+    controlButtons.set("pause", {
+      label: "pause",
+      cb: togglePause,
+      button: null,
+      color: "#aaaaaa",
+    });
+    controlButtons.set("toggle", {
+      label: "disable",
+      cb: toggleEnabled,
+      button: null,
+      color: "#aaaaaa",
+    });
+    controlButtons.set("mute", {
+      label: "unmute",
+      cb: toggleMute,
+      button: null,
+      color: "#aaaaaa",
+    });
+    const totalButtons = controlButtons.size;
+
+    const buttonFrame = document.createElement("m-cube");
+    buttonFrame.setAttribute("width", totalButtons * buttonWidth + 0.1);
+    buttonFrame.setAttribute("height", 0.4);
+    buttonFrame.setAttribute("depth", 0.03);
+    buttonFrame.setAttribute("z", -0.15);
+    buttonFrame.setAttribute("y", 1.05);
+    buttonFrame.setAttribute("color", "#212121");
+
+    let index = 0;
+    controlButtons.forEach((props) => {
+      const color = getColor(totalButtons, index);
+      props.color = color;
+      const button = createButton(props.cb, props.label, totalButtons, index, color);
+      props.button = button;
+      buttonFrame.appendChild(button);
+      index++;
+    });
+
+    controlButtonsGroup.appendChild(buttonFrame);
+  }
+
+  function next() {
+    if (myVideo.getAttribute("enabled") === "false") {
+      toggleEnabled();
+    }
+    const myElement = controlButtons.get("next");
+    highlightElement(myElement);
+    videoIndex++;
+    if (videoIndex > 1) {
+      videoIndex = 0;
+    }
+    startedAt = document.timeline.currentTime;
+    lastPaused = document.timeline.currentTime;
+    myVideo.setAttribute("src", videos[videoIndex]);
+    myVideo.setAttribute("start-time", startedAt);
+    myVideo.removeAttribute("pause-time");
+    updateAttributesLabel();
+  }
+
+  function restart() {
+    const myElement = controlButtons.get("restart");
+    highlightElement(myElement);
+    if (myVideo.getAttribute("enabled") === "false") {
+      toggleEnabled();
+    }
+    startedAt = document.timeline.currentTime;
+    lastPaused = document.timeline.currentTime;
+    myVideo.setAttribute("pause-time", lastPaused);
+    myVideo.setAttribute("start-time", startedAt);
+    myVideo.removeAttribute("pause-time");
+    updateAttributesLabel();
+  }
+
+  function toggleEnabled(andResume = true) {
+    const myElement = controlButtons.get("toggle");
+    const myButton = myElement.button;
+    highlightElement(myElement);
+    const enabled = myVideo.getAttribute("enabled") !== "false";
+    if (enabled && andResume) {
+      myButton.setAttribute("content", "enable");
+      pause();
+    } else if (andResume) {
+      myButton.setAttribute("content", "disable");
+      resume();
+    }
+    myVideo.setAttribute("enabled", (!enabled).toString());
+    updateAttributesLabel();
+  }
+
+  function pause() {
+    if (paused) return;
+    const myElement = controlButtons.get("pause");
+    const myButton = myElement.button;
+    highlightElement(myElement);
+    myButton.setAttribute("content", "resume");
+    paused = true;
+    lastPaused = document.timeline.currentTime;
+    myVideo.setAttribute("pause-time", document.timeline.currentTime);
+    updateAttributesLabel();
+  }
+
+  function resume() {
+    if (!paused) return;
+    const myElement = controlButtons.get("pause");
+    const myButton = myElement.button;
+    highlightElement(myElement);
+    myButton.setAttribute("content", "pause");
+    paused = false;
+    const timeSincePaused = lastPaused - startedAt;
+    startedAt = document.timeline.currentTime - timeSincePaused;
+    myVideo.setAttribute("start-time", startedAt);
+    myVideo.removeAttribute("pause-time");
+    updateAttributesLabel();
+  }
+
+  function togglePause() {
+    if (myVideo.getAttribute("enabled") === "false") {
+      toggleEnabled(false);
+    }
+    const myElement = controlButtons.get("pause");
+    highlightElement(myElement);
+    if (paused) {
+      resume();
+    } else {
+      pause();
+    }
+  }
+
+  function toggleMute() {
+    const myElement = controlButtons.get("mute");
+    const myButton = myElement.button;
+    highlightElement(myElement);
+    if (muted) {
+      myButton.setAttribute("content", "mute");
+      myVideo.setAttribute("volume", 1);
+    } else {
+      myButton.setAttribute("content", "unmute");
+      myVideo.setAttribute("volume", 0);
+    }
+    muted = !muted;
+    updateAttributesLabel();
+  }
+
+  function hslToHex(h, s, l) {
+    s /= 100;
+    l /= 100;
+
+    let c = (1 - Math.abs(2 * l - 1)) * s;
+    let x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    let m = l - c / 2;
+    let r = 0,
+      g = 0,
+      b = 0;
+
+    if (0 <= h && h < 60) {
+      r = c;
+      g = x;
+      b = 0;
+    } else if (60 <= h && h < 120) {
+      r = x;
+      g = c;
+      b = 0;
+    } else if (120 <= h && h < 180) {
+      r = 0;
+      g = c;
+      b = x;
+    } else if (180 <= h && h < 240) {
+      r = 0;
+      g = x;
+      b = c;
+    } else if (240 <= h && h < 300) {
+      r = x;
+      g = 0;
+      b = c;
+    } else if (300 <= h && h < 360) {
+      r = c;
+      g = 0;
+      b = x;
+    }
+
+    r = Math.round((r + m) * 255).toString(16);
+    g = Math.round((g + m) * 255).toString(16);
+    b = Math.round((b + m) * 255).toString(16);
+    if (r.length == 1) r = "0" + r;
+    if (g.length == 1) g = "0" + g;
+    if (b.length == 1) b = "0" + b;
+    return `#${r}${g}${b}`;
+  }
+
+  function highlightElement(element) {
+    const color = element.color;
+    const hue = parseInt(color.replace("hsl(", "").split(",")[0]);
+    element.button.setAttribute("color", `hsl(${hue}, 90%, 80%)`);
+    setTimeout(() => element.button.setAttribute("color", color), 160);
+  }
+
+  function getColor(totalButtons, index) {
+    const hue = (360 * index) / totalButtons;
+    return `hsl(${hue}, 30%, 70%)`;
+    // return hslToHex(hue, 50, 70);
+  }
+
+  for (const video of document.querySelectorAll("m-video")) {
+    updateAttributesLabel();
+  }
+
+  myVideo.setAttribute("src", videos[videoIndex]);
+  updateAttributesLabel();
+
+  createButtons();
+  if (muted) {
+    myVideo.setAttribute("volume", 0);
+  }
+</script>

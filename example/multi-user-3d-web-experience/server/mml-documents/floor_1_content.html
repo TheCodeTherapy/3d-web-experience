@@ -1,0 +1,177 @@
+<m-model
+  id="ceiling-light-mesh"
+  class="pointing-to-video"
+  src="/assets/playground/ceiling_lamp.glb"
+  y="7"
+  ry="-90"
+>
+  <!-- <m-light
+    type="spotlight"
+    intensity="6" distance="27"
+    color="#aaaaaa"
+    x="-0.8" y="-0.9" z="0"
+    ry="0" rx="0" rz="-84"
+    angle="30"
+  >
+  </m-light> -->
+</m-model>
+
+<m-cube x="0" y="2.5" z="-15" sx="0.5" sy="0.15" sz="0.75" collide="false" visible="false">
+  <m-position-probe
+    id="demo-trigger"
+    interval="500"
+    range="22"
+    y="3.5"
+    debug="false"
+  ></m-position-probe>
+</m-cube>
+
+<m-group id="lights-group" class="no-lights">
+  <m-frame src="wss:///mml-documents/obj_lamp-blue.html" x="-15" y="0" z="5" ry="20"></m-frame>
+  <!-- <m-frame src="wss:///mml-documents/obj_lamp-red.html" x="-15" y="0" z="-5" ry="-20"></m-frame> -->
+</m-group>
+
+<m-group id="flat-screen" z="-16.39" y="3.75" z="0" ry="0">
+  <m-cube color="black" width="9" height="5.5" depth="0.05" z="-0.03"></m-cube>
+  <m-video
+    id="video-track"
+    class="not-playing"
+    width="8"
+    height="4.5"
+    y="0.05"
+    z="-0.01"
+    src="/assets/playground/what_is_MML.mp4"
+    loop="false"
+    start-time="-141000"
+    pause-time="0"
+    collide="true"
+    volume="0"
+  ></m-video>
+  <m-audio
+    id="audio-track"
+    src="/assets/playground/what_is_MML.mp3"
+    loop="false"
+    start-time="-141000"
+    pause-time="0"
+    y="3"
+    z="0"
+    rx="50"
+    cone-angle="40"
+    cone-falloff-angle="100"
+    volume="4"
+    debug="false"
+  ></m-audio>
+</m-group>
+
+<script>
+  const playersInProbe = new Set();
+  const demoTrigger = document.getElementById("demo-trigger");
+
+  const ceilingLight = document.getElementById("ceiling-light-mesh");
+
+  const videoDuration = 2.6 * 60 * 1000;
+  const videoTrack = document.getElementById("video-track");
+  const audioTrack = document.getElementById("audio-track");
+
+  let videoFinished = true;
+
+  function animate(element, attr, start, end, duration, easing) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("start-time", document.timeline.currentTime);
+    anim.setAttribute("end-time", document.timeline.currentTime + duration);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("easing", easing);
+    anim.setAttribute("loop", false);
+    element.appendChild(anim);
+    setTimeout(() => {
+      element.setAttribute(attr, end);
+      element.removeChild(anim);
+    }, duration);
+  }
+
+  function pointCeilingLampToElevators() {
+    if (ceilingLight.getAttribute("class") !== "pointing-to-elevators") {
+      ceilingLight.setAttribute("class", "pointing-to-elevators");
+      animate(ceilingLight, "ry", -90, 90, 3000, "easeInOutQuad");
+    }
+  }
+
+  function pointCeilingLampToVideo() {
+    if (ceilingLight.getAttribute("class") !== "pointing-to-video") {
+      ceilingLight.setAttribute("class", "pointing-to-video");
+      animate(ceilingLight, "ry", 90, -90, 3000, "easeInOutQuad");
+    }
+  }
+
+  function playVideo() {
+    videoFinished = false;
+    videoTrack.setAttribute("class", "is-playing");
+    const currentTime = document.timeline.currentTime;
+
+    videoTrack.setAttribute("z", 0);
+    videoTrack.setAttribute("start-time", currentTime);
+    videoTrack.setAttribute("pause-time", currentTime + videoDuration);
+    videoTrack.setAttribute("loop", false);
+
+    audioTrack.setAttribute("start-time", currentTime);
+    audioTrack.setAttribute("pause-time", currentTime + videoDuration);
+    audioTrack.setAttribute("loop", false);
+
+    setTimeout(() => {
+      videoFinished = true;
+      pointCeilingLampToElevators();
+    }, videoDuration);
+  }
+
+  function stopVideo() {
+    videoTrack.setAttribute("class", "not-playing");
+    const currentTime = document.timeline.currentTime;
+
+    videoTrack.setAttribute("z", -0.01);
+    videoTrack.setAttribute("start-time", -videoDuration);
+    videoTrack.setAttribute("pause-time", currentTime);
+    audioTrack.setAttribute("start-time", -videoDuration);
+    audioTrack.setAttribute("pause-time", currentTime);
+  }
+
+  demoTrigger.addEventListener("positionenter", (event) => {
+    if (!playersInProbe.has(event.detail.connectionId)) {
+      playersInProbe.add(event.detail.connectionId);
+    }
+  });
+
+  demoTrigger.addEventListener("positionmove", (event) => {
+    if (!playersInProbe.has(event.detail.connectionId)) {
+      playersInProbe.add(event.detail.connectionId);
+    }
+  });
+
+  demoTrigger.addEventListener("positionleave", (event) => {
+    if (playersInProbe.has(event.detail.connectionId)) {
+      playersInProbe.delete(event.detail.connectionId);
+    }
+  });
+
+  window.addEventListener("disconnected", (event) => {
+    if (playersInProbe.has(event.detail.connectionId)) {
+      playersInProbe.delete(event.detail.connectionId);
+    }
+  });
+
+  setInterval(() => {
+    const videoPlaying = videoTrack.getAttribute("class") === "is-playing";
+    const hasPlayers = playersInProbe.size > 0;
+
+    if (hasPlayers && !videoPlaying) {
+      playVideo();
+    }
+
+    if (!hasPlayers && videoPlaying && videoFinished === true) {
+      stopVideo();
+      pointCeilingLampToVideo();
+    }
+  }, 1000 / 3);
+</script>

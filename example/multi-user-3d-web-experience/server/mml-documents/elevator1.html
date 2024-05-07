@@ -1,0 +1,648 @@
+<m-group id="elevator-group" y="0.01"></m-group>
+
+<script>
+  const elevatorProbe = document.getElementById("elevator-probe");
+  const elevatorGroup = document.getElementById("elevator-group");
+  const floorHeight = 7.3;
+  const totalFloors = 7;
+
+  class DoorsManager {
+    leftDoors = new Map();
+    rightDoors = new Map();
+    lastTimeOpenWasTriggered = null;
+
+    constructor(parentElement, floorHeight, totalFloors, doorOpenTime, doorAnimationDuration) {
+      this.parentElement = parentElement;
+      this.floorHeight = floorHeight;
+      this.totalFloors = totalFloors;
+      this.doorOpenTime = doorOpenTime;
+      this.doorAnimationDuration = doorAnimationDuration;
+    }
+
+    createDoor(floorNumber, side) {
+      const xOffset = side === "right" ? -0.5 : 0.5;
+      const doorMesh = document.createElement("m-cube");
+      doorMesh.setAttribute("x", xOffset);
+      doorMesh.setAttribute("y", floorNumber * this.floorHeight + 1.13);
+      doorMesh.setAttribute("z", -2.05);
+      doorMesh.setAttribute("width", 1);
+      doorMesh.setAttribute("height", 2.4);
+      doorMesh.setAttribute("depth", 0.03);
+      doorMesh.setAttribute("color", "#cccccc");
+      const door = {
+        floor: floorNumber,
+        open: false,
+        moving: false,
+        type: side,
+        mesh: doorMesh,
+      };
+      if (side === "right") {
+        this.rightDoors.set(floorNumber, door);
+      }
+      if (side === "left") {
+        this.leftDoors.set(floorNumber, door);
+      }
+      this.parentElement.appendChild(door.mesh);
+    }
+
+    animate(door, attr, start, end) {
+      const wasOpen = door.open;
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("start-time", document.timeline.currentTime);
+      anim.setAttribute("end-time", document.timeline.currentTime + this.doorAnimationDuration);
+      anim.setAttribute("duration", this.doorAnimationDuration);
+      anim.setAttribute("easing", "easeInOutQuint");
+      anim.setAttribute("loop", false);
+      door.mesh.appendChild(anim);
+      door.moving = true;
+      setTimeout(() => {
+        door.mesh.setAttribute(attr, end);
+        door.mesh.removeChild(anim);
+        door.moving = false;
+        door.open = !wasOpen;
+      }, this.doorAnimationDuration);
+    }
+
+    animateDoor(door) {
+      if (door.type === "left") {
+        const start = door.open ? 1.5 : 0.5;
+        const end = door.open ? 0.5 : 1.5;
+        this.animate(door, "x", start, end);
+      } else if (door.type === "right") {
+        const start = door.open ? -1.5 : -0.5;
+        const end = door.open ? -0.5 : -1.5;
+        this.animate(door, "x", start, end);
+      }
+    }
+
+    openDoorsAtFloor(floorNumber) {
+      const leftDoor = this.leftDoors.get(floorNumber);
+      const rightDoor = this.rightDoors.get(floorNumber);
+      if (leftDoor && rightDoor && !leftDoor.open && !rightDoor.open) {
+        this.animateDoor(leftDoor);
+        this.animateDoor(rightDoor);
+      }
+      this.lastTimeOpenWasTriggered = Date.now();
+      setTimeout(() => {
+        this.closeDoorsAtFloor(floorNumber);
+      }, this.doorOpenTime);
+    }
+
+    closeDoorsAtFloor(floorNumber) {
+      const leftDoor = this.leftDoors.get(floorNumber);
+      const rightDoor = this.rightDoors.get(floorNumber);
+      if (leftDoor && rightDoor && leftDoor.open && rightDoor.open) {
+        this.animateDoor(leftDoor);
+        this.animateDoor(rightDoor);
+      }
+    }
+
+    msUntilDoorsClose() {
+      if (this.lastTimeOpenWasTriggered === null) {
+        return 0;
+      }
+      const now = Date.now();
+      const timeSinceLastOpen = now - this.lastTimeOpenWasTriggered;
+      const timeUntilClose = this.doorOpenTime + this.doorAnimationDuration - timeSinceLastOpen;
+      return Math.max(timeUntilClose, 0);
+    }
+  }
+
+  class ElevatorController {
+    currentFloor = 0;
+    timePerFloor = 3000;
+
+    isMoving = false;
+
+    externalFloorIndicators = new Map();
+
+    floorRequests = new Set(); // Floors requested from the outside
+    destinationRequests = new Set(); // Floors selected from inside the elevator
+
+    elevator = null;
+    elevatorProbe = null;
+    playersInProbe = new Set();
+
+    radio = null;
+    light = null;
+    innerFloorIndicator = null;
+
+    nextStop = 0;
+
+    externalButtonOffColor = "#999999";
+    externalButtonOnColor = "#eeffee";
+
+    buttonOffColor = "#888888";
+    buttonOnColor = "#ccffcc";
+
+    floorTextColor = "#cccccc";
+    currentFloorTextColor = "#eeffee";
+
+    externalButtons = new Map();
+    buttons = new Map();
+    buttonLabels = new Map();
+
+    constructor(parentElement, floorHeight, totalFloors) {
+      this.parentElement = parentElement;
+      this.floorHeight = floorHeight;
+      this.totalFloors = totalFloors;
+      this.doorsManager = new DoorsManager(
+        this.parentElement,
+        this.floorHeight,
+        this.totalFloors,
+        7000,
+        1500,
+      );
+      this.createElevator();
+      this.createProbe();
+      this.createRadio();
+
+      setInterval(() => {
+        const msUntilClose = this.doorsManager.msUntilDoorsClose();
+        const animDuration = this.doorsManager.doorAnimationDuration;
+        const secsUntilClose = (msUntilClose - animDuration) / 1000;
+        if (this.isMoving) {
+          this.updateExternalFloorIndicators(`moving to ${this.nextStop}`);
+        }
+        if (secsUntilClose < -0.1) {
+          return;
+        }
+        const message =
+          secsUntilClose < 0.1 ? "doors closing" : `closing in ${secsUntilClose.toFixed(1)}`;
+        this.setFloorInfo(message);
+        this.setExternalFloorInfo(message);
+      }, 100);
+
+      for (let floorNumber = 0; floorNumber < this.totalFloors; floorNumber++) {
+        this.createFloorIndicator(floorNumber);
+      }
+
+      this.elevatorProbe.addEventListener("positionenter", (event) => {
+        const { connectionId, elementRelative } = event.detail;
+        if (!this.playersInProbe.has(connectionId)) {
+          this.playersInProbe.add(connectionId);
+          // if (this.light.getAttribute("enabled") === "false") {
+          //   this.light.setAttribute("enabled", true);
+          // }
+          if (this.radio.getAttribute("enabled") === "false") {
+            this.radio.setAttribute("enabled", true);
+          }
+        }
+      });
+
+      this.elevatorProbe.addEventListener("positionmove", (event) => {
+        const { connectionId, elementRelative } = event.detail;
+        if (!this.playersInProbe.has(connectionId)) {
+          this.playersInProbe.add(connectionId);
+          // if (this.light.getAttribute("enabled") === "false") {
+          //   this.light.setAttribute("enabled", true);
+          // }
+          if (this.radio.getAttribute("enabled") === "false") {
+            this.radio.setAttribute("enabled", true);
+          }
+        }
+      });
+
+      this.elevatorProbe.addEventListener("positionleave", (event) => {
+        const { connectionId } = event.detail;
+        if (this.playersInProbe.has(connectionId)) {
+          this.playersInProbe.delete(connectionId);
+        }
+      });
+
+      window.addEventListener("disconnected", (event) => {
+        const { connectionId } = event.detail;
+        if (this.playersInProbe.has(connectionId)) {
+          this.playersInProbe.delete(connectionId);
+        }
+      });
+
+      setInterval(() => {
+        if (this.playersInProbe.size < 1) {
+          // if (this.light.getAttribute("enabled") === "true") {
+          //   this.light.setAttribute("enabled", false);
+          // }
+          if (this.radio.getAttribute("enabled") === "true") {
+            this.radio.setAttribute("enabled", false);
+          }
+        }
+      }, 500);
+    }
+
+    createProbe() {
+      const cube = document.createElement("m-cube");
+      cube.setAttribute("collide", false);
+      cube.setAttribute("visible", false);
+      cube.setAttribute("z", -2);
+      this.scaleElementAxes(cube, 0.9, 2, 1.8);
+
+      this.elevatorProbe = document.createElement("m-position-probe");
+      this.elevatorProbe.setAttribute("id", "elevator-probe");
+      this.elevatorProbe.setAttribute("range", 4);
+      this.elevatorProbe.setAttribute("debug", false);
+      this.elevatorProbe.setAttribute("interval", 250);
+      cube.appendChild(this.elevatorProbe);
+      this.elevator.appendChild(cube);
+    }
+
+    createRadio() {
+      this.radio = document.createElement("m-audio");
+      this.radio.setAttribute("src", "/assets/playground/teaforworld.mp3");
+      this.radio.setAttribute("loop", "true");
+      this.radio.setAttribute("debug", false);
+      this.radio.setAttribute("start-time", 0);
+      this.radio.setAttribute("z", 4);
+      this.radio.setAttribute("y", 5.5);
+      this.radio.setAttribute("ry", 180);
+      this.radio.setAttribute("rx", -70);
+      this.radio.setAttribute("cone-angle", 40);
+      this.radio.setAttribute("cone-falloff-angle", 80);
+      this.radio.setAttribute("volume", 0.6);
+      this.elevator.appendChild(this.radio);
+    }
+
+    scaleElement(element, width, height, depth) {
+      element.setAttribute("width", width);
+      element.setAttribute("height", height);
+      element.setAttribute("depth", depth);
+    }
+
+    scaleElementAxes(element, sx, sy, sz) {
+      element.setAttribute("sx", sx);
+      element.setAttribute("sy", sy);
+      element.setAttribute("sz", sz);
+    }
+
+    positionElement(element, x, y, z) {
+      element.setAttribute("x", x);
+      element.setAttribute("y", y);
+      element.setAttribute("z", z);
+    }
+
+    createFloorIndicator(floorNumber) {
+      const holder = document.createElement("m-cube");
+      holder.setAttribute("color", "#e7e7e7");
+      this.scaleElement(holder, 1.81, 0.25, 0.01);
+      this.positionElement(holder, 0, 0, -0.01);
+      const floorIndicator = document.createElement("m-label");
+      this.positionElement(floorIndicator, 0, floorNumber * this.floorHeight + 2.55, -2.11);
+      floorIndicator.setAttribute("ry", 180);
+      floorIndicator.setAttribute("color", "#424242");
+      floorIndicator.setAttribute("font-color", "#ffffff");
+      floorIndicator.setAttribute("font-size", 16);
+      floorIndicator.setAttribute("padding", 0);
+      floorIndicator.setAttribute("alignment", "center");
+      floorIndicator.setAttribute("width", 1.77);
+      floorIndicator.setAttribute("height", 0.21);
+      floorIndicator.setAttribute("content", "");
+      floorIndicator.appendChild(holder);
+      this.parentElement.appendChild(floorIndicator);
+      this.externalFloorIndicators.set(floorNumber, floorIndicator);
+    }
+
+    createInnerFloorIndicator() {
+      const holder = document.createElement("m-cube");
+      holder.setAttribute("color", "#e7e7e7");
+      this.scaleElement(holder, 2.02, 0.17, 0.01);
+      this.positionElement(holder, 0, 2.54, -1.6);
+      const innerFloorIndicator = document.createElement("m-label");
+      this.positionElement(innerFloorIndicator, 0, 2.54, -1.59);
+      innerFloorIndicator.setAttribute("color", "#424242");
+      innerFloorIndicator.setAttribute("font-color", "#cccccc");
+      innerFloorIndicator.setAttribute("font-size", 11);
+      innerFloorIndicator.setAttribute("padding", 0);
+      innerFloorIndicator.setAttribute("alignment", "center");
+      innerFloorIndicator.setAttribute("width", 2);
+      innerFloorIndicator.setAttribute("height", 0.16);
+      innerFloorIndicator.setAttribute("ry", 0);
+      innerFloorIndicator.setAttribute("content", "");
+      this.elevator.appendChild(holder);
+      this.innerFloorIndicator = innerFloorIndicator;
+      this.elevator.appendChild(innerFloorIndicator);
+    }
+
+    setFloorInfo(contentString) {
+      this.innerFloorIndicator.setAttribute("content", contentString);
+    }
+
+    setExternalFloorInfo(message) {
+      this.externalFloorIndicators.forEach((indicator, floorNumber) => {
+        const displayMessage =
+          this.currentFloor === floorNumber ? message : `[${this.currentFloor}] > ${message}`;
+        indicator.setAttribute("content", displayMessage);
+      });
+    }
+
+    updateFloorIndicator() {
+      let floorInfo = `[${this.currentFloor}] > `;
+      const aboveFloors = [];
+      const belowFloors = [];
+      const allRequests = Array.from(new Set([...this.floorRequests, ...this.destinationRequests]));
+
+      allRequests.forEach((floor) => {
+        if (floor > this.currentFloor) {
+          aboveFloors.push(floor);
+        } else if (floor < this.currentFloor) {
+          belowFloors.push(floor);
+        }
+      });
+
+      const directionUp = aboveFloors.length > 0;
+      aboveFloors.sort((a, b) => a - b);
+      belowFloors.sort((a, b) => b - a);
+      const orderedFloors = directionUp
+        ? aboveFloors.concat(belowFloors)
+        : belowFloors.concat(aboveFloors);
+      floorInfo += orderedFloors.join(", ");
+      this.setFloorInfo(floorInfo);
+      this.updateExternalFloorIndicators(floorInfo);
+    }
+
+    updateExternalFloorIndicators(internalContent) {
+      const noQueue = this.floorRequests.size === 0 && this.destinationRequests.size === 0;
+      this.externalFloorIndicators.forEach((indicator, floorNumber) => {
+        let content = "";
+        if (this.currentFloor === floorNumber && noQueue) {
+          content = "Elevator Here";
+        } else {
+          content = internalContent;
+        }
+        indicator.setAttribute("content", content);
+      });
+    }
+
+    createControllerButton(floor) {
+      const openDoorButton = document.createElement("m-cube");
+      openDoorButton.setAttribute("color", this.buttonOffColor);
+      this.scaleElement(openDoorButton, 1, 0.15, 0.03);
+      this.positionElement(openDoorButton, -1.8, 0.7 + floor * 0.17, -1.59);
+
+      const label = document.createElement("m-label");
+      label.setAttribute("padding", 0);
+      label.setAttribute("alignment", "center");
+      label.setAttribute("z", 0.03);
+      label.setAttribute("height", 0.11);
+      label.setAttribute("width", 0.96);
+      label.setAttribute("font-size", 9);
+      label.setAttribute("color", "black");
+      label.setAttribute(
+        "font-color",
+        floor === this.currentFloor ? this.currentFloorTextColor : this.floorTextColor,
+      );
+      switch (floor) {
+        case 0:
+          label.setAttribute("content", "FIRST CONTACT");
+          break;
+        case 1:
+          label.setAttribute("content", "MML OVERVIEW");
+          break;
+        case 2:
+          label.setAttribute("content", "HOW MML WORKS");
+          break;
+        case 3:
+          label.setAttribute("content", "BASIC TAGS");
+          break;
+        case 4:
+          label.setAttribute("content", "INTERACTIVE TAGS");
+          break;
+        case 5:
+          label.setAttribute("content", "EXTERNAL APIs");
+          break;
+        case 6:
+          label.setAttribute("content", "GAMES");
+          break;
+      }
+      openDoorButton.appendChild(label);
+      this.buttonLabels.set(floor, label);
+
+      this.elevator.appendChild(openDoorButton);
+      this.buttons.set(floor, openDoorButton);
+      openDoorButton.addEventListener("click", () => {
+        this.callElevatorToFloor(floor);
+      });
+    }
+
+    processNextRequest() {
+      if (this.isMoving) {
+        return;
+      }
+
+      if (this.doorsManager.msUntilDoorsClose() > 0) {
+        setTimeout(() => this.processNextRequest(), this.doorsManager.msUntilDoorsClose());
+        return;
+      }
+
+      if (this.floorRequests.size === 0 && this.destinationRequests.size === 0) {
+        return;
+      }
+
+      let nextFloor = null;
+      let minDistance = this.totalFloors + 1;
+      const combinedRequests = new Set([...this.floorRequests, ...this.destinationRequests]);
+
+      combinedRequests.forEach((floor) => {
+        const distance = Math.abs(this.currentFloor - floor);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nextFloor = floor;
+        }
+      });
+
+      if (nextFloor !== null) {
+        this.moveToFloor(nextFloor);
+      }
+    }
+
+    createShaftFloor(floorNumber) {
+      const height = floorNumber * this.floorHeight;
+      const floor = document.createElement("m-model");
+      floor.setAttribute("src", "/assets/playground/elevator_shaft.glb");
+      floor.setAttribute("y", height);
+      this.parentElement.appendChild(floor);
+    }
+
+    createFloorDoors(floorNumber) {
+      this.doorsManager.createDoor(floorNumber, "left");
+      this.doorsManager.createDoor(floorNumber, "right");
+    }
+
+    createShaftTop(height) {
+      const shaftTop = document.createElement("m-model");
+      shaftTop.setAttribute("src", "/assets/playground/elevator_shaft_top.glb");
+      shaftTop.setAttribute("y", height);
+      this.parentElement.appendChild(shaftTop);
+    }
+
+    createCallButton(floorNumber) {
+      const height = floorNumber * this.floorHeight;
+      const button = document.createElement("m-cylinder");
+      button.setAttribute("rx", 90);
+      button.setAttribute("sx", 0.2);
+      button.setAttribute("sy", 0.07);
+      button.setAttribute("sz", 0.2);
+      button.setAttribute("x", -1.25);
+      button.setAttribute("y", height + 1.2);
+      button.setAttribute("z", -2.1);
+      button.setAttribute("color", this.externalButtonOffColor);
+      button.setAttribute("class", floorNumber);
+      button.addEventListener("click", () => {
+        const floorNumber = parseInt(button.getAttribute("class"));
+        if (this.currentFloor !== floorNumber) {
+          button.setAttribute("color", this.externalButtonOnColor);
+        }
+        this.callElevatorToFloor(floorNumber);
+      });
+      this.externalButtons.set(floorNumber, button);
+      this.parentElement.appendChild(button);
+    }
+
+    createElevator() {
+      const elevator = document.createElement("m-model");
+      elevator.setAttribute("src", "/assets/playground/elevator.glb");
+      this.elevator = elevator;
+
+      this.light = document.createElement("m-light");
+      this.light.setAttribute("enabled", true);
+      this.light.setAttribute("intensity", 30);
+      this.light.setAttribute("distance", 12);
+      this.light.setAttribute("z", 1.5);
+      this.light.setAttribute("y", 4.3);
+      this.light.setAttribute("rx", 45);
+      elevator.appendChild(this.light);
+
+      this.parentElement.appendChild(elevator);
+
+      for (let floorNumber = 0; floorNumber < this.totalFloors; floorNumber++) {
+        const isLastFloor = floorNumber === this.totalFloors - 1;
+
+        this.createShaftFloor(floorNumber);
+        this.createFloorDoors(floorNumber);
+        this.createCallButton(floorNumber);
+        this.createControllerButton(floorNumber);
+        this.createInnerFloorIndicator();
+
+        if (isLastFloor) {
+          const height = floorNumber * this.floorHeight;
+          this.createShaftTop(height);
+        }
+      }
+
+      const elevatorHeight = this.totalFloors * this.floorHeight;
+
+      return elevator;
+    }
+
+    animateElevatorMovement(start, end, duration, callback) {
+      this.updateExternalFloorIndicators("");
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", "y");
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("start-time", document.timeline.currentTime);
+      anim.setAttribute("end-time", document.timeline.currentTime + duration);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("easing", "easeInOutQuad");
+      anim.setAttribute("loop", false);
+      this.elevator.appendChild(anim);
+
+      setTimeout(() => {
+        this.elevator.setAttribute("y", end);
+        this.elevator.removeChild(anim);
+        callback();
+      }, duration);
+    }
+
+    moveToFloor(targetFloor) {
+      if (this.isMoving || targetFloor === this.currentFloor) {
+        return;
+      }
+
+      this.buttonLabels.forEach((label) => {
+        label.setAttribute("font-color", this.floorTextColor);
+      });
+
+      this.updateFloorIndicator();
+      this.nextStop = targetFloor;
+      const floorsToMove = Math.abs(this.currentFloor - targetFloor);
+      const duration = floorsToMove * this.timePerFloor;
+      const start = this.currentFloor * this.floorHeight;
+      const end = targetFloor * this.floorHeight;
+
+      this.isMoving = true;
+      this.currentFloor = -1;
+      this.animateElevatorMovement(start, end, duration, () => {
+        this.currentFloor = targetFloor;
+        this.isMoving = false;
+        this.openDoorsAtCurrentFloor();
+      });
+    }
+
+    openDoorsAtCurrentFloor() {
+      this.doorsManager.openDoorsAtFloor(this.currentFloor);
+      this.floorRequests.delete(this.currentFloor);
+      this.destinationRequests.delete(this.currentFloor);
+
+      const button = this.externalButtons.get(this.currentFloor);
+      if (button) {
+        button.setAttribute("color", this.externalButtonOffColor);
+      }
+
+      this.buttons.forEach((button, floor) => {
+        if (button && floor === this.currentFloor) {
+          this.buttons.get(this.currentFloor).setAttribute("color", this.buttonOffColor);
+        }
+        const label = this.buttonLabels.get(floor);
+        if (label) {
+          label.setAttribute(
+            "font-color",
+            floor === this.currentFloor ? this.currentFloorTextColor : this.floorTextColor,
+          );
+        }
+      });
+
+      setTimeout(() => {
+        this.updateFloorIndicator();
+        this.processNextRequest();
+      }, this.doorsManager.msUntilDoorsClose());
+    }
+
+    callElevatorToFloor(floorNumber) {
+      const leftDoor = this.doorsManager.leftDoors.get(floorNumber);
+      const rightDoor = this.doorsManager.rightDoors.get(floorNumber);
+      if (this.currentFloor === floorNumber && !this.isMoving) {
+        if (!leftDoor.open && !rightDoor.open) {
+          this.openDoorsAtCurrentFloor();
+        }
+      } else {
+        this.floorRequests.add(floorNumber);
+
+        const button = this.buttons.get(floorNumber);
+        const label = this.buttonLabels.get(floorNumber);
+        if (button) {
+          button.setAttribute("color", this.buttonOnColor);
+          label.setAttribute(
+            "font-color",
+            floorNumber === this.currentFloor ? this.currentFloorTextColor : this.floorTextColor,
+          );
+        }
+
+        if (!this.isMoving) {
+          this.processNextRequest();
+        }
+      }
+    }
+
+    selectDestinationFloor(floorNumber) {
+      if (this.currentFloor !== floorNumber) {
+        this.destinationRequests.add(floorNumber);
+        this.processNextRequest();
+        this.updateFloorIndicator();
+      }
+    }
+  }
+
+  const elevatorController = new ElevatorController(elevatorGroup, floorHeight, totalFloors);
+</script>

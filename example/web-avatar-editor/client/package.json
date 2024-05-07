@@ -1,0 +1,19 @@
+{
+  "name": "@example/web-avatar-editor-client",
+  "private": true,
+  "version": "0.15.0",
+  "files": [
+    "/build"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "rimraf ./build && tsx ./build.ts --build",
+    "iterate": "tsx ./build.ts --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
+    "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
+  },
+  "dependencies": {
+    "@mml-io/3d-web-standalone-avatar-editor": "0.15.0"
+  }
+}

@@ -1,0 +1,354 @@
+<m-group id="race-track-group"></m-group>
+
+<m-group id="controller" y="0.2" z="-1.3" rx="70">
+  <m-cube color="#505050" width="2.1" height="0.65" depth="0.1" z="0.06"></m-cube>
+  <m-label
+    id="play-button"
+    content="play"
+    ry="180"
+    padding="0"
+    alignment="center"
+    font-color="#eeeeee"
+    color="hsl(150, 50%, 40%)"
+    width="2"
+    height="0.5"
+    font-size="33"
+  ></m-label>
+</m-group>
+
+<m-group id="winner" y="0.53" z="4.2" rx="45">
+  <m-cube color="#505050" width="4.5" height="0.65" depth="0.1" z="0.06"></m-cube>
+  <m-label
+    id="winner-label"
+    content=""
+    ry="180"
+    padding="0"
+    alignment="center"
+    font-color="#eeeeee"
+    color="hsl(150, 0%, 30%)"
+    width="4.4"
+    height="0.5"
+    font-size="33"
+  ></m-label>
+</m-group>
+
+<m-group id="attributes-label-group" x="0" y="0" z="4.3" ry="180">
+  <m-cube
+    id="attributes-label-frame"
+    color="#88ccff"
+    width="4.4"
+    height="3.0"
+    depth="0.09"
+    z="-0.155"
+  ></m-cube>
+  <m-cube
+    id="attributes-label-frame-border"
+    color="#212121"
+    width="4.5"
+    height="3.4"
+    depth="0.1"
+    z="-0.156"
+  ></m-cube>
+</m-group>
+
+<script>
+  const raceTrackGroup = document.getElementById("race-track-group");
+  const winnerLabel = document.getElementById("winner-label");
+
+  let countDownSound = null;
+  let racing = false;
+  const playButton = document.getElementById("play-button");
+
+  const raceCars = new Map();
+  const raceCarsSound = new Map();
+
+  const carScale = 0.5;
+  const trackLength = 35;
+
+  const raceDuration = 3900;
+  const raceSoundDuration = 4000;
+  const countdownSoundDuration = 4000;
+
+  const easings = ["easeInOutQuad", "easeInOutCubic"];
+  const availableCars = ["yellow", "green", "blue", "pink", "red"];
+  const sat = "100%";
+  const light = "90%";
+  const carColors = [
+    `hsl(72, ${sat}, ${light})`,
+    `hsl(144, ${sat}, ${light})`,
+    `hsl(216, ${sat}, ${light})`,
+    `hsl(288, ${sat}, ${light})`,
+    `hsl(380, ${sat}, ${light})`,
+  ];
+
+  playButton.addEventListener("click", play);
+
+  let carIndex = 0;
+  let winner = "";
+  let winnerIndex = 0;
+
+  const attributesLabelGroup = document.getElementById("attributes-label-group");
+  const attributesLabelFrame = document.getElementById("attributes-label-frame");
+  const attributesLabelBorder = document.getElementById("attributes-label-frame-border");
+  const currentAttributeLabels = new Map();
+  const labelWidth = 4.3;
+  const labelHeight = 0.26;
+  const borderWidth = 0.17;
+  const labelsYOffset = 0.8;
+
+  let winnerAnimation = null;
+
+  // auxiliary functions ======================================================
+  function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function getRandomElement(array) {
+    const randomIndex = Math.floor(Math.random() * array.length);
+    return array[randomIndex];
+  }
+
+  function animate(element, attr, start, end, duration, easing) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("start-time", document.timeline.currentTime);
+    anim.setAttribute("end-time", document.timeline.currentTime + duration);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("easing", easing);
+    anim.setAttribute("loop", false);
+    element.appendChild(anim);
+    setTimeout(() => {
+      element.setAttribute(attr, end);
+      element.removeChild(anim);
+    }, duration);
+    return anim;
+  }
+
+  function highlightElement(element) {
+    const color = element.getAttribute("color");
+    const hue = parseInt(color.replace("hsl(", "").split(",")[0]);
+    element.setAttribute("color", `hsl(${hue}, 90%, 80%)`);
+    setTimeout(() => element.setAttribute("color", color), 160);
+  }
+  // ==========================================================================
+
+  function createCountDownSound() {
+    countDownSound = document.createElement("m-audio");
+    countDownSound.setAttribute("src", "/assets/playground/countdown.mp3");
+    countDownSound.setAttribute("loop", false);
+    countDownSound.setAttribute("start-time", document.timeline.currentTime - 4100);
+    countDownSound.setAttribute("pause-time", document.timeline.currentTime - 100);
+    countDownSound.setAttribute("volume", 0);
+    raceTrackGroup.appendChild(countDownSound);
+  }
+
+  function createTrack() {
+    const track = document.createElement("m-cube");
+    track.setAttribute("color", "#424242");
+    track.setAttribute("width", trackLength);
+    track.setAttribute("height", 0.1);
+    track.setAttribute("depth", carScale * 10);
+    track.setAttribute("y", 0.25);
+    track.setAttribute("z", carScale * 3.1);
+    checkered = document.createElement("m-image");
+    checkered.setAttribute("color", "#ffffff");
+    checkered.setAttribute("src", "/assets/playground/checkered.jpg");
+    checkered.setAttribute("width", carScale * 10);
+    checkered.setAttribute("height", 1.7);
+    checkered.setAttribute("x", trackLength / 2 - 1.4);
+    checkered.setAttribute("y", 0.065);
+    checkered.setAttribute("rx", -90);
+    checkered.setAttribute("rz", 90);
+    checkered.setAttribute("opacity", 0.3);
+    track.appendChild(checkered);
+    raceTrackGroup.appendChild(track);
+  }
+
+  function createRacingSound(xPos, yPos, zPos) {
+    const now = document.timeline.currentTime;
+    const racingSound = document.createElement("m-audio");
+    racingSound.setAttribute("src", "/assets/playground/racing.mp3");
+    racingSound.setAttribute("loop", false);
+    racingSound.setAttribute("start-time", now - raceSoundDuration - 100);
+    racingSound.setAttribute("pause-time", now - 100);
+    racingSound.setAttribute("volume", 0);
+    racingSound.setAttribute("x", xPos);
+    racingSound.setAttribute("y", yPos);
+    racingSound.setAttribute("z", zPos);
+    return racingSound;
+  }
+
+  function createCars() {
+    while (carIndex < availableCars.length) {
+      const xPos = -trackLength / 2 + 1;
+      const yPos = 0.3;
+      const zPos = carIndex * carScale * 2 - carScale * 0.75;
+
+      if (!raceCarsSound.has(carIndex)) {
+        raceCarsSound.set(carIndex, createRacingSound([xPos, yPos, zPos]));
+      }
+
+      const carColor = availableCars[carIndex];
+      const carURL = `/assets/playground/f1_race_car_${carColor}.glb`;
+      const carSound = raceCarsSound.get(carIndex);
+
+      const car = document.createElement("m-model");
+      car.setAttribute("src", carURL);
+      car.setAttribute("anim", carURL);
+      car.setAttribute("anim-enabled", false);
+      car.setAttribute("sx", carScale);
+      car.setAttribute("sy", carScale);
+      car.setAttribute("sz", carScale);
+      car.setAttribute("x", xPos);
+      car.setAttribute("y", yPos);
+      car.setAttribute("z", zPos);
+      car.setAttribute("collide", false);
+      raceCars.set(carIndex, car);
+
+      raceTrackGroup.appendChild(car);
+      raceTrackGroup.appendChild(carSound);
+      carIndex++;
+    }
+  }
+
+  function playCountdownSound() {
+    const now = document.timeline.currentTime;
+    countDownSound.setAttribute("start-time", now);
+    countDownSound.removeAttribute("pause-time");
+    countDownSound.setAttribute("volume", 1);
+    setTimeout(() => {
+      countDownSound.setAttribute("pause-time", now);
+      countDownSound.setAttribute("volume", 0);
+    }, countdownSoundDuration);
+  }
+
+  function playCarSound(carIndex, time) {
+    const now = document.timeline.currentTime;
+    const timeOffset = raceDuration - time;
+    const sound = raceCarsSound.get(carIndex);
+    sound.setAttribute("start-time", now + timeOffset);
+    sound.setAttribute("pause-time", now + timeOffset + raceSoundDuration);
+    sound.setAttribute("volume", 1);
+    const startX = -trackLength / 2 + 1;
+    const endX = trackLength / 2 - 1.5;
+    animate(sound, "x", startX, endX, time, getRandomElement(easings));
+  }
+
+  function stopCarSound(carIndex) {
+    const now = document.timeline.currentTime;
+    const sound = raceCarsSound.get(carIndex);
+    sound.setAttribute("volume", 0);
+    sound.setAttribute("start-time", now - raceSoundDuration - 100);
+    sound.setAttribute("pause-time", now - 100);
+  }
+
+  function createLabel(str, amount, index, color) {
+    const y = amount * labelHeight - index * labelHeight;
+    const frameHeight = (amount + 1) * labelHeight;
+    const frameY = y - 0.5;
+    const borderHeight = frameHeight + borderWidth;
+
+    const firstOrLast = index === amount - 1 || index === 0;
+
+    attributesLabelFrame.setAttribute("width", labelWidth);
+    attributesLabelFrame.setAttribute("height", frameHeight);
+    attributesLabelFrame.setAttribute("y", frameHeight / 2 + borderWidth + labelsYOffset + frameY);
+    attributesLabelBorder.setAttribute("width", labelWidth + borderWidth);
+    attributesLabelBorder.setAttribute("height", borderHeight);
+    attributesLabelBorder.setAttribute(
+      "y",
+      borderHeight / 2 + borderWidth / 2 + labelsYOffset + frameY,
+    );
+
+    if (str.includes("/assets/playground/")) {
+      str = str.replace("/assets/playground/", "https://mml.io/");
+    }
+
+    const label = document.createElement("m-label");
+    label.setAttribute("font-size", 22);
+    label.setAttribute("color", color);
+    label.setAttribute("content", firstOrLast ? ` ${str}` : `    ${str}`);
+    label.setAttribute("padding", 0);
+    label.setAttribute("alignment", "left");
+    label.setAttribute("width", labelWidth);
+    label.setAttribute("height", 0.3);
+    label.setAttribute("y", y + labelsYOffset);
+    label.setAttribute("z", -0.1);
+    currentAttributeLabels.set(index, label);
+    return label;
+  }
+
+  function createLabels(attributes, color) {
+    currentAttributeLabels.forEach((label) => label.remove());
+    currentAttributeLabels.clear();
+    for (let i = 0; i < attributes.length; i++) {
+      const label = createLabel(attributes[i], attributes.length, i, color);
+      attributesLabelGroup.appendChild(label);
+    }
+  }
+
+  function updateAttributesLabel(color) {
+    const attributes = [];
+    for (const attr of winnerAnimation.getAttributeNames()) {
+      const val = winnerAnimation.getAttribute(attr);
+      attributes.push(`${attr}="${val}"`);
+    }
+    attributes.unshift("<m-attr-anim");
+    attributes.push("></m-attr-anim>");
+    createLabels(attributes, color);
+  }
+
+  function startRace() {
+    let smallestTime = 999999999;
+    const startX = -trackLength / 2 + 1;
+    const endX = trackLength / 2 - 1.5;
+    raceCars.forEach((car, index) => {
+      const time = getRandomInt(raceDuration - raceDuration * 0.1, raceDuration);
+      const easing = getRandomElement(easings);
+      const sound = raceCarsSound.get(index);
+      car.setAttribute("anim-enabled", true);
+      car.setAttribute("anim-loop", true);
+      car.setAttribute("anim-start-time", document.timeline.currentTime);
+      car.removeAttribute("anim-pause-time");
+      const animation = animate(car, "x", startX, endX, time, easing);
+      if (time < smallestTime) {
+        smallestTime = time;
+        winner = `Winner: ${availableCars[index]} (${(time / 1000).toFixed(3)}s)`;
+        winnerAnimation = animation;
+        winnerIndex = index;
+      }
+      playCarSound(index, time);
+      setTimeout(() => {
+        racing = false;
+        stopCarSound(index);
+        const winnerLabelContent = winnerLabel.getAttribute("content");
+        if (winnerLabelContent !== winner) {
+          winnerLabel.setAttribute("content", winner);
+          updateAttributesLabel(carColors[winnerIndex]);
+        }
+      }, time);
+    });
+  }
+
+  createCountDownSound();
+  createTrack();
+  createCars();
+
+  function play() {
+    if (racing) return;
+    racing = true;
+    highlightElement(playButton);
+    winnerLabel.setAttribute("content", "");
+    raceCars.forEach((car) => {
+      car.setAttribute("x", -trackLength / 2 + 1);
+    });
+    playCountdownSound();
+    setTimeout(() => {
+      startRace();
+    }, 3200);
+  }
+</script>

@@ -1,0 +1,538 @@
+<m-group id="flat-screen" x="-15.65" y="3.9" z="0" ry="90">
+  <m-cube color="black" width="9" height="5.5" depth="0.03" z="-0.01"></m-cube>
+
+  <m-audio
+    id="video-player-1-audio"
+    src="/assets/playground/video_01.mp3"
+    loop="false"
+    start-time="-32000"
+    pause-time="0"
+    y="3"
+    rx="50"
+    cone-angle="60"
+    cone-falloff-angle="110"
+    volume="4"
+    debug="false"
+  ></m-audio>
+  <m-audio
+    id="video-player-2-audio"
+    src="/assets/playground/video_02.mp3"
+    loop="false"
+    start-time="-53050"
+    pause-time="0"
+    y="3"
+    rx="50"
+    cone-angle="60"
+    cone-falloff-angle="110"
+    volume="4"
+    debug="false"
+  ></m-audio>
+
+  <m-video
+    id="video-player-1"
+    width="8"
+    height="4.5"
+    y="0.05"
+    z="-0.01"
+    src="/assets/playground/video_01.mp4"
+    collide="true"
+    volume="0"
+    loop="false"
+    start-time="-32000"
+    pause-time="0"
+  ></m-video>
+
+  <m-video
+    id="video-player-2"
+    width="8"
+    height="4.5"
+    y="0.05"
+    z="-0.02"
+    src="/assets/playground/video_02.mp4"
+    collide="true"
+    volume="0"
+    loop="false"
+    start-time="-53050"
+    pause-time="0"
+  ></m-video>
+
+  <m-group y="-3">
+    <m-cube width="3.4" height="0.23" depth="0.01" color="#999999"></m-cube>
+    <m-label
+      id="spectators-label"
+      font-size="15"
+      color="#000000"
+      font-color="#cccccc"
+      alignment="center"
+      padding="0"
+      width="3.35"
+      height="0.2"
+      z="0.01"
+      content=""
+    ></m-label>
+  </m-group>
+</m-group>
+
+<m-group id="plinth-group" x="-10.5" y="0.01">
+  <m-model src="/assets/playground/plinth_base.glb">
+    <m-model
+      id="plinth-lights-off"
+      src="/assets/playground/plinth_sockets_lights_off.glb"
+      visible="true"
+    ></m-model>
+    <m-model
+      id="plinth-lights-on"
+      src="/assets/playground/plinth_sockets_lights_on.glb"
+      visible="false"
+    ></m-model>
+    <m-light id="blinking-light" y="2" color="#55ff55" intensity="3" visible="true"></m-light>
+
+    <m-group id="cube-holder" y="1">
+      <m-attr-anim
+        attr="y"
+        start="1"
+        end="1.15"
+        duration="8000"
+        ping-pong="true"
+        loop="true"
+        easing="easeInOutQuad"
+      ></m-attr-anim>
+
+      <m-group id="cube-label-group" y="0.2" z="1.5" sy="0" class="hidden">
+        <m-attr-anim
+          attr="rx"
+          start="-3"
+          end="3"
+          duration="16000"
+          loop="true"
+          ping-pong="true"
+          easing="easeInOutQuad"
+        ></m-attr-anim>
+        <m-label
+          id="pet-label-back"
+          x="-0.2"
+          ry="90"
+          padding="0"
+          width="1"
+          height="0.7"
+          alignment="center"
+          font-size="21"
+          content="I was pet 0 times"
+        ></m-label>
+        <m-label
+          id="pet-label-front"
+          x="-0.199"
+          ry="-90"
+          padding="0"
+          width="1"
+          height="0.7"
+          alignment="center"
+          font-size="21"
+          content="I was pet 0 times"
+        ></m-label>
+      </m-group>
+
+      <m-group id="cube-code-group" x="0.5" y="0.5" z="2" sy="0" class="hidden">
+        <m-attr-anim
+          attr="rx"
+          start="-1"
+          end="1"
+          duration="16000"
+          loop="true"
+          ping-pong="true"
+          easing="easeInOutQuad"
+        ></m-attr-anim>
+        <m-image
+          src="/assets/playground/first_cube_code.png"
+          width="4"
+          ry="110"
+          collide="false"
+        ></m-image>
+      </m-group>
+
+      <m-cube
+        id="my-first-cube"
+        visible="false"
+        color="#bbbbbb"
+        collide="false"
+        class="regular-size"
+      >
+        <m-attr-anim attr="ry" start="0" end="360" duration="20000" loop="true"></m-attr-anim>
+        <m-attr-anim attr="rx" start="0" end="360" duration="30000" loop="true"></m-attr-anim>
+      </m-cube>
+    </m-group>
+
+    <m-light
+      id="light01"
+      visible="true"
+      type="spotlight"
+      color="#ffffff"
+      distance="30"
+      angle="40"
+      intensity="0"
+      z="1.85"
+      y="0.1"
+      rx="15"
+      ry="90"
+      rz="90"
+    ></m-light>
+    <m-light
+      id="light02"
+      visible="true"
+      type="spotlight"
+      color="#ffffff"
+      distance="30"
+      angle="40"
+      intensity="0"
+      z="-1.85"
+      y="0.1"
+      rx="-15"
+      ry="-90"
+      rz="90"
+    ></m-light>
+  </m-model>
+</m-group>
+
+<m-cube x="-7.7" y="0.2" z="0" sx="0.8" sy="0.05" collide="false" visible="false">
+  <m-position-probe id="demo-trigger" range="10" interval="500" debug="false"></m-position-probe>
+</m-cube>
+
+<m-frame
+  src="wss:///mml-documents/obj_ceiling-lamp.html"
+  id="ceiling_lamp"
+  y="6"
+  class="pointing-to-video"
+></m-frame>
+<m-frame src="wss:///mml-documents/obj_lamp-blue.html" x="-15.5" y="0" z="5" ry="20"></m-frame>
+<m-frame src="wss:///mml-documents/obj_lamp-red.html" x="-15.5" y="0" z="-5" ry="-20"></m-frame>
+
+<script>
+  const demoTrigger = document.getElementById("demo-trigger");
+
+  const firstVideoDuration = 33.01 * 1000;
+  const secondVideoDuration = 51.21 * 1000;
+  const cubeSpawnTime = 15.08 * 1000;
+
+  const videoPlayer1 = document.getElementById("video-player-1");
+  const videoPlayer1Audio = document.getElementById("video-player-1-audio");
+  const videoPlayer2 = document.getElementById("video-player-2");
+  const videoPlayer2Audio = document.getElementById("video-player-2-audio");
+  const spectatorsLabel = document.getElementById("spectators-label");
+
+  const playersInWatchingProbe = new Set();
+  const playersInPresenceDetector = new Set();
+
+  let demoRolling = false;
+  let firstVideoPlaying = false;
+  let secondVideoPlaying = false;
+  let clickCount = 0;
+
+  let waitingPetSince = null;
+
+  let cubeColorIndex = 0;
+  const cubeColors = ["#FF77FF", "#55FFFF"];
+
+  const light1 = document.getElementById("light01");
+  const light2 = document.getElementById("light02");
+  const plinthLightsOff = document.getElementById("plinth-lights-off");
+  const plinthLightsOn = document.getElementById("plinth-lights-off");
+  const blinkingLight = document.getElementById("blinking-light");
+
+  const cube = document.getElementById("my-first-cube");
+  const cubeLabelGroup = document.getElementById("cube-label-group");
+  const cubeCodeGroup = document.getElementById("cube-code-group");
+
+  const petLabelFront = document.getElementById("pet-label-front");
+  const petLabelBack = document.getElementById("pet-label-back");
+  let labelSYAnim;
+
+  const ceilingLamp = document.getElementById("ceiling_lamp");
+
+  function animate(element, attr, start, end, duration, easing) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("start-time", document.timeline.currentTime);
+    anim.setAttribute("end-time", document.timeline.currentTime + duration);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("easing", easing);
+    anim.setAttribute("loop", false);
+    element.appendChild(anim);
+    setTimeout(() => {
+      element.setAttribute(attr, end);
+      element.removeChild(anim);
+    }, duration);
+  }
+
+  function pointCeilingLampToElevators() {
+    ceilingLamp.setAttribute("class", "pointing-to-elevators");
+    animate(ceilingLamp, "ry", 0, 90, 3000, "easeInOutQuad");
+  }
+
+  function pointCeilingLampToVideo() {
+    ceilingLamp.setAttribute("class", "pointing-to-video");
+    animate(ceilingLamp, "ry", 90, 0, 3000, "easeInOutQuad");
+  }
+
+  function showLabel() {
+    cubeLabelGroup.setAttribute("class", "visible");
+    animate(cubeLabelGroup, "sy", 0, 1, 1000, "easeInOutQuint");
+  }
+
+  function hideLabel() {
+    cubeLabelGroup.setAttribute("class", "hidden");
+    animate(cubeLabelGroup, "sy", 1, 0, 1000, "easeInOutQuint");
+    setTimeout(() => {
+      petLabelFront.setAttribute("content", "I was pet 0 times");
+      petLabelBack.setAttribute("content", "I was pet 0 times");
+    }, 1100);
+  }
+
+  function showCode() {
+    cubeCodeGroup.setAttribute("class", "visible");
+    animate(cubeCodeGroup, "sy", 0, 1, 1000, "easeInOutQuint");
+  }
+
+  function hideCode() {
+    cubeCodeGroup.setAttribute("class", "hidden");
+    animate(cubeCodeGroup, "sy", 1, 0, 1000, "easeInOutQuint");
+  }
+
+  function blinkLight() {
+    if (demoRolling === true || firstVideoPlaying === true || secondVideoPlaying === true) {
+      return;
+    }
+    blinkingLight.setAttribute("intensity", 3);
+    setTimeout(() => {
+      blinkingLight.setAttribute("intensity", 0);
+    }, 50);
+  }
+
+  function onCubeClick() {
+    cube.setAttribute("color", cubeColors[cubeColorIndex]);
+    cubeColorIndex++;
+    if (cubeColorIndex > 1) {
+      cubeColorIndex = 0;
+    }
+    clickCount++;
+    petLabelFront.setAttribute("content", `I was pet ${clickCount} times 😊`);
+    petLabelBack.setAttribute("content", `I was pet ${clickCount} times 😊`);
+    if (clickCount >= 3) {
+      waitingPetSince = null;
+      const cubeLabelClass = cubeLabelGroup.getAttribute("class");
+      if (cubeLabelClass === "visible") {
+        hideLabel();
+      }
+      const cubeClass = cube.getAttribute("class");
+      if (cubeClass === "regular-size") {
+        shrinkCube();
+      }
+      if (secondVideoPlaying === false) {
+        playSecondVideo();
+      }
+    }
+  }
+
+  function addCubeListener() {
+    cube.addEventListener("click", onCubeClick);
+  }
+
+  function removeCubeListener() {
+    cube.removeEventListener("click", onCubeClick);
+  }
+
+  function shrinkCube() {
+    cube.setAttribute("class", "tiny");
+    removeCubeListener();
+    animate(cube, "sx", 1, 0.25, 900, "easeInOutQuint");
+    animate(cube, "sy", 1, 0.25, 1100, "easeInOutQuint");
+    animate(cube, "sz", 1, 0.25, 1300, "easeInOutQuint");
+    animate(cube, "color", cubeColors[cubeColorIndex], "#ffffff", 1300);
+  }
+
+  function removeCube() {
+    animate(cube, "sx", 0.25, 0, 900, "easeInOutQuint");
+    animate(cube, "sy", 0.25, 0, 900, "easeInOutQuint");
+    animate(cube, "sz", 0.25, 0, 900, "easeInOutQuint");
+    animate(cube, "y", 0, -1, 900, "easeInOutQuint");
+    setTimeout(() => {
+      cube.setAttribute("class", "regular-size");
+      cube.setAttribute("visible", false);
+      cube.setAttribute("collide", false);
+      cube.setAttribute("sx", 1);
+      cube.setAttribute("sy", 1);
+      cube.setAttribute("sz", 1);
+      cube.setAttribute("y", 0);
+    }, 1000);
+  }
+
+  function turnPlinthLightsOn() {
+    light1.setAttribute("intensity", 50);
+    light2.setAttribute("intensity", 50);
+    plinthLightsOff.setAttribute("visible", false);
+    plinthLightsOn.setAttribute("visible", true);
+  }
+
+  function turnPlinthLightsOff() {
+    light1.setAttribute("intensity", 0);
+    light2.setAttribute("intensity", 0);
+    plinthLightsOn.setAttribute("visible", false);
+    plinthLightsOff.setAttribute("visible", true);
+  }
+
+  function playFirstVideo() {
+    demoRolling = true;
+    firstVideoPlaying = true;
+    blinkingLight.setAttribute("visible", false);
+
+    videoPlayer1.setAttribute("start-time", document.timeline.currentTime);
+    videoPlayer1.setAttribute("pause-time", document.timeline.currentTime + firstVideoDuration);
+    videoPlayer1.setAttribute("z", 0.02);
+    videoPlayer1Audio.setAttribute("start-time", document.timeline.currentTime);
+    videoPlayer1Audio.setAttribute(
+      "pause-time",
+      document.timeline.currentTime + firstVideoDuration,
+    );
+
+    setTimeout(() => {
+      cube.setAttribute("collide", true);
+      cube.setAttribute("visible", true);
+      turnPlinthLightsOn();
+
+      setTimeout(() => {
+        waitingPetSince = Date.now();
+        cube.setAttribute("color", "#ffffff");
+        showLabel();
+        addCubeListener();
+      }, 14.5 * 1000);
+    }, cubeSpawnTime);
+  }
+
+  function stopFirstVideo() {
+    videoPlayer1.setAttribute("z", -0.01);
+    videoPlayer1.setAttribute("start-time", -firstVideoDuration);
+    videoPlayer1.setAttribute("pause-time", document.timeline.currentTime);
+    videoPlayer1Audio.setAttribute("start-time", -firstVideoDuration);
+    videoPlayer1Audio.setAttribute("pause-time", document.timeline.currentTime);
+    firstVideoPlaying = false;
+  }
+
+  function playSecondVideo() {
+    secondVideoPlaying = true;
+    stopFirstVideo();
+    videoPlayer2.setAttribute("start-time", document.timeline.currentTime);
+    videoPlayer2.setAttribute("pause-time", document.timeline.currentTime + secondVideoDuration);
+    videoPlayer2.setAttribute("z", 0.02);
+    videoPlayer2Audio.setAttribute("start-time", document.timeline.currentTime);
+    videoPlayer2Audio.setAttribute(
+      "pause-time",
+      document.timeline.currentTime + secondVideoDuration,
+    );
+    setTimeout(() => {
+      showCode();
+      setTimeout(() => hideCode(), 17000);
+    }, 16000);
+    setTimeout(() => {
+      stopSecondVideo();
+      turnPlinthLightsOff();
+      removeCube();
+      pointCeilingLampToElevators();
+    }, secondVideoDuration);
+  }
+
+  function stopSecondVideo() {
+    videoPlayer2.setAttribute("z", -0.02);
+    videoPlayer2.setAttribute("start-time", -secondVideoDuration);
+    videoPlayer2.setAttribute("pause-time", document.timeline.currentTime);
+    videoPlayer2Audio.setAttribute("start-time", -secondVideoDuration);
+    videoPlayer2Audio.setAttribute("pause-time", document.timeline.currentTime);
+    secondVideoPlaying = false;
+  }
+
+  function resetFloor() {
+    stopFirstVideo();
+    stopSecondVideo();
+    removeCubeListener();
+    removeCube();
+    hideLabel();
+    hideCode();
+    turnPlinthLightsOff();
+    clickCount = 0;
+    if (ceilingLamp.getAttribute("class") === "pointing-to-elevators") {
+      pointCeilingLampToVideo();
+    }
+    setTimeout(() => {
+      demoRolling = false;
+    }, 2100);
+  }
+
+  function updateSpectatorsCount(players) {
+    spectatorsLabel.setAttribute(
+      "content",
+      `${players} attentive spectator${players === 1 ? "" : "s"}`,
+    );
+  }
+
+  demoTrigger.addEventListener("positionenter", (event) => {
+    const { connectionId } = event.detail;
+    if (!playersInWatchingProbe.has(connectionId)) {
+      playersInWatchingProbe.add(connectionId);
+      updateSpectatorsCount(playersInWatchingProbe.size);
+    }
+    if (demoRolling === false && playersInWatchingProbe.size > 0) {
+      playFirstVideo();
+    }
+  });
+
+  demoTrigger.addEventListener("positionmove", (event) => {
+    const { connectionId } = event.detail;
+    if (!playersInWatchingProbe.has(connectionId)) {
+      playersInWatchingProbe.add(connectionId);
+      updateSpectatorsCount(playersInWatchingProbe.size);
+    }
+    if (demoRolling === false && playersInWatchingProbe.size > 0) {
+      playFirstVideo();
+    }
+  });
+
+  demoTrigger.addEventListener("positionleave", (event) => {
+    const { connectionId } = event.detail;
+    if (playersInWatchingProbe.has(connectionId)) {
+      playersInWatchingProbe.delete(connectionId);
+      updateSpectatorsCount(playersInWatchingProbe.size);
+    }
+  });
+
+  window.addEventListener("disconnected", (event) => {
+    const { connectionId } = event.detail;
+    if (playersInWatchingProbe.has(connectionId)) {
+      playersInWatchingProbe.delete(connectionId);
+      updateSpectatorsCount(playersInWatchingProbe.size);
+    }
+  });
+
+  setInterval(() => blinkLight(), 2100);
+
+  setInterval(() => {
+    const hasWatchers = playersInWatchingProbe.size > 0;
+
+    if (!hasWatchers) {
+      if (firstVideoPlaying === false && secondVideoPlaying === false && demoRolling === true) {
+        clickCount = 0;
+        demoRolling = false;
+        if (ceilingLamp.getAttribute("class") === "pointing-to-elevators") {
+          pointCeilingLampToVideo();
+        }
+      }
+    }
+
+    if (!hasWatchers && waitingPetSince !== null) {
+      const waitingPetDelta = (Date.now() - waitingPetSince) / 1000;
+      if (waitingPetDelta > 30) {
+        waitingPetSince = null;
+        resetFloor();
+      }
+    }
+  }, 250);
+</script>

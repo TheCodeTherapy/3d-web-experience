@@ -1,0 +1,37 @@
+{
+  "name": "@mml-io/3d-web-client-core",
+  "version": "0.15.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "type": "module",
+  "files": [
+    "/build"
+  ],
+  "scripts": {
+    "build": "tsx ./build.ts --build",
+    "iterate": "tsx ./build.ts --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
+    "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
+  },
+  "dependencies": {
+    "@mml-io/model-loader": "0.14.0",
+    "@mml-io/3d-web-avatar": "^0.15.0",
+    "@monogrid/gainmap-js": "^3.0.5",
+    "@tweakpane/core": "2.0.3",
+    "@tweakpane/plugin-essentials": "0.2.1",
+    "mml-web": "0.14.0",
+    "postprocessing": "6.35.4",
+    "three-mesh-bvh": "0.7.4",
+    "tweakpane": "4.0.3"
+  },
+  "peerDependencies": {
+    "three": ">= 0.163.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.163.0"
+  }
+}

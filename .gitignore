@@ -1,0 +1,41 @@
+# Node
+node_modules
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.yarn-integrity
+.pnp
+.pnp.js
+tsconfig.tsbuildinfo
+.eslintcache
+
+# OS
+.DS_Store
+
+# Artifacts
+build
+dist
+
+# IDEs and editors
+.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.vscode
+
+# dotenv files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+.npmrc
+.nx
