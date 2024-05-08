@@ -1,4 +1,6 @@
-<!-- <m-group x="0" z="40" id="building" ry="0"></m-group>
+<m-model src="/assets/playground/MML_tower_fixed.glb" z="40" sx="1.04" sz="1.04"></m-model>
+<!-- <m-model src="/assets/playground/inner_building_single_mesh.glb" z="40"></m-model> -->
+<m-group x="0" z="40" id="building" ry="0"></m-group>
 
 <script>
   const buildingGroup = document.getElementById("building");
@@ -6,41 +8,41 @@
   const floors = 7;
   const elevators = 3;
 
-  function createMFrame(height, url) {
-    const xLimit = height === 0 ? 100 : 16;
-    const yLimit = height === 0 ? 100 : 7;
-    const zLimit = height === 0 ? 100 : 20;
-    const mFrame = document.createElement("m-frame");
-    mFrame.setAttribute("y", height);
-    mFrame.setAttribute("min-x", -xLimit);
-    mFrame.setAttribute("max-x", xLimit);
-    mFrame.setAttribute("min-y", -0.5);
-    mFrame.setAttribute("max-y", yLimit);
-    mFrame.setAttribute("min-z", -zLimit);
-    mFrame.setAttribute("max-z", zLimit);
-    mFrame.setAttribute("load-range", 0.05);
-    mFrame.setAttribute("unload-range", 0.05);
-    mFrame.setAttribute("src", url);
-    mFrame.setAttribute("debug", false);
-    return mFrame;
-  }
+  // function createMFrame(height, url) {
+  //   const xLimit = height === 0 ? 100 : 16;
+  //   const yLimit = height === 0 ? 100 : 7;
+  //   const zLimit = height === 0 ? 100 : 20;
+  //   const mFrame = document.createElement("m-frame");
+  //   mFrame.setAttribute("y", height);
+  //   mFrame.setAttribute("min-x", -xLimit);
+  //   mFrame.setAttribute("max-x", xLimit);
+  //   mFrame.setAttribute("min-y", -0.5);
+  //   mFrame.setAttribute("max-y", yLimit);
+  //   mFrame.setAttribute("min-z", -zLimit);
+  //   mFrame.setAttribute("max-z", zLimit);
+  //   mFrame.setAttribute("load-range", 0.05);
+  //   mFrame.setAttribute("unload-range", 0.05);
+  //   mFrame.setAttribute("src", url);
+  //   mFrame.setAttribute("debug", false);
+  //   return mFrame;
+  // }
 
-  for (let floor = 0; floor < floors; floor++) {
-    const height = floor * floorHeight;
+  // for (let floor = 0; floor < floors; floor++) {
+  //   const height = floor * floorHeight;
 
-    const floorFrame = document.createElement("m-frame");
-    floorFrame.setAttribute(
-      "src",
-      floor === 0
-        ? "wss:///mml-documents/building-floor-open.html"
-        : "wss:///mml-documents/building-floor.html",
-    );
-    floorFrame.setAttribute("y", height);
-    buildingGroup.appendChild(floorFrame);
+  //   const floorFrame = document.createElement("m-frame");
+  //   floorFrame.setAttribute(
+  //     "src",
+  //     floor === 0
+  //       ? "wss:///mml-documents/building-floor-open.html"
+  //       : "wss:///mml-documents/building-floor.html",
+  //   );
+  //   floorFrame.setAttribute("y", height);
+  //   buildingGroup.appendChild(floorFrame);
 
-    const mFrame = createMFrame(height, `wss:///mml-documents/floor_${floor}_content.html`);
-    buildingGroup.appendChild(mFrame);
-  }
+  //   const mFrame = createMFrame(height, `wss:///mml-documents/floor_${floor}_content.html`);
+  //   buildingGroup.appendChild(mFrame);
+  // }
 
   // for (let elevator = 0; elevator < elevators; elevator++) {
   //   const elevatorFrame = document.createElement("m-frame");
@@ -55,4 +57,4 @@
   elevatorFrame.setAttribute("z", "17");
   elevatorFrame.setAttribute("x", 0);
   buildingGroup.appendChild(elevatorFrame);
-</script> -->
+</script>

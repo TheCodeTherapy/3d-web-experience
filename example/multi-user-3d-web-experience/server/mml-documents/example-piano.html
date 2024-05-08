@@ -68,9 +68,6 @@
   });
 
   function createNote(xPos) {
-    if (typeof mp3NotesFiles[totalKeys] === "undefined") {
-      console.log("HELP!!!!!!! WE HAVE UNDEFINED SHIT!!!");
-    }
     const now = document.timeline.currentTime;
     const note = document.createElement("m-audio");
     const url = `/assets/playground/notes/${mp3NotesFiles[totalKeys]}`;
@@ -79,7 +76,9 @@
     note.setAttribute("y", 1);
     note.setAttribute("z", 0);
     note.setAttribute("loop", false);
-    note.setAttribute("volume", 0);
+    note.setAttribute("enabled", true);
+    note.setAttribute("start-time", now - 4000);
+    note.setAttribute("pause-time", now);
     mp3Notes.set(totalKeys, {
       url: url,
       id: totalKeys,
@@ -92,9 +91,9 @@
     const noteObject = mp3Notes.get(id);
     console.log(`trying to play note ${noteObject.url}`);
     const now = document.timeline.currentTime;
+    noteObject.note.setAttribute("volume", 3);
     noteObject.note.setAttribute("start-time", now);
-    noteObject.note.removeAttribute("pause-time");
-    noteObject.note.setAttribute("volume", 1);
+    noteObject.note.setAttribute("pause-time", now + 4000);
   }
 
   function createKey(keyType, xPosition) {
@@ -261,7 +260,7 @@
     toRemove.forEach((key) => {
       playerCollisionRemovalSchedule.delete(key);
     });
-  }, 100);
+  }, 50);
 
   createKeys();
 </script>

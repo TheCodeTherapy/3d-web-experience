@@ -12,7 +12,7 @@ export class CameraManager {
   public initialDistance: number = 3.3;
 
   private minDistance: number = 0.1;
-  private maxDistance: number = 8;
+  private maxDistance: number = 16;
 
   private initialFOV: number = 60;
   private fov: number = this.initialFOV;
