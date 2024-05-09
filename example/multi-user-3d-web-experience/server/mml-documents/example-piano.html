@@ -1,4 +1,4 @@
-<m-group id="piano-group" sx="0.8w" sy="1" sz="1.2" y="-0.4">
+<m-group id="piano-group" sx="0.8w" sy="1" sz="1.2" y="-0.2">
   <m-group id="piano-keys" x="-4" y="-0.3" z="12" ry="90"></m-group>
 </m-group>
 
@@ -77,6 +77,7 @@
     note.setAttribute("z", 0);
     note.setAttribute("loop", false);
     note.setAttribute("enabled", true);
+    note.setAttribute("volume", 1);
     note.setAttribute("start-time", now - 4000);
     note.setAttribute("pause-time", now);
     mp3Notes.set(totalKeys, {
@@ -104,8 +105,8 @@
     key.setAttribute("id", id);
     key.setAttribute("src", url);
     key.setAttribute("x", xPosition);
-    key.setAttribute("y", keyType === "black" ? -0.3 : 0);
-    key.setAttribute("z", keyType === "black" ? 0.15 : 0);
+    key.setAttribute("y", keyType === "black" ? -0.2 : 0);
+    key.setAttribute("z", keyType === "black" ? 0 : 0);
     key.setAttribute("collision-interval", 50);
     pianoKeysGroup.appendChild(key);
     key.addEventListener("click", (e) => handleClickOnKey(id));
@@ -123,6 +124,7 @@
       key: key,
       playersColliding: new Set(),
       isPressed: false,
+      color: keyType === "black" ? "black" : "white",
     });
     createNote(xPosition, 0);
     totalKeys++;
@@ -191,15 +193,17 @@
   }
 
   function keyRelease(keyObject) {
+    const rotation = keyObject.color === "white" ? 2 : 3.5;
     if (keyObject.playersColliding.size > 0) return;
-    animate(keyObject.key, "rx", pressRotation, 0, 100, "easeInOutQuad", () => {
+    animate(keyObject.key, "rx", rotation, 0, 100, "easeInOutQuad", () => {
       keyObject.isPressed = false;
     });
   }
 
   function keyPress(keyObject) {
     if (keyObject.isPressed) return;
-    animate(keyObject.key, "rx", 0, pressRotation, 100, "easeInOutQuad", () => {
+    const rotation = keyObject.color === "white" ? 2 : 3.5;
+    animate(keyObject.key, "rx", 0, rotation, 100, "easeInOutQuad", () => {
       playNote(keyObject.id);
       keyObject.isPressed = true;
     });
