@@ -324,6 +324,11 @@
       playCarSound(index, time);
       setTimeout(() => {
         racing = false;
+        car.setAttribute("anim-enabled", false);
+        car.setAttribute("anim-loop", false);
+        car.setAttribute("anim-start-time", document.timeline.currentTime - 1000);
+        car.setAttribute("anim-pause-time", document.timeline.currentTime);
+
         stopCarSound(index);
         const winnerLabelContent = winnerLabel.getAttribute("content");
         if (winnerLabelContent !== winner) {
