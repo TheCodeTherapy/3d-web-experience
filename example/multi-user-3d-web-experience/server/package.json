@@ -30,7 +30,7 @@
     "http-proxy": "^1.18.1",
     "livekit-server-sdk": "^2.2.0",
     "networked-dom-server": "0.14.0",
-    "ws": "8.16.0"
+    "ws": "8.17.1"
   },
   "devDependencies": {
     "@types/cors": "2.8.17",
