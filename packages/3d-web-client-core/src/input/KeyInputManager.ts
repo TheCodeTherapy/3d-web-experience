@@ -13,6 +13,7 @@ enum Key {
 export class KeyInputManager {
   private keys = new Map<string, boolean>();
   private eventHandlerCollection = new EventHandlerCollection();
+  private isFullScreen = false;
 
   constructor(private shouldCaptureKeyPress: () => boolean = () => true) {
     this.eventHandlerCollection.add(document, "keydown", this.onKeyDown.bind(this));
@@ -40,6 +41,13 @@ export class KeyInputManager {
   }
 
   private onKeyUp(event: KeyboardEvent): void {
+    if (event.key.toLowerCase() === "f11") {
+      if (this.isFullScreen) {
+        document.exitFullscreen();
+      } else {
+        document.body.requestFullscreen();
+      }
+    }
     this.keys.set(event.key.toLowerCase(), false);
   }
 
