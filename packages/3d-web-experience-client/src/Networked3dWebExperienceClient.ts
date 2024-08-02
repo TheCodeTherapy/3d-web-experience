@@ -46,7 +46,7 @@ import {
   registerCustomElementsToWindow,
   setGlobalMMLScene,
 } from "mml-web";
-import { AudioListener, Euler, Group, Scene, Vector3 } from "three";
+import { AudioListener, Euler, Scene, Vector3 } from "three";
 
 export type MMLDocumentConfiguration = {
   url: string;
