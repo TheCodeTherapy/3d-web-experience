@@ -312,6 +312,7 @@ export class Networked3dWebExperienceClient {
     document.body.style.overflow = "hidden";
 
     const holder = document.createElement("div");
+    holder.setAttribute("id", "appHolder");
     holder.style.position = "absolute";
     holder.style.width = "100%";
     holder.style.height = "100%";
