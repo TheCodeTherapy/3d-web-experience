@@ -109,23 +109,30 @@ export class LocalController {
     };
     this.appHolder = document.getElementById("appHolder") as HTMLDivElement;
     this.respawnDiv.setAttribute("id", "respawn-button");
-    this.respawnDiv.style.height = "27px";
-    this.respawnDiv.style.width = "73px";
-    this.respawnDiv.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+    this.respawnDiv.style.lineHeight = "25px";
+    this.respawnDiv.style.height = "24px";
+    this.respawnDiv.style.width = "60px";
+    this.respawnDiv.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
     this.respawnDiv.style.position = "fixed";
-    this.respawnDiv.style.right = "12px";
     this.respawnDiv.style.top = "12px";
-    this.respawnDiv.style.zIndex = "99999";
-    this.respawnDiv.style.color = "#ffffff";
+    this.respawnDiv.style.right = "12px";
+    this.respawnDiv.style.color = "rgb(255, 255, 255)";
     this.respawnDiv.style.textAlign = "center";
     this.respawnDiv.style.fontSize = "12px";
     this.respawnDiv.style.verticalAlign = "middle";
-    this.respawnDiv.style.lineHeight = "30px";
-    this.respawnDiv.style.borderRadius = "3px";
+    this.respawnDiv.style.borderRadius = "5px";
     this.respawnDiv.style.cursor = "pointer";
+    this.respawnDiv.style.fontFamily = "monospace";
+    this.respawnDiv.style.fontWeight = "900";
+    this.respawnDiv.style.zIndex = "99999";
+    this.respawnDiv.style.border = "1px solid rgba(255, 255, 255, 0.5)";
     this.respawnDiv.innerText = "RESPAWN";
-    this.respawnDiv.addEventListener("mouseup", () => {
-      this.resetPosition();
+
+    this.respawnDiv.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (event.button === 0) {
+        this.respawn();
+      }
     });
     this.appHolder?.appendChild(this.respawnDiv);
   }
@@ -487,6 +494,16 @@ export class LocalController {
       },
       state: this.config.character.getCurrentAnimation(),
     };
+  }
+
+  private respawn(): void {
+    this.characterVelocity.y = 0;
+    this.config.character.position.set(0, 10, 0);
+    this.config.character.rotation.set(0, 0, 0);
+    this.characterOnGround = false;
+    this.doubleJumpUsed = false;
+    this.jumpReleased = true;
+    this.jumpCounter = 0;
   }
 
   private resetPosition(): void {
