@@ -17,6 +17,51 @@
     contentGroup.appendChild(wind);
   }
 
+  function loopAnim(element, attr, start, end, duration, pingPong, easing = undefined) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("loop", true);
+    anim.setAttribute("ping-pong", pingPong);
+    if (easing) {
+      anim.setAttribute("easing", easing);
+    }
+    element.appendChild(anim);
+  }
+
+  function forkOnGitHub(x, z, ry) {
+    const forkGroup = document.createElement("m-group");
+
+    const forkImage = document.createElement("m-image");
+    forkImage.setAttribute("src", "/assets/playground/fork.png");
+    forkImage.setAttribute("emissive", 3);
+
+    const forkImageBg = document.createElement("m-cube");
+    forkImageBg.setAttribute("width", 0.92);
+    forkImageBg.setAttribute("height", 0.55);
+    forkImageBg.setAttribute("depth", 0.03);
+    forkImageBg.setAttribute("opacity", 0.8);
+    forkImageBg.setAttribute("color", "#000000");
+    forkImageBg.setAttribute("y", 0.06);
+    forkImageBg.setAttribute("z", -0.025);
+    forkGroup.appendChild(forkImageBg);
+
+    forkGroup.appendChild(forkImage);
+    forkGroup.setAttribute("x", x);
+    forkGroup.setAttribute("y", 2.2);
+    forkGroup.setAttribute("z", -5.5);
+    forkGroup.setAttribute("ry", -90);
+    loopAnim(forkGroup, "y", 2.2, 2.25, 8000, true, "easeInOutQuad");
+
+    const link = document.createElement("m-link");
+    link.setAttribute("href", "https://github.com/thecodetherapy/3d-web-experience");
+    link.appendChild(forkGroup);
+
+    altarsGroup.appendChild(link);
+  }
+
   function placeAltars(parentElement, radius, numberOfAltars) {
     const angleStep = (2 * Math.PI) / numberOfAltars;
     const angleOffset = (numberOfAltars - 1) / Math.PI;
@@ -35,11 +80,13 @@
       const windVolume = i % 2 === 0 ? 2 : 3;
       const windDebug = false;
       const windSrc = "/assets/playground/wind.mp3";
+
       createWindSFX(windSrc, windX, windY, windZ, windVolume, now, windDebug);
 
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
       const ry = -angle * (180 / Math.PI) - 90;
+
       const altar = document.createElement("m-model");
       altar.setAttribute("src", "/assets/playground/altar.glb");
       altar.setAttribute("sx", 1.2);
@@ -52,6 +99,7 @@
       parentElement.appendChild(altar);
 
       if (i === 0) {
+        forkOnGitHub(Math.cos(angle) * radius - 5.4);
         const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/intro.html");
         mFrame.setAttribute("x", x);
