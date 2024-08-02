@@ -2,7 +2,7 @@ name: Main
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   id-token: write
@@ -87,63 +87,62 @@ jobs:
           echo "Type Check: ${{ needs.type-check.result }}"
           echo "Lint: ${{ needs.lint.result }}"
 
-  publish-experimental-packages:
-    name: Publish Experimental Packages
-    needs: summary
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: false
+  # publish-experimental-packages:
+  #   name: Publish Experimental Packages
+  #   needs: summary
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v3
+  #       with:
+  #         persist-credentials: false
 
-      - name: "Retrieve Dependencies and Build Artifacts"
-        id: retrieve-deps-and-build
-        uses: ./.github/actions/retrieve-deps-and-build
+  #     - name: "Retrieve Dependencies and Build Artifacts"
+  #       id: retrieve-deps-and-build
+  #       uses: ./.github/actions/retrieve-deps-and-build
 
-      - name: Publish
-        run: |
-          # Set up git user for lerna to create a local commit with
-          git config --global user.email "lerna-ci@mml.io"
-          git config --global user.name "lerna-ci-mml"
+  #     - name: Publish
+  #       run: |
+  #         # Set up git user for lerna to create a local commit with
+  #         git config --global user.email "lerna-ci@mml.io"
+  #         git config --global user.name "lerna-ci-mml"
 
-          # Set up npm auth token from secret for publishing
-          echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > .npmrc
+  #         # Set up npm auth token from secret for publishing
+  #         echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > .npmrc
 
-          # Publish the current commit as an "experimental" version
-          version="0.0.0-experimental-$(git rev-parse --short HEAD)-$(date +'%Y%m%d')"
-          echo "Publishing experimental version $version"
-          ./node_modules/.bin/lerna publish $version --no-private --dist-tag experimental --ignore-scripts --ignore-changes --no-push --exact --yes
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  #         # Publish the current commit as an "experimental" version
+  #         version="0.0.0-experimental-$(git rev-parse --short HEAD)-$(date +'%Y%m%d')"
+  #         echo "Publishing experimental version $version"
+  #         ./node_modules/.bin/lerna publish $version --no-private --dist-tag experimental --ignore-scripts --ignore-changes --no-push --exact --yes
+  #       env:
+  #         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+  # publish-release-packages:
+  #   name: Publish Packages
+  #   environment: package-release
+  #   needs: summary
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v3
+  #       with:
+  #         persist-credentials: false
 
-  publish-release-packages:
-    name: Publish Packages
-    environment: package-release
-    needs: summary
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: false
+  #     - name: "Retrieve Dependencies and Build Artifacts"
+  #       id: retrieve-deps-and-build
+  #       uses: ./.github/actions/retrieve-deps-and-build
 
-      - name: "Retrieve Dependencies and Build Artifacts"
-        id: retrieve-deps-and-build
-        uses: ./.github/actions/retrieve-deps-and-build
+  #     - name: Publish
+  #       run: |
+  #         # Set up git user for lerna to create a local commit with
+  #         git config --global user.email "lerna-ci@mml.io"
+  #         git config --global user.name "lerna-ci-mml"
 
-      - name: Publish
-        run: |
-          # Set up git user for lerna to create a local commit with
-          git config --global user.email "lerna-ci@mml.io"
-          git config --global user.name "lerna-ci-mml"
+  #         # Set up npm auth token from secret for publishing
+  #         echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > .npmrc
 
-          # Set up npm auth token from secret for publishing
-          echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > .npmrc
-
-          # Attempt to publish at the current version - this will skip if the version already exists
-          echo "Attempting to publishing latest version"
-          ./node_modules/.bin/lerna publish from-package --no-private --dist-tag latest --ignore-scripts --ignore-changes --no-push --yes
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  #         # Attempt to publish at the current version - this will skip if the version already exists
+  #         echo "Attempting to publishing latest version"
+  #         ./node_modules/.bin/lerna publish from-package --no-private --dist-tag latest --ignore-scripts --ignore-changes --no-push --yes
+  #       env:
+  #         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
