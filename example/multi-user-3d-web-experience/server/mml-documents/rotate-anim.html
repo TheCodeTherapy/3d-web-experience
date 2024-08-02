@@ -1,0 +1,314 @@
+<m-group id="wrapper">
+  <m-group id="plinth" ry="90">
+    <m-model src="/assets/playground/base_plinth.glb" sx="2.5" sy="2.75" sz="2.5"></m-model>
+    <m-group sx="0.752" sy="0.752" sz="0.752">
+      <m-model id="button-left" src="/assets/playground/base_plinth_left.glb"></m-model>
+      <m-model id="button-right" src="/assets/playground/base_plinth_right.glb"></m-model>
+      <m-label
+        id="display"
+        color="#505050"
+        font-color="#ffffff"
+        font-color="black"
+        padding="0"
+        alignment="center"
+        content="+1"
+        rx="-90"
+        rz="-90"
+        ry="-45"
+        width="0.3"
+        height="0.2"
+        y="0.17"
+        x="-4.55"
+        font-size="18"
+      ></m-label>
+    </m-group>
+    <m-group id="model-wrapper">
+      <m-model id="model" src="/assets/playground/duck.glb" y="0.35" sx="2" sy="2" sz="2">
+        <m-attr-anim id="model-anim" attr="ry" start="0" end="360" loop="true"></m-attr-anim>
+      </m-model>
+    </m-group>
+  </m-group>
+
+  <m-image
+    class="hidden"
+    id="code-image"
+    width="4"
+    x="5"
+    y="2"
+    z="1"
+    ry="-15"
+    emissive="6"
+    sx="0"
+    sy="0"
+    sz="0"
+    collide="false"
+  ></m-image>
+</m-group>
+
+<script>
+  const wrapper = document.getElementById("wrapper");
+  const model = document.getElementById("model");
+  const display = document.getElementById("display");
+  const buttonLeft = document.getElementById("button-left");
+  const buttonRight = document.getElementById("button-right");
+  const modelAnim = document.getElementById("model-anim");
+  const codeImage = document.getElementById("code-image");
+
+  // display ========================================================
+  class AttributesToSVG {
+    svgOpening = `<svg xmlns="http://www.w3.org/2000/svg"`;
+    fontFamily = `font-family="monospace"`;
+    lineHeight = 0;
+
+    fontSize = 0;
+    fontSizeAttr = "";
+    color = "";
+    strokeWidth = "";
+    sharedTextAttrs = "";
+    defaultColorAttrs = "";
+
+    openingTag = "";
+    closingTag = "";
+
+    attributeColor = "#ff77aa";
+    eqColor = "#777777";
+    valueColor = "#33aaff";
+
+    constructor(fontSize, color, openingTag, closingTag) {
+      this.fontSize = fontSize;
+      this.fontSizeAttr = `font-size="${fontSize}px"`;
+      this.lineHeight = parseFloat((fontSize * 1.1).toFixed(2));
+      this.color = `fill="${color}" stroke="${color}"`;
+      this.strokeWidth = `stroke-width="${Math.round(fontSize * 0.05)}px"`;
+      this.sharedTextAttrs = `${this.fontFamily} ${this.fontSizeAttr} ${this.strokeWidth}`;
+      this.defaultColorAttrs = `${this.color}`;
+      this.openingTag = this.escapeForSVG(openingTag);
+      this.closingTag = this.escapeForSVG(closingTag);
+    }
+
+    escapeForSVG(text) {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    getElementAttributes(element) {
+      const attributes = [];
+      for (const attr of element.getAttributeNames()) {
+        let val = element.getAttribute(attr);
+        const numberVal = parseFloat(val);
+        if (!isNaN(numberVal)) val = numberVal.toFixed(2);
+        attributes.push(`${attr}="${val}"`);
+      }
+      return attributes;
+    }
+
+    getTextTag(content, yPosition, collorAttributes) {
+      let tag = `<text x="10" y="${yPosition}" ${this.sharedTextAttrs} ${collorAttributes}>`;
+      tag = `${tag} ${content} </text>`;
+      return tag;
+    }
+
+    getHighlightedTextTag(content, yPosition) {
+      let [attr, value] = content.split("=");
+      value = value.replace("/assets/playground", "https://mgz.me");
+
+      const attrColor = `fill="${this.attributeColor}" stroke="${this.attributeColor}"`;
+      const eqColor = `fill="${this.eqColor}" stroke="${this.eqColor}"`;
+      const valueColor = `fill="${this.valueColor}" stroke="${this.valueColor}"`;
+
+      let xOffset = this.fontSize;
+      let tag = `<text x="${xOffset}" y="${yPosition}" ${this.sharedTextAttrs} ${attrColor}>${attr}</text>`;
+      xOffset += attr.length * this.fontSize * 0.65;
+      tag += `<text x="${xOffset}" y="${yPosition}" ${this.sharedTextAttrs} ${eqColor}>=</text>`;
+      xOffset += this.fontSize * 0.65;
+      tag += `<text x="${xOffset}" y="${yPosition}" ${this.sharedTextAttrs} ${valueColor}>${value}</text>`;
+      return tag;
+    }
+
+    createAttributesSVG(imageElement, element) {
+      const attrs = this.getElementAttributes(element);
+      let maxTextWidth = 0;
+      let innerContent = "";
+      innerContent += this.getTextTag(this.openingTag, this.lineHeight, this.defaultColorAttrs);
+      attrs.forEach((attr, index) => {
+        const yPos = this.lineHeight * (index + 2);
+        innerContent += this.getHighlightedTextTag(attr, yPos);
+        const currentWidth = (attr.length + 4) * (this.fontSize * 0.6);
+        maxTextWidth = Math.max(maxTextWidth, currentWidth);
+      });
+      innerContent += this.getTextTag(
+        this.closingTag,
+        this.lineHeight * (attrs.length + 2),
+        this.defaultColorAttrs,
+      );
+      const svgWidth = maxTextWidth + 20;
+      const svgHeight = (attrs.length + 3) * this.lineHeight + 30;
+      const svgURI = encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">${innerContent}</svg>`,
+      );
+      imageElement.setAttribute("src", `data:image/svg+xml,${svgURI}`);
+    }
+  }
+
+  const attrToSVG = new AttributesToSVG(100, "#cccc44", "<m-attr-anim", "/></m-attr-anim>");
+  attrToSVG.createAttributesSVG(codeImage, modelAnim);
+  // ================================================================
+
+  let rotationSpeed = 1;
+  const minRotationSpeed = -10;
+  const maxRotationSpeed = 10;
+  const triggerEffectTime = 700;
+
+  const attributesLabelGroup = document.getElementById("attributes-label-group");
+
+  const unitDuration = 20000;
+
+  let animationStartTime;
+  let pauseRatio = undefined;
+
+  function adjustAnim(delta) {
+    const newRotationSpeed = rotationSpeed + delta;
+    if (!(newRotationSpeed <= maxRotationSpeed && newRotationSpeed >= minRotationSpeed)) {
+      return;
+    }
+
+    const currentTime = document.timeline.currentTime;
+    let ratioThroughRotation, currentDuration, timeElapsed;
+    if (pauseRatio !== undefined) {
+      ratioThroughRotation = pauseRatio;
+      if (newRotationSpeed < 0) {
+        ratioThroughRotation = 1 - ratioThroughRotation;
+      }
+    } else {
+      currentDuration = unitDuration / Math.abs(rotationSpeed);
+      timeElapsed = currentTime - animationStartTime;
+      ratioThroughRotation = (timeElapsed % currentDuration) / currentDuration;
+    }
+
+    display.setAttribute("content", `${newRotationSpeed > 0 ? "+" : ""}${newRotationSpeed}`);
+    if (newRotationSpeed === 0) {
+      if (rotationSpeed < 0) {
+        ratioThroughRotation = 1 - ratioThroughRotation;
+      }
+      pauseRatio = ratioThroughRotation;
+      model.setAttribute("ry", 360 * ratioThroughRotation);
+      modelAnim.setAttribute("pause-time", document.timeline.currentTime);
+    } else {
+      pauseRatio = undefined;
+      const newDuration = unitDuration / Math.abs(newRotationSpeed);
+      const negativeTime = ratioThroughRotation * newDuration;
+      const animationTime = currentTime - negativeTime;
+      animationStartTime = animationTime;
+
+      if (modelAnim.getAttribute("pause-time")) {
+        modelAnim.removeAttribute("pause-time");
+      }
+      modelAnim.setAttribute("start-time", animationTime);
+      modelAnim.setAttribute("start", newRotationSpeed < 0 ? 360 : 0);
+      modelAnim.setAttribute("end", newRotationSpeed < 0 ? 0 : 360);
+      modelAnim.setAttribute("duration", newDuration);
+    }
+
+    rotationSpeed = newRotationSpeed;
+    attrToSVG.createAttributesSVG(codeImage, modelAnim);
+  }
+
+  function increaseRotation() {
+    const newRotationSpeed = rotationSpeed + 1;
+    if (newRotationSpeed <= maxRotationSpeed) {
+      adjustAnim(1);
+    }
+  }
+
+  function decreaseRotation() {
+    const newRotationSpeed = rotationSpeed - 1;
+    if (newRotationSpeed >= minRotationSpeed) {
+      adjustAnim(-1);
+    }
+  }
+
+  function loopAnim(element, attr, start, end, duration, pingPong, easing = undefined) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("loop", true);
+    anim.setAttribute("ping-pong", pingPong);
+    if (easing) {
+      anim.setAttribute("easing", easing);
+    }
+    element.appendChild(anim);
+  }
+
+  loopAnim(codeImage, "y", 2, 2.1, 7000, true, "easeInOutQuad");
+  loopAnim(model, "y", 0.35, 0.45, 7000, true, "easeInOutQuad");
+
+  animationStartTime = document.timeline.currentTime;
+  adjustAnim(1);
+  buttonLeft.addEventListener("click", () => decreaseRotation());
+  buttonRight.addEventListener("click", () => increaseRotation());
+
+  function animateLabel(element, attr, start, end, duration, easing) {
+    animating = true;
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("start-time", document.timeline.currentTime);
+    anim.setAttribute("end-time", document.timeline.currentTime + duration);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("easing", easing);
+    anim.setAttribute("loop", false);
+    element.appendChild(anim);
+    setTimeout(() => {
+      element.setAttribute(attr, end);
+      element.removeChild(anim);
+      animating = false;
+    }, duration + 50);
+  }
+
+  const showCodeImage = () => {
+    if (codeImage.getAttribute("class") === "hidden") {
+      codeImage.setAttribute("class", "visible");
+      animateLabel(codeImage, "sx", 0, 1, 1000, "easeOutBack");
+      animateLabel(codeImage, "sy", 0, 1, 1000, "easeOutBack");
+    }
+  };
+  const hideCodeImage = () => {
+    if (codeImage.getAttribute("class") === "visible") {
+      codeImage.setAttribute("class", "hidden");
+      animateLabel(codeImage, "sx", 1, 0, 1000, "easeInBack");
+      animateLabel(codeImage, "sy", 1, 0, 1000, "easeInBack");
+    }
+  };
+
+  const playersInInfoProbe = new Set();
+  const infoProbe = document.createElement("m-position-probe");
+  infoProbe.setAttribute("interval", 888);
+  infoProbe.setAttribute("range", 12);
+  infoProbe.setAttribute("debug", false);
+  infoProbe.addEventListener("positionenter", (event) => {
+    const { connectionId } = event.detail;
+    if (!playersInInfoProbe.has(connectionId)) playersInInfoProbe.add(connectionId);
+  });
+  infoProbe.addEventListener("positionmove", (event) => {
+    const { connectionId } = event.detail;
+    if (!playersInInfoProbe.has(connectionId)) playersInInfoProbe.add(connectionId);
+  });
+  infoProbe.addEventListener("positionleave", (event) => {
+    const { connectionId } = event.detail;
+    if (playersInInfoProbe.has(connectionId)) playersInInfoProbe.delete(connectionId);
+  });
+  window.addEventListener("disconnected", (event) => {
+    const { connectionId } = event.detail;
+    if (playersInInfoProbe.has(connectionId)) playersInInfoProbe.delete(connectionId);
+  });
+  setInterval(() => {
+    if (playersInInfoProbe.size > 0) {
+      showCodeImage();
+    } else {
+      hideCodeImage();
+    }
+  }, 1000);
+  wrapper.appendChild(infoProbe);
+</script>

@@ -1,0 +1,524 @@
+<m-group id="wrapper">
+  <m-group id="tv-group" z="-2.1">
+    <m-model src="/assets/playground/crt_tv.glb"></m-model>
+    <m-group id="controls"></m-group>
+    <m-group id="code-display" ry="-25" x="6.1" y="1.8" z="3.25">
+      <m-image id="code-image" width="5" emissive="6" collide="false" sx="0" sy="0"></m-image>
+    </m-group>
+  </m-group>
+</m-group>
+<script>
+  const wrapper = document.getElementById("wrapper");
+  const tvGroup = document.getElementById("tv-group");
+  const controlsGroup = document.getElementById("controls");
+  const codeImage = document.getElementById("code-image");
+
+  const assetsPath = "/assets/playground";
+  const videoFileNames = ["Sonic_TH1", "FlashBack", "ToeJamAE"];
+
+  const videosAvailable = [];
+  const audiosAvailable = [];
+  for (let i = 0; i < videoFileNames.length; i++) {
+    const videoURL = `${assetsPath}/${videoFileNames[i]}.mp4`;
+    const audioURL = `${assetsPath}/${videoFileNames[i]}.mp3`;
+    videosAvailable.push(videoURL);
+    audiosAvailable.push(audioURL);
+  }
+
+  const controlsIcons = new Map([
+    ["play", "/assets/playground/icons_play.svg"],
+    ["pause", "/assets/playground/icons_pause.svg"],
+    ["next", "/assets/playground/icons_next.svg"],
+    ["volume", "/assets/playground/icons_volup.svg"],
+    ["power", "/assets/playground/icons_power.svg"],
+  ]);
+
+  const controls = new Map();
+
+  let paused = false;
+  let muted = false;
+  let startedAt = document.timeline.currentTime;
+  let lastPaused = document.timeline.currentTime;
+  let latestAttributes = null;
+  let hadAudio = false;
+
+  const enabledEmissive = 8;
+  const disabledEmissive = 0.1;
+  const clickedEmissive = 20;
+  const clickHighlightDuration = 120;
+  const unmutedAudioVolume = 3;
+
+  let currentVideoIndex = 0;
+  const firstVideo = videosAvailable[currentVideoIndex];
+  const firstAudio = audiosAvailable[currentVideoIndex];
+  const video = createVideo(tvGroup, firstVideo, 0, 2.92, 1.35, 4.5, 3.95, 1.5);
+  const audio = createAudio(wrapper, firstAudio, 0, 21, 0, 90, 45, 100, false);
+
+  class AttributesToSVG {
+    svgOpening = `<svg xmlns="http://www.w3.org/2000/svg"`;
+    fontFamily = `font-family="monospace"`;
+    lineHeight = 0;
+
+    fontSize = 0;
+    fontSizeAttr = "";
+    color = "";
+    strokeWidth = "";
+    sharedTextAttrs = "";
+    defaultColorAttrs = "";
+
+    openingTag = "";
+    closingTag = "";
+
+    attributeColor = "#ff77aa";
+    eqColor = "#777777";
+    valueColor = "#33aaff";
+
+    constructor(fontSize, color, openingTag, closingTag) {
+      this.fontSize = fontSize;
+      this.fontSizeAttr = `font-size="${fontSize}px"`;
+      this.lineHeight = parseFloat((fontSize * 1.1).toFixed(2));
+      this.color = `fill="${color}" stroke="${color}"`;
+      this.strokeWidth = `stroke-width="${Math.round(fontSize * 0.05)}px"`;
+      this.sharedTextAttrs = `${this.fontFamily} ${this.fontSizeAttr} ${this.strokeWidth}`;
+      this.defaultColorAttrs = `${this.color}`;
+      this.openingTag = this.escapeForSVG(openingTag);
+      this.closingTag = this.escapeForSVG(closingTag);
+    }
+
+    escapeForSVG(text) {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    getElementAttributes(element) {
+      const attributes = [];
+      for (const attr of element.getAttributeNames()) {
+        let val = element.getAttribute(attr);
+        const numberVal = parseFloat(val);
+        if (!isNaN(numberVal)) val = numberVal.toFixed(2);
+        attributes.push(`${attr}="${val}"`);
+      }
+      return attributes;
+    }
+
+    getTextTag(content, yPosition, collorAttributes) {
+      let tag = `<text x="10" y="${yPosition}" ${this.sharedTextAttrs} ${collorAttributes}>`;
+      tag = `${tag} ${content} </text>`;
+      return tag;
+    }
+
+    getHighlightedTextTag(content, yPosition) {
+      let [attr, value] = content.split("=");
+      value = value.replace("/assets/playground", "https://mgz.me");
+
+      const attrColor = `fill="${this.attributeColor}" stroke="${this.attributeColor}"`;
+      const eqColor = `fill="${this.eqColor}" stroke="${this.eqColor}"`;
+      const valueColor = `fill="${this.valueColor}" stroke="${this.valueColor}"`;
+
+      let xOffset = this.fontSize;
+      let tag = `<text x="${xOffset}" y="${yPosition}" ${this.sharedTextAttrs} ${attrColor}>${attr}</text>`;
+      xOffset += attr.length * this.fontSize * 0.65;
+      tag += `<text x="${xOffset}" y="${yPosition}" ${this.sharedTextAttrs} ${eqColor}>=</text>`;
+      xOffset += this.fontSize * 0.65;
+      tag += `<text x="${xOffset}" y="${yPosition}" ${this.sharedTextAttrs} ${valueColor}>${value}</text>`;
+      return tag;
+    }
+
+    createAttributesSVG(imageElement, element) {
+      const attrs = this.getElementAttributes(element);
+      let maxTextWidth = 0;
+      let innerContent = "";
+      innerContent += this.getTextTag(this.openingTag, this.lineHeight, this.defaultColorAttrs);
+      attrs.forEach((attr, index) => {
+        const yPos = this.lineHeight * (index + 2);
+        innerContent += this.getHighlightedTextTag(attr, yPos);
+        const currentWidth = (attr.length + 4) * (this.fontSize * 0.6);
+        maxTextWidth = Math.max(maxTextWidth, currentWidth);
+      });
+      innerContent += this.getTextTag(
+        this.closingTag,
+        this.lineHeight * (attrs.length + 2),
+        this.defaultColorAttrs,
+      );
+      const svgWidth = maxTextWidth + 20;
+      const svgHeight = (attrs.length + 3) * this.lineHeight + 30;
+      const svgURI = encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">${innerContent}</svg>`,
+      );
+      imageElement.setAttribute("src", `data:image/svg+xml,${svgURI}`);
+    }
+  }
+
+  const attrToSVG = new AttributesToSVG(100, "#cccc44", "<m-video", "/></m-video>");
+  attrToSVG.createAttributesSVG(codeImage, video);
+
+  function loopAnim(element, attr, start, end, duration, pingPong, easing = undefined) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("loop", true);
+    anim.setAttribute("ping-pong", pingPong);
+    if (easing) {
+      anim.setAttribute("easing", easing);
+    }
+    element.appendChild(anim);
+  }
+
+  function createVideo(parentElement, src, x, y, z, width, height, emissive) {
+    const video = document.createElement("m-video");
+    video.setAttribute("x", x);
+    video.setAttribute("y", y);
+    video.setAttribute("z", z);
+    video.setAttribute("width", width);
+    video.setAttribute("height", height);
+    video.setAttribute("emissive", emissive);
+    video.setAttribute("src", src);
+    video.setAttribute("volume", 6);
+    video.setAttribute("loop", true);
+    parentElement.appendChild(video);
+    return video;
+  }
+
+  function createAudio(parentElement, src, x, y, z, rx, angle, falloff, debug) {
+    const audio = document.createElement("m-audio");
+    audio.setAttribute("x", x);
+    audio.setAttribute("y", y);
+    audio.setAttribute("z", z);
+    audio.setAttribute("rx", rx);
+    audio.setAttribute("cone-angle", angle);
+    audio.setAttribute("cone-falloff-angle", falloff);
+    audio.setAttribute("volume", unmutedAudioVolume);
+    audio.setAttribute("loop", true);
+    audio.setAttribute("src", src);
+    audio.setAttribute("debug", debug);
+    parentElement.appendChild(audio);
+    return audio;
+  }
+
+  function arraysAreEqual(arr1, arr2) {
+    if (arr1 === arr2) return true;
+    if (!Array.isArray(arr1) || !Array.isArray(arr2)) return false;
+    if (arr1.length !== arr2.length) return false;
+    for (let i = 0; i < arr1.length; i++) {
+      if (arr1[i] !== arr2[i]) return false;
+    }
+    return true;
+  }
+
+  function setPosition(element, x, y, z, ry) {
+    element.setAttribute("x", x);
+    element.setAttribute("y", y);
+    element.setAttribute("z", z);
+    element.setAttribute("ry", ry);
+  }
+
+  function createCylinder(radius, yPos, thickness, color, opacity) {
+    const cylinder = document.createElement("m-cylinder");
+    cylinder.setAttribute("radius", radius);
+    cylinder.setAttribute("y", yPos);
+    cylinder.setAttribute("height", thickness);
+    cylinder.setAttribute("rx", 90);
+    cylinder.setAttribute("color", color);
+    cylinder.setAttribute("opacity", opacity);
+    return cylinder;
+  }
+
+  function createImage(imageUrl, width, yPos, z, emissive) {
+    const image = document.createElement("m-image");
+    image.setAttribute("src", imageUrl);
+    image.setAttribute("width", width);
+    image.setAttribute("y", yPos);
+    image.setAttribute("z", z);
+    image.setAttribute("emissive", emissive);
+    return image;
+  }
+
+  function pauseVideo() {
+    const enabled = video.getAttribute("enabled") !== "false";
+    if (paused || !enabled) return;
+
+    const pauseButton = controls.get("pause");
+    pauseButton.icon.setAttribute("emissive", clickedEmissive);
+
+    setTimeout(() => {
+      pauseButton.emissive = disabledEmissive;
+      pauseButton.icon.setAttribute("emissive", disabledEmissive);
+    }, clickHighlightDuration);
+
+    const playButton = controls.get("play");
+    playButton.emissive = enabledEmissive;
+    playButton.icon.setAttribute("emissive", enabledEmissive);
+
+    lastPaused = document.timeline.currentTime;
+    video.setAttribute("pause-time", document.timeline.currentTime);
+    audio.setAttribute("pause-time", document.timeline.currentTime);
+    paused = true;
+  }
+
+  function resumeVideo() {
+    const enabled = video.getAttribute("enabled") !== "false";
+    if (!paused || !enabled) return;
+
+    const playButton = controls.get("play");
+    playButton.icon.setAttribute("emissive", clickedEmissive);
+
+    setTimeout(() => {
+      playButton.emissive = disabledEmissive;
+      playButton.icon.setAttribute("emissive", disabledEmissive);
+    }, clickHighlightDuration);
+
+    const pauseButton = controls.get("pause");
+    pauseButton.emissive = enabledEmissive;
+    pauseButton.icon.setAttribute("emissive", enabledEmissive);
+
+    const timeSincePaused = lastPaused - startedAt;
+    startedAt = document.timeline.currentTime - timeSincePaused;
+    video.setAttribute("start-time", startedAt);
+    video.removeAttribute("pause-time");
+    audio.setAttribute("start-time", startedAt);
+    audio.removeAttribute("pause-time");
+    paused = false;
+  }
+
+  function nextVideo() {
+    const enabled = video.getAttribute("enabled") !== "false";
+    if (!enabled) return;
+
+    const nextButton = controls.get("next");
+    nextButton.icon.setAttribute("emissive", clickedEmissive);
+    setTimeout(() => {
+      nextButton.icon.setAttribute("emissive", enabledEmissive);
+    }, clickHighlightDuration);
+
+    currentVideoIndex++;
+    if (currentVideoIndex > videosAvailable.length - 1) {
+      currentVideoIndex = 0;
+    }
+    startedAt = document.timeline.currentTime;
+    lastPaused = document.timeline.currentTime;
+    video.setAttribute("src", videosAvailable[currentVideoIndex]);
+    video.setAttribute("start-time", startedAt);
+    video.removeAttribute("pause-time");
+    audio.setAttribute("src", audiosAvailable[currentVideoIndex]);
+    audio.setAttribute("start-time", startedAt);
+    audio.removeAttribute("pause-time");
+
+    const playButton = controls.get("play");
+    playButton.emissive = disabledEmissive;
+    playButton.icon.setAttribute("emissive", disabledEmissive);
+
+    const pauseButton = controls.get("pause");
+    pauseButton.emissive = enabledEmissive;
+    pauseButton.icon.setAttribute("emissive", enabledEmissive);
+
+    paused = false;
+  }
+
+  function toggleEnabled() {
+    const enabled = video.getAttribute("enabled") !== "false";
+    const powerButton = controls.get("power");
+    powerButton.icon.setAttribute("emissive", clickedEmissive);
+    setTimeout(() => {
+      const newEmissive = enabled === false ? enabledEmissive : disabledEmissive + 4;
+      powerButton.emissive = newEmissive;
+      powerButton.icon.setAttribute("emissive", newEmissive);
+    }, clickHighlightDuration);
+    const newEnabledState = !enabled;
+    if (newEnabledState === false) {
+      const hasAudio = parseFloat(audio.getAttribute("volume")) > 0;
+      hadAudio = hasAudio;
+      if (hasAudio) {
+        toggleVolume();
+      }
+      controls.forEach((button, key) => {
+        if (key !== "power") {
+          button.icon.setAttribute("emissive", disabledEmissive);
+        }
+      });
+      video.setAttribute("enabled", newEnabledState.toString());
+    } else {
+      video.setAttribute("enabled", newEnabledState.toString());
+      const hasAudio = parseFloat(audio.getAttribute("volume")) > 0;
+      if (!hasAudio && hadAudio) {
+        toggleVolume();
+        hadAudio = hasAudio;
+      }
+      controls.forEach((button, key) => {
+        if (key !== "power") {
+          button.icon.setAttribute("emissive", button.emissive);
+        }
+      });
+    }
+  }
+
+  function toggleVolume() {
+    const enabled = video.getAttribute("enabled") !== "false";
+    if (!enabled) return;
+    const currentVolume = parseFloat(audio.getAttribute("volume"));
+    const volumeButton = controls.get("volume");
+
+    volumeButton.icon.setAttribute("emissive", clickedEmissive);
+    setTimeout(() => {
+      const newEmissive = currentVolume === 0 ? enabledEmissive : disabledEmissive;
+      volumeButton.icon.setAttribute("emissive", newEmissive);
+      volumeButton.emissive = newEmissive;
+    }, clickHighlightDuration);
+
+    if (currentVolume === 0) {
+      video.setAttribute("volume", unmutedAudioVolume);
+      audio.setAttribute("volume", unmutedAudioVolume);
+    } else {
+      video.setAttribute("volume", 0);
+      audio.setAttribute("volume", 0);
+    }
+  }
+
+  function handleButtonClick(name, event) {
+    switch (name) {
+      case "play": {
+        resumeVideo();
+        break;
+      }
+      case "pause": {
+        pauseVideo();
+        break;
+      }
+      case "next": {
+        nextVideo();
+        break;
+      }
+      case "volume": {
+        toggleVolume();
+        break;
+      }
+      case "power": {
+        toggleEnabled();
+        break;
+      }
+      default:
+        break;
+    }
+    attrToSVG.createAttributesSVG(codeImage, video);
+  }
+
+  function createControlButton(name, icon, radius, yPos, thickness, color, opacity) {
+    const buttonGroup = document.createElement("m-group");
+    const buttonBase = createCylinder(radius, yPos, thickness, color, opacity);
+    const offByDefault = ["play"];
+    const defaultEmissive = offByDefault.includes(name) ? disabledEmissive : enabledEmissive;
+    const width = radius + radius * 0.35;
+    const buttonIcon = createImage(icon, width, yPos, thickness / 2 + 0.003, defaultEmissive);
+
+    buttonGroup.appendChild(buttonBase);
+    buttonGroup.appendChild(buttonIcon);
+
+    const controlButton = {
+      group: buttonGroup,
+      icon: buttonIcon,
+      emissive: defaultEmissive,
+    };
+    controlButton.handleClick = (event) => handleButtonClick(name, event);
+    controlButton.group.addEventListener("click", controlButton.handleClick);
+    controls.set(name, controlButton);
+    return controlButton;
+  }
+
+  function createControls(radius, offset, thickness, color, opacity) {
+    const elements = controlsIcons.size;
+    let yPos = (elements * radius + elements * offset) / 1.3;
+    controlsIcons.forEach((value, key) => {
+      const button = createControlButton(key, value, radius, yPos, thickness, color, opacity);
+      controlsGroup.appendChild(button.group);
+      yPos -= offset;
+    });
+  }
+
+  function animateLabel(element, attr, start, end, duration, easing) {
+    animating = true;
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("start-time", document.timeline.currentTime);
+    anim.setAttribute("end-time", document.timeline.currentTime + duration);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("easing", easing);
+    anim.setAttribute("loop", false);
+    element.appendChild(anim);
+    setTimeout(() => {
+      element.setAttribute(attr, end);
+      element.removeChild(anim);
+      animating = false;
+    }, duration + 50);
+  }
+
+  const clickToControl = document.createElement("m-image");
+  clickToControl.setAttribute("src", "/assets/playground/click_to_control.png");
+  clickToControl.setAttribute("width", 0.8);
+  clickToControl.setAttribute("sx", 0);
+  clickToControl.setAttribute("sy", 0);
+  clickToControl.setAttribute("y", 2.85);
+  clickToControl.setAttribute("z", 0);
+  clickToControl.setAttribute("ry", 0);
+  clickToControl.setAttribute("emissive", 8);
+  clickToControl.setAttribute("class", "hidden");
+  controlsGroup.appendChild(clickToControl);
+  loopAnim(clickToControl, "y", 2.85, 2.95, 8000, true, "easeInOutQuad");
+  const playersInInfoProbe = new Set();
+  const showClickToControl = () => {
+    if (clickToControl.getAttribute("class") === "hidden") {
+      clickToControl.setAttribute("class", "visible");
+      animateLabel(clickToControl, "sx", 0, 1, 1000, "easeOutBack");
+      animateLabel(clickToControl, "sy", 0, 1, 1000, "easeOutBack");
+      setTimeout(() => {
+        animateLabel(codeImage, "sx", 0, 1, 1000, "easeOutBack");
+        animateLabel(codeImage, "sy", 0, 1, 1000, "easeOutBack");
+      }, 300);
+    }
+  };
+  const hideClickToControl = () => {
+    if (clickToControl.getAttribute("class") === "visible") {
+      clickToControl.setAttribute("class", "hidden");
+      animateLabel(clickToControl, "sx", 1, 0, 1000, "easeInBack");
+      animateLabel(clickToControl, "sy", 1, 0, 1000, "easeInBack");
+      setTimeout(() => {
+        animateLabel(codeImage, "sx", 1, 0, 1000, "easeInBack");
+        animateLabel(codeImage, "sy", 1, 0, 1000, "easeInBack");
+      }, 300);
+    }
+  };
+  const infoProbe = document.createElement("m-position-probe");
+  infoProbe.setAttribute("interval", 888);
+  infoProbe.setAttribute("range", 6.9);
+  infoProbe.setAttribute("debug", false);
+  infoProbe.addEventListener("positionenter", (event) => {
+    const { connectionId } = event.detail;
+    if (!playersInInfoProbe.has(connectionId)) playersInInfoProbe.add(connectionId);
+  });
+  infoProbe.addEventListener("positionmove", (event) => {
+    const { connectionId } = event.detail;
+    if (!playersInInfoProbe.has(connectionId)) playersInInfoProbe.add(connectionId);
+  });
+  infoProbe.addEventListener("positionleave", (event) => {
+    const { connectionId } = event.detail;
+    if (playersInInfoProbe.has(connectionId)) playersInInfoProbe.delete(connectionId);
+  });
+  window.addEventListener("disconnected", (event) => {
+    const { connectionId } = event.detail;
+    if (playersInInfoProbe.has(connectionId)) playersInInfoProbe.delete(connectionId);
+  });
+  setInterval(() => {
+    if (playersInInfoProbe.size > 0) {
+      showClickToControl();
+    } else {
+      hideClickToControl();
+    }
+  }, 1000);
+  wrapper.appendChild(infoProbe);
+
+  createControls(0.2, 0.42, 0.05, "#254035", 0.6);
+  setPosition(controlsGroup, 3.3, 0.0, 1.85, -21);
+  loopAnim(controlsGroup, "y", 0.0, 0.05, 8000, true, "easeInOutQuad");
+  loopAnim(codeImage, "y", 0.0, 0.05, 8000, true, "easeInOutQuad");
+</script>

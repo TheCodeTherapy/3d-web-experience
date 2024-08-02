@@ -1,0 +1,152 @@
+<m-group id="content-group">
+  <m-group id="altars-group"></m-group>
+</m-group>
+
+<script>
+  const contentGroup = document.getElementById("content-group");
+  const altarsGroup = document.getElementById("altars-group");
+
+  function createWindSFX(src, x, y, z, windVolume, startTime, debug) {
+    const wind = document.createElement("m-audio");
+    wind.setAttribute("debug", debug);
+    wind.setAttribute("src", src);
+    wind.setAttribute("volume", windVolume);
+    wind.setAttribute("x", x);
+    wind.setAttribute("y", y);
+    wind.setAttribute("z", z);
+    contentGroup.appendChild(wind);
+  }
+
+  function placeAltars(parentElement, radius, numberOfAltars) {
+    const angleStep = (2 * Math.PI) / numberOfAltars;
+    const angleOffset = (numberOfAltars - 1) / Math.PI;
+    const angleCorrection = Math.PI * 2 - 0.5;
+    const startRotation = -(angleStep * angleOffset) * (180 / Math.PI) + angleCorrection;
+    altarsGroup.setAttribute("ry", startRotation);
+    altarsGroup.setAttribute("y", -10);
+    for (let i = 0; i < numberOfAltars; i++) {
+      const angle = i * angleStep;
+
+      const now = document.timeline.currentTime;
+      const windOffset = 20;
+      const windX = Math.cos(angle) * (radius + windOffset);
+      const windY = 3;
+      const windZ = Math.sin(angle) * (radius + windOffset);
+      const windVolume = i % 2 === 0 ? 2 : 3;
+      const windDebug = false;
+      const windSrc = "/assets/playground/wind.mp3";
+      createWindSFX(windSrc, windX, windY, windZ, windVolume, now, windDebug);
+
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      const ry = -angle * (180 / Math.PI) - 90;
+      const altar = document.createElement("m-model");
+      altar.setAttribute("src", "/assets/playground/altar.glb");
+      altar.setAttribute("sx", 1.2);
+      altar.setAttribute("sy", 0.9);
+      altar.setAttribute("sz", 1.2);
+      altar.setAttribute("x", x);
+      altar.setAttribute("y", 0.05);
+      altar.setAttribute("z", z);
+      altar.setAttribute("ry", ry);
+      parentElement.appendChild(altar);
+
+      if (i === 0) {
+        const mFrame = document.createElement("m-frame");
+        mFrame.setAttribute("src", "wss:///mml-documents/intro.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("z", z);
+        altarsGroup.appendChild(mFrame);
+      } else if (i === 1) {
+        const mFrame = document.createElement("m-frame");
+        mFrame.setAttribute("src", "wss:///mml-documents/memory-game.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+        altarsGroup.appendChild(mFrame);
+      } else if (i === 2) {
+        const mFrame = document.createElement("m-frame");
+        mFrame.setAttribute("src", "wss:///mml-documents/how-mml-works.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+        altarsGroup.appendChild(mFrame);
+      } else if (i === 3) {
+        const mFrame = document.createElement("m-frame");
+        mFrame.setAttribute("src", "wss:///mml-documents/gaming-station.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+        altarsGroup.appendChild(mFrame);
+      } else if (i === 4) {
+        const mFrame = document.createElement("m-frame");
+        mFrame.setAttribute("src", "wss:///mml-documents/fallguys-game.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+        altarsGroup.appendChild(mFrame);
+      } else if (i === 5) {
+        const mFrame = document.createElement("m-frame");
+        mFrame.setAttribute("src", "wss:///mml-documents/rotate-anim.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+        altarsGroup.appendChild(mFrame);
+      } else if (i === 6) {
+        const mFrame = document.createElement("m-frame");
+        mFrame.setAttribute("src", "wss:///mml-documents/magic-stairs.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+        altarsGroup.appendChild(mFrame);
+      } else if (i === 7) {
+        const mFrame = document.createElement("m-frame");
+        mFrame.setAttribute("src", "wss:///mml-documents/magic-stairs.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+        altarsGroup.appendChild(mFrame);
+      } else if (i === 8) {
+        const mFrame = document.createElement("m-frame");
+        mFrame.setAttribute("src", "wss:///mml-documents/dice.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+        altarsGroup.appendChild(mFrame);
+      } else if (i === 9) {
+        const mFrame = document.createElement("m-frame");
+        mFrame.setAttribute("src", "wss:///mml-documents/tic-tac-toe.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+        altarsGroup.appendChild(mFrame);
+      } else if (i === 10) {
+        const mFrame = document.createElement("m-frame");
+        mFrame.setAttribute("src", "wss:///mml-documents/live-coding.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+        altarsGroup.appendChild(mFrame);
+      }
+    }
+  }
+
+  function addDocuments() {
+    altarsGroup.setAttribute("y", 0);
+  }
+
+  placeAltars(altarsGroup, 42, 12);
+
+  addDocuments();
+</script>

@@ -1,0 +1,273 @@
+<m-group id="wrapper" y="0.75">
+  <m-group id="game-group"></m-group>
+</m-group>
+
+<script>
+  const wrapper = document.getElementById("wrapper");
+  const gameGroup = document.getElementById("game-group");
+
+  const players = ["x", "o"];
+  let playerTurn = 0;
+
+  const columns = 3;
+  const blockSize = 1;
+  const blockDepth = blockSize / 10;
+  const gap = blockSize / 10;
+
+  const totalWidth = blockSize * columns + gap * (columns - 1);
+  const totalHeight = blockSize * columns + gap * (columns - 1);
+
+  const blockColor = "#cccccc";
+  const xColor = "#aaffaa";
+  const oColor = "#ffffff";
+
+  const blocks = new Map();
+  const playedMeshes = new Set();
+
+  let gameStates = Array(3)
+    .fill()
+    .map(() => Array(3).fill(null));
+
+  function changeTurn() {
+    playerTurn++;
+    if (playerTurn > players.length - 1) {
+      playerTurn = 0;
+    }
+  }
+
+  function createResultLabel() {
+    const label = document.createElement("m-label");
+    label.setAttribute("content", "tic-tac-toe");
+    label.setAttribute("width", totalWidth);
+    label.setAttribute("height", 0.17);
+    label.setAttribute("y", -0.1);
+    label.setAttribute("alignment", "center");
+    label.setAttribute("padding", 0);
+    label.setAttribute("font-size", 13);
+    label.setAttribute("color", "black");
+    label.setAttribute("font-color", "#aaffaa");
+    label.setAttribute("emissive", 2);
+    return label;
+  }
+
+  const label = createResultLabel();
+  gameGroup.appendChild(label);
+
+  function position(element, x, y, z) {
+    element.setAttribute("x", x);
+    element.setAttribute("y", y);
+    element.setAttribute("z", z);
+  }
+
+  function createFrame() {
+    const frame = document.createElement("m-cube");
+    frame.setAttribute("width", totalWidth);
+    frame.setAttribute("height", totalHeight);
+    frame.setAttribute("depth", blockDepth);
+    position(frame, 0, totalHeight / 2, -blockDepth);
+    frame.setAttribute("color", "black");
+    gameGroup.appendChild(frame);
+  }
+
+  function createCube(width, height, depth, color) {
+    const cube = document.createElement("m-cube");
+    cube.setAttribute("width", width);
+    cube.setAttribute("height", height);
+    cube.setAttribute("depth", depth);
+    cube.setAttribute("color", color);
+    return cube;
+  }
+
+  function createCylinder(radius, depth, color) {
+    const cylinder = document.createElement("m-cylinder");
+    cylinder.setAttribute("radius", radius);
+    cylinder.setAttribute("height", depth);
+    cylinder.setAttribute("rx", 90);
+    cylinder.setAttribute("color", color);
+    return cylinder;
+  }
+
+  function createX(pos) {
+    const xGroup = document.createElement("m-group");
+    const diagonal = createCube(blockDepth, blockSize, blockDepth, xColor);
+    const antiDiagonal = createCube(blockDepth, blockSize, blockDepth, xColor);
+    diagonal.setAttribute("rz", 45);
+    antiDiagonal.setAttribute("rz", -45);
+    xGroup.appendChild(diagonal);
+    xGroup.appendChild(antiDiagonal);
+    position(xGroup, pos.x, pos.y, pos.z + blockDepth);
+    return xGroup;
+  }
+
+  function createO(pos) {
+    const oGroup = document.createElement("m-group");
+    const outside = createCylinder(blockSize / 2 - blockDepth, blockDepth, oColor);
+    const inside = createCylinder(blockSize / 2 - blockDepth * 2, blockDepth, blockColor);
+    position(inside, 0, 0, 0.003);
+    oGroup.appendChild(outside);
+    oGroup.appendChild(inside);
+    position(oGroup, pos.x, pos.y, pos.z + blockDepth);
+    return oGroup;
+  }
+
+  function animate(element, attr, start, end, duration, easing, loop, pingPong, pingPongDelay) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("start-time", document.timeline.currentTime);
+    anim.setAttribute("pause-time", document.timeline.currentTime + duration);
+    anim.setAttribute("loop", loop);
+    if (pingPong) {
+      anim.setAttribute("ping-pong", pingPong);
+    }
+    if (pingPongDelay) {
+      anim.setAttribute("ping-pong-delay", pingPongDelay);
+    }
+    element.appendChild(anim);
+    if (loop === false) {
+      setTimeout(() => {
+        element.removeChild(anim);
+      }, duration);
+    }
+  }
+
+  function checkRows() {
+    for (let i = 0; i < 3; i++) {
+      if (gameStates[i][0] && gameStates[i].every((cell) => cell === gameStates[i][0])) {
+        return `${gameStates[i][0].toUpperCase()} wins`;
+      }
+    }
+    return null;
+  }
+
+  function checkColumns() {
+    for (let i = 0; i < 3; i++) {
+      if (gameStates[0][i]) {
+        const victory = gameStates.every((row) => row[i] === gameStates[0][i]);
+        if (victory) {
+          return `${gameStates[0][i].toUpperCase()} wins`;
+        }
+      }
+    }
+    return null;
+  }
+
+  function checkGameStatus() {
+    const rowsVictory = checkRows();
+    if (rowsVictory) {
+      return rowsVictory;
+    }
+
+    const colsVictory = checkColumns();
+    if (colsVictory) {
+      return colsVictory;
+    }
+
+    if (
+      gameStates[0][0] &&
+      gameStates[0][0] === gameStates[1][1] &&
+      gameStates[1][1] === gameStates[2][2]
+    ) {
+      return `${gameStates[0][0].toUpperCase()} wins`;
+    }
+
+    if (
+      gameStates[0][2] &&
+      gameStates[0][2] === gameStates[1][1] &&
+      gameStates[1][1] === gameStates[2][0]
+    ) {
+      return `${gameStates[0][2].toUpperCase()} wins`;
+    }
+
+    if (
+      blocks.size === 9 &&
+      [...blocks.values()].every((block) => gameStates[block.row][block.column])
+    ) {
+      return "draw";
+    }
+
+    return null;
+  }
+
+  function processGameStep(block) {
+    if (players[playerTurn] === "x") {
+      console.log(block.position);
+      const x = createX(block.position);
+      playedMeshes.add(x);
+      gameGroup.appendChild(x);
+    } else {
+      const o = createO(block.position);
+      playedMeshes.add(o);
+      gameGroup.appendChild(o);
+    }
+    gameStates[block.row][block.column] = players[playerTurn];
+    const gameResult = checkGameStatus();
+    if (gameResult) {
+      label.setAttribute("content", gameResult);
+      setTimeout(() => resetGame(), 5000);
+    } else {
+      changeTurn();
+    }
+  }
+
+  function handleBlockClick(blockId, evet) {
+    const playerId = event.detail.connectionId;
+    const block = blocks.get(blockId);
+    if (block.isAnimating === false) {
+      block.isAnimating = true;
+      animate(block.mesh, "color", blockColor, "#ffffff", 250, "easeInOutQuad", false, true, 25);
+      setTimeout(() => (block.isAnimating = false), 250);
+    }
+    processGameStep(block);
+  }
+
+  function createBlock(index) {
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+
+    const cube = createCube(blockSize, blockSize, blockDepth, blockColor);
+
+    const blockGroup = document.createElement("m-group");
+    const x = blockSize / 2 + column * (blockSize + gap) - totalWidth / 2;
+    const y = blockSize / 2 + row * (blockSize + gap);
+    const z = 0;
+    position(blockGroup, x, y, z);
+    const block = {
+      id: index,
+      group: blockGroup,
+      mesh: cube,
+      isAnimating: false,
+      position: { x: x, y: y, z: z },
+      row: row,
+      column: column,
+    };
+    blocks.set(block.id, block);
+    blockGroup.appendChild(cube);
+
+    block.handleClick = (event) => handleBlockClick(block.id, event);
+    cube.addEventListener("click", block.handleClick);
+    return block;
+  }
+
+  function resetGame() {
+    playedMeshes.forEach((mesh) => {
+      gameGroup.removeChild(mesh);
+    });
+    playedMeshes.clear();
+    label.setAttribute("content", "tic-tac-toe");
+    gameStates = Array(3)
+      .fill()
+      .map(() => Array(3).fill(null));
+  }
+
+  function createGame() {
+    createFrame();
+    for (let i = 0; i < 9; i++) {
+      const block = createBlock(i);
+      gameGroup.appendChild(block.group);
+    }
+  }
+  createGame();
+</script>
