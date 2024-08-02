@@ -551,16 +551,24 @@ class N8SSAOPass extends Pass {
 
     if (this.scene.fog) {
       if (this.scene.fog instanceof Fog && this.scene.fog.isFog === true) {
-        effectCompositerUniforms.fogExp.value = false;
-        effectCompositerUniforms.fogNear.value = this.scene.fog.near;
-        effectCompositerUniforms.fogFar.value = this.scene.fog.far;
+        // effectCompositerUniforms.fogExp.value = false;
+        // effectCompositerUniforms.fogNear.value = this.scene.fog.near;
+        // effectCompositerUniforms.fogFar.value = this.scene.fog.far;
+        // no-op (see below)
       } else if (this.scene.fog instanceof FogExp2) {
-        effectCompositerUniforms.fogExp.value = true;
-        effectCompositerUniforms.fogDensity.value = this.scene.fog.density;
+        // effectCompositerUniforms.fogExp.value = true;
+        // effectCompositerUniforms.fogDensity.value = this.scene.fog.density;
+        // no-op (see below)
       } else {
-        console.error(`Unsupported fog type ${this.scene.fog.constructor.name} in SSAOPass.`);
+        // console.error(`Unsupported fog type ${this.scene.fog.constructor.name} in SSAOPass.`);
+        // no-op (see below)
       }
     }
+
+    // temporary fix until postprocessing v7 gets released with proper depth buffer management
+    effectCompositerUniforms.fogExp.value = false;
+    effectCompositerUniforms.fogNear.value = 0.0;
+    effectCompositerUniforms.fogFar.value = 2000.0;
 
     renderer.setRenderTarget(this.outputTargetInternal);
     this.effectCompositerQuad.render(renderer);
