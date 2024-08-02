@@ -1,6 +1,38 @@
 import dolbyio from "@dolbyio/dolbyio-rest-apis-client";
 import * as jwtToken from "@dolbyio/dolbyio-rest-apis-client/dist/types/jwtToken";
 import express from "express";
+import { AccessToken } from "livekit-server-sdk";
+
+export function registerLiveKitVoiceRoutes(
+  app: express.Application,
+  options: {
+    LIVEKIT_WS_URL: string;
+    LIVEKIT_API_KEY: string;
+    LIVEKIT_API_SECRET: string;
+    VOICE_CHAT_PASSWORD: string;
+  },
+) {
+  app.get("/livekit-voice-token/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { headers } = req;
+      const password = headers["x-custom-auth"];
+      if (password === options.VOICE_CHAT_PASSWORD) {
+        const at = new AccessToken(options.LIVEKIT_API_KEY, options.LIVEKIT_API_SECRET, {
+          identity: `participant-${id}`,
+        });
+        at.addGrant({ roomJoin: true, room: "mml.mgz.me" });
+        const token = await at.toJwt();
+        res.status(200).json({ token: token, ws_url: options.LIVEKIT_WS_URL });
+      } else {
+        res.status(401).json({ error: "Unauthorized: Incorrect password" });
+      }
+    } catch (err) {
+      console.error(`error: ${err}`);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+}
 
 export function registerDolbyVoiceRoutes(
   app: express.Application,

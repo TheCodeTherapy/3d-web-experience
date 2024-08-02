@@ -4,11 +4,12 @@ import url from "url";
 
 import { Networked3dWebExperienceServer } from "@mml-io/3d-web-experience-server";
 import type { CharacterDescription } from "@mml-io/3d-web-user-networking";
+import dotenv from "dotenv";
 import express from "express";
 import enableWs from "express-ws";
 
 import { BasicUserAuthenticator } from "./BasicUserAuthenticator";
-import { registerDolbyVoiceRoutes } from "./voice-routes";
+import { registerDolbyVoiceRoutes, registerLiveKitVoiceRoutes } from "./voice-routes";
 
 const dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
@@ -47,12 +48,29 @@ const webClientBuildDir = path.join(dirname, "../../client/build/");
 const indexContent = fs.readFileSync(path.join(webClientBuildDir, "index.html"), "utf8");
 const mmlDocumentsWatchPath = path.resolve(path.join(dirname, "../mml-documents"), "*.html");
 
+dotenv.config();
 const { app } = enableWs(express());
 app.enable("trust proxy");
+
+const VOICE_CHAT_PASSWORD = process.env.VOICE_CHAT_PASSWORD ?? "";
+
 const DOLBY_APP_KEY = process.env.DOLBY_APP_KEY ?? "";
 const DOLBY_APP_SECRET = process.env.DOLBY_APP_SECRET ?? "";
 if (DOLBY_APP_KEY && DOLBY_APP_SECRET) {
   registerDolbyVoiceRoutes(app, { DOLBY_APP_KEY, DOLBY_APP_SECRET });
+}
+
+const LIVEKIT_WS_URL = process.env.LIVEKIT_WS_URL ?? "";
+const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
+const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
+
+if (LIVEKIT_WS_URL && LIVEKIT_API_KEY && LIVEKIT_API_SECRET && VOICE_CHAT_PASSWORD) {
+  registerLiveKitVoiceRoutes(app, {
+    LIVEKIT_WS_URL,
+    LIVEKIT_API_KEY,
+    LIVEKIT_API_SECRET,
+    VOICE_CHAT_PASSWORD,
+  });
 }
 
 const networked3dWebExperienceServer = new Networked3dWebExperienceServer({
