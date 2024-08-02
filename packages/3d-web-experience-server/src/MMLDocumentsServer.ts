@@ -10,6 +10,15 @@ const getMmlDocumentContent = (documentPath: string) => {
   return fs.readFileSync(documentPath, { encoding: "utf8", flag: "r" });
 };
 
+const checkDevEnv = (mmlDocumentContent: string): string => {
+  let content = mmlDocumentContent;
+  if (process.env.NODE_ENV !== "production") {
+    const regex = /wss:\/\/\//g;
+    content = content.replace(regex, "ws:///");
+  }
+  return content;
+};
+
 export class MMLDocumentsServer {
   private documents = new Map<
     string,
@@ -54,7 +63,7 @@ export class MMLDocumentsServer {
       .on("add", (relativeFilePath) => {
         const filename = path.basename(relativeFilePath);
         console.log(`Example document '${filename}' has been added`);
-        const contents = getMmlDocumentContent(relativeFilePath);
+        const contents = checkDevEnv(getMmlDocumentContent(relativeFilePath));
         const document = new EditableNetworkedDOM(
           url.pathToFileURL(filename).toString(),
           LocalObservableDOMFactory,
@@ -70,7 +79,7 @@ export class MMLDocumentsServer {
       .on("change", (relativeFilePath) => {
         const filename = path.basename(relativeFilePath);
         console.log(`Example document '${filename}' has been changed`);
-        const contents = getMmlDocumentContent(relativeFilePath);
+        const contents = checkDevEnv(getMmlDocumentContent(relativeFilePath));
         const documentState = this.documents.get(filename);
         if (!documentState) {
           console.error(`Example document '${filename}' not found`);
