@@ -146,6 +146,7 @@ export class ChatNetworkingServer {
             break;
 
           case CHAT_NETWORKING_CHAT_MESSAGE_TYPE:
+            // eslint-disable-next-line no-case-declarations
             const asChatMessage: ChatNetworkingServerChatMessage = {
               type: CHAT_NETWORKING_CHAT_MESSAGE_TYPE,
               id: client.id,
