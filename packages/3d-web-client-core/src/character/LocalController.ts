@@ -24,7 +24,7 @@ export type LocalControllerConfig = {
 
 export class LocalController {
   public capsuleInfo = {
-    radius: 0.4,
+    radius: 0.45,
     segment: new Line3(new Vector3(), new Vector3(0, 1.05, 0)),
   };
 
