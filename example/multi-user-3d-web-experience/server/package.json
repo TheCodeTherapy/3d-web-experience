@@ -26,7 +26,9 @@
     "express": "4.19.2",
     "express-ws": "5.0.2",
     "networked-dom-server": "0.17.0",
-    "ws": "8.18.0"
+    "ws": "8.18.0",
+    "livekit-server-sdk": "2.6.0",
+    "dotenv": "16.4.5"
   },
   "devDependencies": {
     "@types/cors": "2.8.17",
