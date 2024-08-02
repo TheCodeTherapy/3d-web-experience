@@ -1,12 +1,4 @@
-import {
-  Camera,
-  Color,
-  FrontSide,
-  LinearFilter,
-  Mesh,
-  MeshBasicMaterial,
-  PlaneGeometry,
-} from "three";
+import { Camera, Color, FrontSide, Mesh, MeshStandardMaterial, PlaneGeometry } from "three";
 
 import { THREECanvasTextTexture } from "./CanvasText";
 
@@ -40,7 +32,7 @@ export type CharacterTooltipConfig = {
 };
 
 export class CharacterTooltip extends Mesh {
-  private tooltipMaterial: MeshBasicMaterial;
+  private tooltipMaterial: MeshStandardMaterial;
   private visibleOpacity: number = 0.85;
   private targetOpacity: number = 0;
   private fadingSpeed: number = 0.02;
@@ -61,9 +53,9 @@ export class CharacterTooltip extends Mesh {
       ...configArg,
     };
 
-    this.tooltipMaterial = new MeshBasicMaterial({
+    this.tooltipMaterial = new MeshStandardMaterial({
       map: null,
-      transparent: true,
+      transparent: false,
       opacity: 0,
       side: FrontSide,
     });
@@ -99,13 +91,16 @@ export class CharacterTooltip extends Mesh {
     });
 
     this.tooltipMaterial.map = texture;
-    this.tooltipMaterial.map.magFilter = LinearFilter;
-    this.tooltipMaterial.map.minFilter = LinearFilter;
+
+    this.tooltipMaterial.emissiveMap = texture;
+    this.tooltipMaterial.emissive = new Color(0xffffff);
+    this.tooltipMaterial.emissiveIntensity = 3;
+
     this.tooltipMaterial.needsUpdate = true;
 
     this.scale.x = width / (100 * fontScale);
     this.scale.y = height / (100 * fontScale);
-    this.position.y = 1.4;
+    this.position.y = 1.9;
   }
 
   setText(text: string, temporary: boolean = false) {
@@ -124,6 +119,15 @@ export class CharacterTooltip extends Mesh {
     this.targetOpacity = 0;
   }
 
+  snapAsymptotics(opacity: number) {
+    if (opacity <= 0.02) {
+      this.tooltipMaterial.opacity = 0;
+    }
+    if (opacity >= 0.98) {
+      this.tooltipMaterial.opacity = 1;
+    }
+  }
+
   update(camera: Camera) {
     this.lookAt(camera.position);
     const opacity = this.tooltipMaterial.opacity;
@@ -137,6 +141,7 @@ export class CharacterTooltip extends Mesh {
         this.tooltipMaterial.opacity - this.fadingSpeed,
         this.targetOpacity,
       );
+      this.snapAsymptotics(opacity);
       if (opacity >= 1 && this.tooltipMaterial.transparent) {
         this.tooltipMaterial.transparent = false;
         this.tooltipMaterial.needsUpdate = true;
