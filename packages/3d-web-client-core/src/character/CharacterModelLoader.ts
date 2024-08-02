@@ -1,6 +1,5 @@
 import { ModelLoader, ModelLoadResult } from "@mml-io/model-loader";
 import { AnimationClip, Object3D } from "three";
-import { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 class LRUCache<K, V> {
   private maxSize: number;
@@ -91,6 +90,7 @@ export class CharacterModelLoader {
     extension: string,
   ): Promise<Object3D | AnimationClip | undefined> {
     if (["gltf", "glb"].includes(extension)) {
+      // eslint-disable-next-line no-async-promise-executor
       return new Promise(async (resolve, reject) => {
         const modelLoadResult: ModelLoadResult = await this.modelLoader.load(
           url,
