@@ -121,6 +121,10 @@ export class UserNetworkingServer {
         if (!client.authenticatedUser) {
           if (parsed.type === USER_NETWORKING_USER_AUTHENTICATE_MESSAGE_TYPE) {
             this.handleUserAuth(client, parsed).then((authResult) => {
+              if (client.socket.readyState !== WebSocketOpenStatus) {
+                // The client disconnected before the authentication was completed
+                return;
+              }
               if (!authResult) {
                 // If the user is not authorized, disconnect the client
                 const serverError = JSON.stringify({
@@ -147,6 +151,7 @@ export class UserNetworkingServer {
                 }
 
                 const userData = authResult;
+                client.authenticatedUser = userData;
 
                 // Give the client its own profile
                 const userProfileMessage = JSON.stringify({
@@ -262,7 +267,6 @@ export class UserNetworkingServer {
     }
 
     console.log("Client authenticated", client.id, resolvedUserData);
-    client.authenticatedUser = resolvedUserData;
 
     return resolvedUserData;
   }
