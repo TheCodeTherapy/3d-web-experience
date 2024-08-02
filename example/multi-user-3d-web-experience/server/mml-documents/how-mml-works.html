@@ -499,4 +499,31 @@
       resetGreenConnection();
     }
   }, 1000 / 3);
+
+  function createLinkToSource(parent, url, x, y, z, width, ry, rx, bgColor, fgColor) {
+    const label = document.createElement("m-label");
+    label.setAttribute("content", "🔗 link to the example's source code");
+    label.setAttribute("width", width);
+    label.setAttribute("height", 0.15);
+    label.setAttribute("font-size", 12);
+    label.setAttribute("font-color", fgColor);
+    label.setAttribute("color", bgColor);
+    label.setAttribute("emissive", 3);
+    label.setAttribute("alignment", "center");
+    label.setAttribute("padding", 0);
+
+    const link = document.createElement("m-link");
+    link.setAttribute("href", url);
+    link.setAttribute("x", x);
+    link.setAttribute("y", y);
+    link.setAttribute("z", z);
+    link.setAttribute("ry", ry);
+    link.setAttribute("rx", rx);
+
+    link.appendChild(label);
+    parent.appendChild(link);
+  }
+  const sourceURL =
+    "https://github.com/TheCodeTherapy/3d-web-experience/blob/161d205dda0590b07631765309724f34475f77d7/example/multi-user-3d-web-experience/server/mml-documents/how-mml-works.html";
+  createLinkToSource(demoGroup, sourceURL, -4.1, 0.02, -2.71, 2, 0, -45, "#000000", "#4477ff");
 </script>
