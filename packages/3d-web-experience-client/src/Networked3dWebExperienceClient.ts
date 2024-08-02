@@ -39,16 +39,16 @@ import {
   UserNetworkingServerErrorType,
   WebsocketStatus,
 } from "@mml-io/3d-web-user-networking";
-import { VoiceChatManager } from "@mml-io/3d-web-voice-chat";
+import { VoiceChatManager, VoiceChatLiveKitManager } from "@mml-io/3d-web-voice-chat";
 import {
   IMMLScene,
   LoadingProgressManager,
   registerCustomElementsToWindow,
   setGlobalMMLScene,
 } from "mml-web";
-import { AudioListener, Euler, Scene, Vector3 } from "three";
+import { AudioListener, Euler, Group, Scene, Vector3 } from "three";
 
-type MMLDocumentConfiguration = {
+export type MMLDocumentConfiguration = {
   url: string;
   position?: {
     x: number;
@@ -122,7 +122,7 @@ export class Networked3dWebExperienceClient {
 
   private avatarSelectionUI: AvatarSelectionUI | null = null;
 
-  private voiceChatManager: VoiceChatManager | null = null;
+  private voiceChatManager: VoiceChatManager | VoiceChatLiveKitManager | null = null;
   private readonly latestCharacterObject = {
     characterState: null as null | CharacterState,
   };
@@ -133,6 +133,8 @@ export class Networked3dWebExperienceClient {
   private loadingScreen: LoadingScreen;
   private errorScreen?: ErrorScreen;
   private currentRequestAnimationFrame: number | null = null;
+
+  private groundPlane: GroundPlane | null = null;
 
   constructor(
     private holderElement: HTMLElement,
@@ -275,9 +277,12 @@ export class Networked3dWebExperienceClient {
     this.scene.add(this.characterManager.group);
 
     if (this.config.environmentConfiguration?.groundPlane !== false) {
-      const groundPlane = new GroundPlane();
-      this.collisionsManager.addMeshesGroup(groundPlane);
-      this.scene.add(groundPlane);
+      this.groundPlane = new GroundPlane(this.config.environmentConfiguration?.groundPlaneType);
+      this.collisionsManager.addMeshesGroup(this.groundPlane);
+      if (this.groundPlane.grass) {
+        this.scene.add(this.groundPlane.grass);
+      }
+      this.scene.add(this.groundPlane);
     }
 
     this.setupMMLScene();
@@ -395,7 +400,7 @@ export class Networked3dWebExperienceClient {
     if (this.clientId === null) return;
 
     if (this.voiceChatManager === null && this.config.voiceChatAddress) {
-      this.voiceChatManager = new VoiceChatManager({
+      this.voiceChatManager = new VoiceChatLiveKitManager({
         url: this.config.voiceChatAddress,
         holderElement: this.element,
         userId: this.clientId,
@@ -487,6 +492,9 @@ export class Networked3dWebExperienceClient {
     this.voiceChatManager?.speakingParticipants.forEach((value: boolean, id: number) => {
       this.characterManager.setSpeakingCharacter(id, value);
     });
+    if (this.config.environmentConfiguration?.groundPlane !== false) {
+      this.groundPlane!.update(this.timeManager.deltaTime);
+    }
     this.cameraManager.update();
     this.composer.sun?.updateCharacterPosition(this.characterManager.localCharacter?.position);
     this.composer.render(this.timeManager);
