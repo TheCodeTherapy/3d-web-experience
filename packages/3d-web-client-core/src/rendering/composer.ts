@@ -60,6 +60,7 @@ type ComposerContructorArgs = {
 
 export type EnvironmentConfiguration = {
   groundPlane?: boolean;
+  groundPlaneType?: "neutral" | "grass" | undefined;
   skybox?: {
     intensity?: number;
     blurriness?: number;
@@ -254,6 +255,7 @@ export class Composer {
       this.effectComposer.addPass(this.n8aopass);
     }
     this.effectComposer.addPass(this.fxaaPass);
+    this.effectComposer.addPass(this.smaaPass);
     this.effectComposer.addPass(this.bloomPass);
     this.effectComposer.addPass(this.toneMappingPass);
     this.effectComposer.addPass(this.bcsPass);
