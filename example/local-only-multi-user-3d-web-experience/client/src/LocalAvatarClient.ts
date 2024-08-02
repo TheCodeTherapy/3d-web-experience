@@ -18,7 +18,9 @@ import { AudioListener, Euler, Scene, Vector3 } from "three";
 
 import hdrJpgUrl from "../../../assets/hdr/puresky_2k.jpg";
 import airAnimationFileUrl from "../../../assets/models/anim_air.glb";
-import doubleJumpAnimationFileUrl from "../../../assets/models/anim_double_jump.glb";
+import altFrontFlipFileUrl from "../../../assets/models/anim_alt_frontflip.glb";
+import backFlipFileUrl from "../../../assets/models/anim_backflip.glb";
+import frontFlipFileUrl from "../../../assets/models/anim_frontflip.glb";
 import idleAnimationFileUrl from "../../../assets/models/anim_idle.glb";
 import jogAnimationFileUrl from "../../../assets/models/anim_jog.glb";
 import sprintAnimationFileUrl from "../../../assets/models/anim_run.glb";
@@ -26,12 +28,48 @@ import defaultAvatarMeshFileUrl from "../../../assets/models/bot.glb";
 
 import { LocalAvatarServer } from "./LocalAvatarServer";
 
+const useBackFlip = true;
+const useAltFrontFlip = false;
+
+const doubleJumpAnimationFileUrl = useBackFlip
+  ? backFlipFileUrl
+  : useAltFrontFlip
+    ? altFrontFlipFileUrl
+    : frontFlipFileUrl;
+
+const idleAnimationSettings = {
+  fileUrl: idleAnimationFileUrl,
+  loop: true,
+};
+
+const jogAnimationSettings = {
+  fileUrl: jogAnimationFileUrl,
+  loop: true,
+};
+
+const sprintAnimationSettings = {
+  fileUrl: sprintAnimationFileUrl,
+  loop: true,
+};
+
+const airAnimationSettings = {
+  fileUrl: airAnimationFileUrl,
+  loop: true,
+};
+
+const doubleJumpAnimationSettings = {
+  fileUrl: doubleJumpAnimationFileUrl,
+  loop: false,
+  discardNonRotationTransform: true,
+  playbackSpeed: 1.42,
+};
+
 const animationConfig: AnimationConfig = {
-  airAnimationFileUrl,
-  idleAnimationFileUrl,
-  jogAnimationFileUrl,
-  sprintAnimationFileUrl,
-  doubleJumpAnimationFileUrl,
+  idleAnimation: idleAnimationSettings,
+  jogAnimation: jogAnimationSettings,
+  sprintAnimation: sprintAnimationSettings,
+  airAnimation: airAnimationSettings,
+  doubleJumpAnimation: doubleJumpAnimationSettings,
 };
 
 // Specify the avatar to use here:
