@@ -269,6 +269,7 @@ export class SSAOFolder {
           n8aopass.configuration.intensity = e.value;
           break;
         case "color":
+          // eslint-disable-next-line no-case-declarations
           const value = (e as any).value;
           n8aopass.configuration.color = new Color().setRGB(value.r, value.g, value.b);
           break;

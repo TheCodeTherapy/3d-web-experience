@@ -24,17 +24,18 @@ const sunOptions = {
 export const envValues = {
   skyboxAzimuthalAngle: 0,
   skyboxPolarAngle: 0,
-  envMapIntensity: 0.07,
-  skyboxIntensity: 0.8,
+  envMapIntensity: 0.12,
+  skyboxIntensity: 0.9, // 0.8,
   skyboxBlurriness: 0.0,
   ambientLight: {
-    ambientLightIntensity: 0.27,
+    ambientLightIntensity: 0.21,
     ambientLightColor: { r: 1, g: 1, b: 1 },
   },
   fog: {
-    fogNear: 21,
+    fogNear: 12, // 21,
     fogFar: 180,
-    fogColor: { r: 0.7, g: 0.7, b: 0.7 },
+    // fogColor: { r: 0.7, g: 0.7, b: 0.7 },
+    fogColor: { r: 0.6, g: 0.6, b: 0.6 },
   },
 };
 

@@ -77,6 +77,7 @@ export class RendererFolder {
           break;
         }
         case "toneMapping":
+          // eslint-disable-next-line no-case-declarations
           const value = e.value as ToneMapping;
           toneMappingFolder.hidden = e.value !== 5;
           toneMappingPass.enabled = e.value === 5 ? true : false;
