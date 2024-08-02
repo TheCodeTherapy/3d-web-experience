@@ -53,30 +53,39 @@ export class CharacterModel {
   public async init(): Promise<void> {
     await this.loadMainMesh();
     await this.setAnimationFromFile(
-      this.config.animationConfig.idleAnimationFileUrl,
+      this.config.animationConfig.idleAnimation.fileUrl,
       AnimationState.idle,
-      true,
+      !!this.config.animationConfig.idleAnimation.loop,
+      this.config.animationConfig.idleAnimation.playbackSpeed || 1.0,
+      !!this.config.animationConfig.idleAnimation.discardNonRotationTransform,
     );
     await this.setAnimationFromFile(
-      this.config.animationConfig.jogAnimationFileUrl,
+      this.config.animationConfig.jogAnimation.fileUrl,
       AnimationState.walking,
-      true,
+      !!this.config.animationConfig.jogAnimation.loop,
+      this.config.animationConfig.jogAnimation.playbackSpeed || 1.0,
+      !!this.config.animationConfig.jogAnimation.discardNonRotationTransform,
     );
     await this.setAnimationFromFile(
-      this.config.animationConfig.sprintAnimationFileUrl,
+      this.config.animationConfig.sprintAnimation.fileUrl,
       AnimationState.running,
-      true,
+      !!this.config.animationConfig.sprintAnimation.loop,
+      this.config.animationConfig.sprintAnimation.playbackSpeed || 1.0,
+      !!this.config.animationConfig.sprintAnimation.discardNonRotationTransform,
     );
     await this.setAnimationFromFile(
-      this.config.animationConfig.airAnimationFileUrl,
+      this.config.animationConfig.airAnimation.fileUrl,
       AnimationState.air,
-      true,
+      !!this.config.animationConfig.airAnimation.loop,
+      this.config.animationConfig.airAnimation.playbackSpeed || 1.0,
+      !!this.config.animationConfig.airAnimation.discardNonRotationTransform,
     );
     await this.setAnimationFromFile(
-      this.config.animationConfig.doubleJumpAnimationFileUrl,
+      this.config.animationConfig.doubleJumpAnimation.fileUrl,
       AnimationState.doubleJump,
-      false,
-      1.45,
+      !!this.config.animationConfig.doubleJumpAnimation.loop,
+      this.config.animationConfig.doubleJumpAnimation.playbackSpeed || 1.0,
+      !!this.config.animationConfig.doubleJumpAnimation.discardNonRotationTransform,
     );
     this.applyCustomMaterials();
   }
@@ -213,7 +222,11 @@ export class CharacterModel {
     }
   }
 
-  private cleanAnimationClips(skeletalMesh: Object3D, animationClip: AnimationClip): AnimationClip {
+  private cleanAnimationClips(
+    skeletalMesh: Object3D,
+    animationClip: AnimationClip,
+    cleanupTransform: boolean = true,
+  ): AnimationClip {
     const availableBones = new Set<string>();
     skeletalMesh.traverse((child) => {
       const asBone = child as Bone;
@@ -223,8 +236,15 @@ export class CharacterModel {
     });
     animationClip.tracks = animationClip.tracks.filter((track) => {
       const [trackName, trackProperty] = track.name.split(".");
-      const shouldAnimate =
-        availableBones.has(trackName) && trackProperty !== "position" && trackProperty !== "scale";
+      let shouldAnimate: boolean = false;
+      if (cleanupTransform) {
+        shouldAnimate =
+          availableBones.has(trackName) &&
+          trackProperty !== "position" &&
+          trackProperty !== "scale";
+      } else {
+        shouldAnimate = availableBones.has(trackName);
+      }
       return shouldAnimate;
     });
     return animationClip;
@@ -235,10 +255,20 @@ export class CharacterModel {
     animationType: AnimationState,
     loop: boolean = true,
     playbackSpeed: number = 1.0,
+    discardNonRotationTransform: boolean = true,
   ): Promise<void> {
+    // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve, reject) => {
       const animation = await this.config.characterModelLoader.load(animationFileUrl, "animation");
-      const cleanAnimation = this.cleanAnimationClips(this.mesh!, animation as AnimationClip);
+      const isDoubleJump =
+        animationFileUrl.includes("backflip") || animationFileUrl.includes("frontflip");
+      const cleanAnimation = isDoubleJump
+        ? this.cleanAnimationClips(this.mesh!, animation as AnimationClip)
+        : this.cleanAnimationClips(
+            this.mesh!,
+            animation as AnimationClip,
+            discardNonRotationTransform,
+          );
       if (typeof animation !== "undefined" && cleanAnimation instanceof AnimationClip) {
         this.animations[animationType] = this.animationMixer!.clipAction(cleanAnimation);
         this.animations[animationType].stop();

@@ -9,12 +9,19 @@ import { CharacterSpeakingIndicator } from "./CharacterSpeakingIndicator";
 import { AnimationState } from "./CharacterState";
 import { CharacterTooltip } from "./CharacterTooltip";
 
+export type AnimationSettings = {
+  fileUrl: string;
+  loop?: boolean;
+  discardNonRotationTransform?: boolean;
+  playbackSpeed?: number;
+};
+
 export type AnimationConfig = {
-  idleAnimationFileUrl: string;
-  jogAnimationFileUrl: string;
-  sprintAnimationFileUrl: string;
-  airAnimationFileUrl: string;
-  doubleJumpAnimationFileUrl: string;
+  idleAnimation: AnimationSettings;
+  jogAnimation: AnimationSettings;
+  sprintAnimation: AnimationSettings;
+  airAnimation: AnimationSettings;
+  doubleJumpAnimation: AnimationSettings;
 };
 
 export type CharacterDescription = {
