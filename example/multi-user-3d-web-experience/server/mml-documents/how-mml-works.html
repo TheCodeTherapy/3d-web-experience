@@ -192,10 +192,11 @@
 
   const connSize = 2.5;
 
-  const playersInProbe = new Set();
+  const playersInProbe = new Map();
 
   let videoPlaying = false;
   let videoFinished = false;
+  let videoFinishedAt = new Date();
 
   function createAudio(src, start, pause, x, y, z, rx, angle, falloff, debug) {
     const audio = document.createElement("m-audio");
@@ -445,6 +446,7 @@
     setTimeout(() => {
       resetCubes();
       hideDocumentCode();
+      videoFinishedAt = new Date();
       videoFinished = true;
     }, videoDuration);
   }
@@ -458,14 +460,26 @@
   }
 
   demoTrigger.addEventListener("positionenter", (event) => {
+    const playerId = event.detail.connectionId;
+    const playerPosition = event.detail.documentRelative.position;
     if (!playersInProbe.has(event.detail.connectionId)) {
-      playersInProbe.add(event.detail.connectionId);
+      const player = {
+        id: playerId,
+        position: playerPosition,
+      };
+      playersInProbe.set(event.detail.connectionId, player);
     }
   });
 
   demoTrigger.addEventListener("positionmove", (event) => {
+    const playerId = event.detail.connectionId;
+    const playerPosition = event.detail.documentRelative.position;
     if (!playersInProbe.has(event.detail.connectionId)) {
-      playersInProbe.add(event.detail.connectionId);
+      const player = {
+        id: playerId,
+        position: playerPosition,
+      };
+      playersInProbe.set(event.detail.connectionId, player);
     }
   });
 
@@ -481,6 +495,16 @@
     }
   });
 
+  function resetDocument() {
+    videoFinished = false;
+    stopVideo();
+    hideMDocument();
+    hideClients();
+    hideClientsCube();
+    resetBlueConnection();
+    resetGreenConnection();
+  }
+
   setInterval(() => {
     const videoPlaying = videoTrack.getAttribute("class") === "is-playing";
     const hasPlayers = playersInProbe.size > 0;
@@ -489,15 +513,17 @@
       playVideo();
     }
 
-    if (!hasPlayers && videoPlaying && videoFinished === true) {
-      videoFinished = false;
-      stopVideo();
-      hideMDocument();
-      hideClients();
-      hideClientsCube();
-      resetBlueConnection();
-      resetGreenConnection();
+    if (hasPlayers && videoFinished) {
+      if (new Date() - videoFinishedAt > 10000) {
+        resetDocument();
+      }
     }
+
+    if (hasPlayers && videoFinished === true)
+      if (!hasPlayers && videoPlaying && videoFinished === true) {
+        videoFinished = false;
+        resetDocument();
+      }
   }, 1000 / 3);
 
   function createLinkToSource(parent, url, x, y, z, width, ry, rx, bgColor, fgColor) {
