@@ -192,11 +192,308 @@
 
   const connSize = 2.5;
 
-  const playersInProbe = new Map();
+  const playersInProbe = new Set();
 
   let videoPlaying = false;
   let videoFinished = false;
-  let videoFinishedAt = new Date();
+  let demoResetting = false;
+  const demoResetTimeout = 2000;
+
+  // interaction buttons ============================================
+  class InteractionButton {
+    baseModelURL = "/assets/playground/interaction_button_base.glb";
+    playButtonOnModelURL = "/assets/playground/interaction_play_button_on.glb";
+    playButtonOffModelURL = "/assets/playground/interaction_play_button_off.glb";
+    questionButtonOnModelURL = "/assets/playground/interaction_question_button_on.glb";
+    questionButtonOffModelURL = "/assets/playground/interaction_question_button_off.glb";
+    buttonSoundURL = "/assets/playground/interaction_button_sfx.mp3";
+
+    animDuration = 210;
+    buttonSoundDuration = 1200;
+    offset = 0.03;
+    easing = "easeInOutCubic";
+
+    infoSound = null;
+    infoSoundDuration = 0;
+    infoSoundCanPlay = true;
+    buttonSoundCanPlay = true;
+
+    group = document.createElement("m-group");
+    base = document.createElement("m-model");
+    buttonOn = document.createElement("m-model");
+    buttonOff = document.createElement("m-model");
+    buttonSound = document.createElement("m-audio");
+
+    constructor(x, y, z, yRotation, parentGroup) {
+      this.base.setAttribute("src", this.baseModelURL);
+      this.transform(this.group, x, y, z, yRotation);
+      this.group.appendChild(this.base);
+      parentGroup.appendChild(this.group);
+      this.setupButtonSound();
+      return this;
+    }
+
+    setupPlay(callBackFunction) {
+      this.buttonOn.setAttribute("src", this.playButtonOnModelURL);
+      this.buttonOff.setAttribute("src", this.playButtonOffModelURL);
+      this.group.appendChild(this.buttonOn);
+      this.group.appendChild(this.buttonOff);
+      this.scale(this.buttonOff, 0.001);
+
+      this.buttonOn.addEventListener("click", () => {
+        this.pushButtonAnim();
+        setTimeout(() => {
+          this.releaseButtonAnim();
+          setTimeout(() => {
+            this.turnOff();
+            callBackFunction();
+          }, this.animDuration + 20);
+        }, this.animDuration + 20);
+
+        this.playButtonSound();
+      });
+    }
+
+    loopAnim(element, attr, start, end, duration, pingPong, easing = undefined) {
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("loop", true);
+      anim.setAttribute("ping-pong", pingPong);
+      if (easing) {
+        anim.setAttribute("easing", easing);
+      }
+      element.appendChild(anim);
+    }
+
+    animateLabel(element, attr, start, end, duration, easing) {
+      animating = true;
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("start-time", document.timeline.currentTime);
+      anim.setAttribute("end-time", document.timeline.currentTime + duration);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("easing", easing);
+      anim.setAttribute("loop", false);
+      element.appendChild(anim);
+      setTimeout(() => {
+        element.setAttribute(attr, end);
+        element.removeChild(anim);
+        animating = false;
+      }, duration + 50);
+    }
+
+    setupInfo(infoSoundURL, infoSoundDuration, infoSoundVolume) {
+      this.buttonOn.setAttribute("src", this.questionButtonOnModelURL);
+      this.buttonOff.setAttribute("src", this.questionButtonOffModelURL);
+      this.group.appendChild(this.buttonOn);
+      this.group.appendChild(this.buttonOff);
+      this.scale(this.buttonOff, 0.001);
+
+      this.infoSound = document.createElement("m-audio");
+      this.infoSound.setAttribute("y", 15);
+      this.infoSound.setAttribute("rx", 90);
+      this.infoSound.setAttribute("cone-angle", 45);
+      this.infoSound.setAttribute("cone-falloff-angle", 100);
+      this.infoSound.setAttribute("loop", false);
+      this.infoSound.setAttribute("debug", false);
+      this.infoSound.setAttribute("src", infoSoundURL);
+      this.infoSound.setAttribute("volume", 0);
+      this.infoSound.setAttribute("start-time", document.timeline.currentTime - infoSoundDuration);
+      this.infoSound.setAttribute("pause-time", document.timeline.currentTime);
+      this.group.appendChild(this.infoSound);
+
+      const clickForInfoLabel = document.createElement("m-image");
+      clickForInfoLabel.setAttribute("src", "/assets/playground/click_for_info.png");
+      clickForInfoLabel.setAttribute("width", 0.65);
+      clickForInfoLabel.setAttribute("sx", 0);
+      clickForInfoLabel.setAttribute("sy", 0);
+      clickForInfoLabel.setAttribute("y", 1.4);
+      clickForInfoLabel.setAttribute("z", 0.1);
+      clickForInfoLabel.setAttribute("ry", 180);
+      clickForInfoLabel.setAttribute("emissive", 8);
+      clickForInfoLabel.setAttribute("class", "hidden");
+      this.loopAnim(clickForInfoLabel, "y", 1.4, 1.45, 8000, true, "easeInOutQuad");
+      this.base.appendChild(clickForInfoLabel);
+
+      const playersInInfoProbe = new Set();
+      const showClickForInfo = () => {
+        if (clickForInfoLabel.getAttribute("class") === "hidden") {
+          clickForInfoLabel.setAttribute("class", "visible");
+          this.animateLabel(clickForInfoLabel, "sx", 0, 1, 1000, "easeOutBack");
+          this.animateLabel(clickForInfoLabel, "sy", 0, 1, 1000, "easeOutBack");
+        }
+      };
+      const hideClickForInfo = () => {
+        if (clickForInfoLabel.getAttribute("class") === "visible") {
+          clickForInfoLabel.setAttribute("class", "hidden");
+          this.animateLabel(clickForInfoLabel, "sx", 1, 0, 1000, "easeInBack");
+          this.animateLabel(clickForInfoLabel, "sy", 1, 0, 1000, "easeInBack");
+        }
+      };
+      const infoProbe = document.createElement("m-position-probe");
+      infoProbe.setAttribute("interval", 777);
+      infoProbe.setAttribute("range", 5.5);
+      infoProbe.setAttribute("debug", false);
+      infoProbe.addEventListener("positionenter", (event) => {
+        const { connectionId } = event.detail;
+        if (!playersInInfoProbe.has(connectionId)) playersInInfoProbe.add(connectionId);
+      });
+      infoProbe.addEventListener("positionmove", (event) => {
+        const { connectionId } = event.detail;
+        if (!playersInInfoProbe.has(connectionId)) playersInInfoProbe.add(connectionId);
+      });
+      infoProbe.addEventListener("positionleave", (event) => {
+        const { connectionId } = event.detail;
+        if (playersInInfoProbe.has(connectionId)) playersInInfoProbe.delete(connectionId);
+      });
+      window.addEventListener("disconnected", (event) => {
+        const { connectionId } = event.detail;
+        if (playersInInfoProbe.has(connectionId)) playersInInfoProbe.delete(connectionId);
+      });
+      setInterval(() => {
+        if (playersInInfoProbe.size > 0) {
+          showClickForInfo();
+        } else {
+          hideClickForInfo();
+        }
+      }, 1000);
+      this.base.appendChild(infoProbe);
+
+      this.buttonOn.addEventListener("click", () => {
+        this.pushButtonAnim();
+        setTimeout(() => {
+          this.releaseButtonAnim();
+          setTimeout(() => {
+            this.turnOff();
+            setTimeout(() => this.turnOn(), infoSoundDuration);
+          }, this.animDuration + 20);
+        }, this.animDuration + 20);
+
+        this.playButtonSound();
+        setTimeout(() => {
+          this.playInfoSound(infoSoundDuration, infoSoundVolume);
+        }, this.buttonSoundDuration * 0.6667);
+      });
+    }
+
+    turnOff() {
+      this.swap(this.buttonOn, this.buttonOff);
+    }
+
+    turnOn() {
+      this.swap(this.buttonOff, this.buttonOn);
+    }
+
+    pushButtonAnim() {
+      this.animateButton(this.buttonOn, "y", 0, -this.offset, this.animDuration, this.easing);
+      this.animateButton(this.buttonOn, "z", 0, this.offset, this.animDuration, this.easing);
+    }
+
+    releaseButtonAnim() {
+      this.animateButton(this.buttonOn, "y", -this.offset, 0, this.animDuration, this.easing);
+      this.animateButton(this.buttonOn, "z", this.offset, 0, this.animDuration, this.easing);
+    }
+
+    playInfoSound(infoSoundDuration, infoSoundVolume) {
+      if (this.infoSoundCanPlay === false || this.infoSound === null) {
+        return;
+      }
+      this.infoSoundCanPlay = false;
+      const now = document.timeline.currentTime;
+      this.infoSound.setAttribute("volume", infoSoundVolume);
+      this.infoSound.setAttribute("start-time", now);
+      this.infoSound.setAttribute("pause-time", now + infoSoundDuration);
+      setTimeout(() => {
+        this.infoSound.setAttribute("volume", 0);
+        this.infoSoundCanPlay = true;
+      }, infoSoundDuration);
+    }
+
+    playButtonSound() {
+      if (this.buttonSoundCanPlay === false) {
+        return;
+      }
+      this.buttonSoundCanPlay === false;
+      const now = document.timeline.currentTime;
+      this.buttonSound.setAttribute("volume", 3);
+      this.buttonSound.setAttribute("start-time", now);
+      this.buttonSound.setAttribute("pause-time", now + this.buttonSoundDuration);
+      setTimeout(() => {
+        this.buttonSound.setAttribute("volume", 0);
+        this.buttonSoundCanPlay === true;
+      }, this.buttonSoundDuration);
+    }
+
+    transform(element, x, y, z, ry) {
+      element.setAttribute("x", x);
+      element.setAttribute("y", y);
+      element.setAttribute("z", z);
+      element.setAttribute("ry", ry);
+    }
+
+    scale(element, size) {
+      element.setAttribute("sx", size);
+      element.setAttribute("sy", size);
+      element.setAttribute("sz", size);
+    }
+
+    swap(elementA, elementB) {
+      this.scale(elementB, 1.0);
+      this.scale(elementA, 0.001);
+    }
+
+    setupButtonSound() {
+      this.buttonSound.setAttribute("y", 1.2);
+      this.buttonSound.setAttribute("loop", false);
+      this.buttonSound.setAttribute("debug", false);
+      this.buttonSound.setAttribute("src", "/assets/playground/interaction_button_sfx.mp3");
+      this.buttonSound.setAttribute("volume", 0);
+      this.buttonSound.setAttribute("start-time", document.timeline.currentTime - 900);
+      this.buttonSound.setAttribute("pause-time", document.timeline.currentTime);
+      this.group.appendChild(this.buttonSound);
+    }
+
+    animateButton(element, attr, start, end, duration, easing) {
+      const buttonAnim = document.createElement("m-attr-anim");
+      buttonAnim.setAttribute("attr", attr);
+      buttonAnim.setAttribute("start", start);
+      buttonAnim.setAttribute("end", end);
+      buttonAnim.setAttribute("start-time", document.timeline.currentTime);
+      buttonAnim.setAttribute("end-time", document.timeline.currentTime + duration);
+      buttonAnim.setAttribute("duration", duration);
+      buttonAnim.setAttribute("easing", easing);
+      buttonAnim.setAttribute("loop", false);
+      element.appendChild(buttonAnim);
+      setTimeout(() => {
+        element.setAttribute(attr, end);
+        element.removeChild(buttonAnim);
+      }, duration);
+    }
+  }
+
+  const playButton = new InteractionButton(-4.5, 0, 1, 180, demoGroup);
+  playButton.setupPlay(() => {
+    handlePlayButton();
+  });
+  // ================================================================
+
+  function handlePlayButton() {
+    if (playersInProbe.size > 0) {
+      if (videoFinished === true && demoResetting === false) {
+        resetDemo();
+      }
+    } else {
+      resetDemo();
+      setTimeout(() => {
+        playVideo();
+      }, demoResetTimeout + 200);
+    }
+  }
 
   function createAudio(src, start, pause, x, y, z, rx, angle, falloff, debug) {
     const audio = document.createElement("m-audio");
@@ -446,7 +743,6 @@
     setTimeout(() => {
       resetCubes();
       hideDocumentCode();
-      videoFinishedAt = new Date();
       videoFinished = true;
     }, videoDuration);
   }
@@ -460,26 +756,14 @@
   }
 
   demoTrigger.addEventListener("positionenter", (event) => {
-    const playerId = event.detail.connectionId;
-    const playerPosition = event.detail.documentRelative.position;
     if (!playersInProbe.has(event.detail.connectionId)) {
-      const player = {
-        id: playerId,
-        position: playerPosition,
-      };
-      playersInProbe.set(event.detail.connectionId, player);
+      playersInProbe.add(event.detail.connectionId);
     }
   });
 
   demoTrigger.addEventListener("positionmove", (event) => {
-    const playerId = event.detail.connectionId;
-    const playerPosition = event.detail.documentRelative.position;
     if (!playersInProbe.has(event.detail.connectionId)) {
-      const player = {
-        id: playerId,
-        position: playerPosition,
-      };
-      playersInProbe.set(event.detail.connectionId, player);
+      playersInProbe.add(event.detail.connectionId);
     }
   });
 
@@ -495,7 +779,8 @@
     }
   });
 
-  function resetDocument() {
+  function resetDemo() {
+    demoResetting = true;
     videoFinished = false;
     stopVideo();
     hideMDocument();
@@ -503,27 +788,28 @@
     hideClientsCube();
     resetBlueConnection();
     resetGreenConnection();
+    setTimeout(() => {
+      demoResetting = false;
+    }, demoResetTimeout);
   }
 
   setInterval(() => {
     const videoPlaying = videoTrack.getAttribute("class") === "is-playing";
     const hasPlayers = playersInProbe.size > 0;
 
-    if (hasPlayers && !videoPlaying) {
+    if (playButton && (videoFinished === true || videoPlaying === false) && !demoResetting) {
+      playButton.turnOn();
+    } else {
+      playButton.turnOff();
+    }
+
+    if (hasPlayers && !videoPlaying && !demoResetting) {
       playVideo();
     }
 
-    if (hasPlayers && videoFinished) {
-      if (new Date() - videoFinishedAt > 10000) {
-        resetDocument();
-      }
+    if (!hasPlayers && videoPlaying && videoFinished === true) {
+      resetDemo();
     }
-
-    if (hasPlayers && videoFinished === true)
-      if (!hasPlayers && videoPlaying && videoFinished === true) {
-        videoFinished = false;
-        resetDocument();
-      }
   }, 1000 / 3);
 
   function createLinkToSource(parent, url, x, y, z, width, ry, rx, bgColor, fgColor) {
