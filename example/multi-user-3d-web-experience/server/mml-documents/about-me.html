@@ -1,0 +1,151 @@
+<m-group id="wrapper"></m-group>
+<script>
+  const wrapper = document.getElementById("wrapper");
+
+  const images = new Set();
+  let imagesHidden = true;
+
+  function animate(element, attr, start, end, duration, easing, loop = false) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("start-time", document.timeline.currentTime);
+    anim.setAttribute("end-time", document.timeline.currentTime + duration);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("easing", easing);
+    anim.setAttribute("loop", loop);
+    element.appendChild(anim);
+    setTimeout(() => {
+      element.setAttribute(attr, end);
+      element.removeChild(anim);
+    }, duration);
+    return anim;
+  }
+
+  function loopAnim(element, attr, start, end, startTime, duration, pingPong, easing = undefined) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("start-time", startTime);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("loop", true);
+    anim.setAttribute("ping-pong", pingPong);
+    if (easing) {
+      anim.setAttribute("easing", easing);
+    }
+    element.appendChild(anim);
+  }
+
+  function createImage(src) {
+    const image = document.createElement("m-image");
+    image.setAttribute("src", src);
+    image.setAttribute("sx", 0);
+    image.setAttribute("sy", 0);
+    image.setAttribute("emissive", 5);
+    image.setAttribute("y", 1.5);
+    return image;
+  }
+
+  const now = document.timeline.currentTime;
+
+  const discordModel = document.createElement("m-model");
+  discordModel.setAttribute("src", "/assets/playground/3d-icons-discord.glb");
+  discordModel.setAttribute("x", -4);
+  discordModel.setAttribute("y", 2);
+  discordModel.setAttribute("z", -1);
+
+  const discordImage = createImage("/assets/playground/img_click_to_discord.png");
+  discordModel.appendChild(discordImage);
+  images.add(discordImage);
+
+  const discordLink = document.createElement("m-link");
+  discordLink.setAttribute("href", "https://mgz.me/discord");
+  discordLink.appendChild(discordModel);
+
+  wrapper.appendChild(discordLink);
+  loopAnim(discordModel, "y", 2, 2.15, now - 2000, 8000, true, "easeInOutQuad");
+
+  const githubModel = document.createElement("m-model");
+  githubModel.setAttribute("src", "/assets/playground/3d-icons-github.glb");
+  githubModel.setAttribute("y", 2);
+  githubModel.setAttribute("z", -3);
+
+  const githubImage = createImage("/assets/playground/img_click_to_github.png");
+  githubModel.appendChild(githubImage);
+  images.add(githubImage);
+
+  const githubLink = document.createElement("m-link");
+  githubLink.setAttribute("href", "https://github.com/thecodetherapy/3d-web-experience");
+  githubLink.appendChild(githubModel);
+
+  wrapper.appendChild(githubLink);
+  loopAnim(githubModel, "y", 2, 2.15, now - 1000, 8000, true, "easeInOutQuad");
+
+  const webModel = document.createElement("m-model");
+  webModel.setAttribute("src", "/assets/playground/3d-icons-www.glb");
+  webModel.setAttribute("x", 4);
+  webModel.setAttribute("y", 2);
+  webModel.setAttribute("z", -1);
+
+  const webImage = createImage("/assets/playground/img_click_to_website.png");
+  webModel.appendChild(webImage);
+  images.add(webImage);
+
+  const webLink = document.createElement("m-link");
+  webLink.setAttribute("href", "https://mgz.me");
+  webLink.appendChild(webModel);
+  wrapper.appendChild(webLink);
+  loopAnim(webModel, "y", 2, 2.15, now, 8000, true, "easeInOutQuad");
+
+  function showImages() {
+    if (imagesHidden === false) return;
+    imagesHidden = false;
+    images.forEach((image) => {
+      animate(image, "sx", 0, 2, 1000, "easeOutBack");
+      animate(image, "sy", 0, 2, 1000, "easeOutBack");
+    });
+  }
+
+  function hideImages() {
+    if (imagesHidden === true) return;
+    imagesHidden = true;
+    images.forEach((image) => {
+      animate(image, "sx", 2, 0, 1000, "easeInBack");
+      animate(image, "sy", 2, 0, 1000, "easeInBack");
+    });
+  }
+
+  const playersInProbe = new Set();
+  const probe = document.createElement("m-position-probe");
+  probe.setAttribute("debug", false);
+  probe.setAttribute("range", 6.9);
+  probe.addEventListener("positionenter", (event) => {
+    const { connectionId } = event.detail;
+    if (!playersInProbe.has(connectionId)) playersInProbe.add(connectionId);
+  });
+  probe.addEventListener("positionmove", (event) => {
+    const { connectionId } = event.detail;
+    if (!playersInProbe.has(connectionId)) playersInProbe.add(connectionId);
+  });
+
+  probe.addEventListener("positionleave", (event) => {
+    const { connectionId } = event.detail;
+    if (playersInProbe.has(connectionId)) playersInProbe.delete(connectionId);
+  });
+
+  window.addEventListener("disconnected", (event) => {
+    const { connectionId } = event.detail;
+    if (playersInProbe.has(connectionId)) playersInProbe.delete(connectionId);
+  });
+  wrapper.appendChild(probe);
+
+  setInterval(() => {
+    if (playersInProbe.size > 0) {
+      showImages();
+    } else {
+      hideImages();
+    }
+  }, 1000);
+</script>
