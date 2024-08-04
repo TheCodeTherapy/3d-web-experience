@@ -31,37 +31,6 @@
     element.appendChild(anim);
   }
 
-  function forkOnGitHub(x, z, ry) {
-    const forkGroup = document.createElement("m-group");
-
-    const forkImage = document.createElement("m-image");
-    forkImage.setAttribute("src", "/assets/playground/fork.png");
-    forkImage.setAttribute("emissive", 3);
-
-    const forkImageBg = document.createElement("m-cube");
-    forkImageBg.setAttribute("width", 0.92);
-    forkImageBg.setAttribute("height", 0.55);
-    forkImageBg.setAttribute("depth", 0.03);
-    forkImageBg.setAttribute("opacity", 0.8);
-    forkImageBg.setAttribute("color", "#000000");
-    forkImageBg.setAttribute("y", 0.06);
-    forkImageBg.setAttribute("z", -0.025);
-    forkGroup.appendChild(forkImageBg);
-
-    forkGroup.appendChild(forkImage);
-    forkGroup.setAttribute("x", x);
-    forkGroup.setAttribute("y", 2.2);
-    forkGroup.setAttribute("z", -5.5);
-    forkGroup.setAttribute("ry", -90);
-    loopAnim(forkGroup, "y", 2.2, 2.25, 8000, true, "easeInOutQuad");
-
-    const link = document.createElement("m-link");
-    link.setAttribute("href", "https://github.com/thecodetherapy/3d-web-experience");
-    link.appendChild(forkGroup);
-
-    altarsGroup.appendChild(link);
-  }
-
   function placeAltars(parentElement, radius, numberOfAltars) {
     const angleStep = (2 * Math.PI) / numberOfAltars;
     const angleOffset = (numberOfAltars - 1) / Math.PI;
@@ -86,115 +55,94 @@
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
       const ry = -angle * (180 / Math.PI) - 90;
+      const mmlDocYPos = 0.8;
 
       const altar = document.createElement("m-model");
-      altar.setAttribute("src", "/assets/playground/altar.glb");
+      altar.setAttribute("src", "/assets/playground/mml_altar.glb");
       altar.setAttribute("sx", 1.2);
       altar.setAttribute("sy", 0.9);
       altar.setAttribute("sz", 1.2);
       altar.setAttribute("x", x);
-      altar.setAttribute("y", 0.05);
+      altar.setAttribute("y", 0);
       altar.setAttribute("z", z);
       altar.setAttribute("ry", ry);
       parentElement.appendChild(altar);
 
+      const mFrame = document.createElement("m-frame");
       if (i === 0) {
-        forkOnGitHub(Math.cos(angle) * radius - 5.4);
-        const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/intro.html");
         mFrame.setAttribute("x", x);
-        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
-        altarsGroup.appendChild(mFrame);
+        mFrame.setAttribute("ry", ry);
       } else if (i === 1) {
-        const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/memory-game.html");
         mFrame.setAttribute("x", x);
-        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
-        altarsGroup.appendChild(mFrame);
       } else if (i === 2) {
-        const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/how-mml-works.html");
         mFrame.setAttribute("x", x);
-        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
-        altarsGroup.appendChild(mFrame);
       } else if (i === 3) {
-        const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/gaming-station.html");
         mFrame.setAttribute("x", x);
-        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
-        altarsGroup.appendChild(mFrame);
       } else if (i === 4) {
-        const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/fallguys-game.html");
         mFrame.setAttribute("x", x);
-        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
-        altarsGroup.appendChild(mFrame);
       } else if (i === 5) {
-        const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/rotate-anim.html");
         mFrame.setAttribute("x", x);
-        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
-        altarsGroup.appendChild(mFrame);
       } else if (i === 6) {
-        const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/magic-stairs.html");
         mFrame.setAttribute("x", x);
-        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
-        altarsGroup.appendChild(mFrame);
       } else if (i === 7) {
-        const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/magic-stairs.html");
         mFrame.setAttribute("x", x);
-        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
-        altarsGroup.appendChild(mFrame);
       } else if (i === 8) {
-        const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/dice.html");
         mFrame.setAttribute("x", x);
-        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
-        altarsGroup.appendChild(mFrame);
       } else if (i === 9) {
-        const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/tic-tac-toe.html");
         mFrame.setAttribute("x", x);
-        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
-        altarsGroup.appendChild(mFrame);
       } else if (i === 10) {
-        const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/live-coding.html");
         mFrame.setAttribute("x", x);
-        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
-        altarsGroup.appendChild(mFrame);
       } else if (i === 11) {
-        const mFrame = document.createElement("m-frame");
         mFrame.setAttribute("src", "wss:///mml-documents/about-me.html");
         mFrame.setAttribute("x", x);
-        mFrame.setAttribute("y", 1.12);
+        mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
-        altarsGroup.appendChild(mFrame);
       }
+      altarsGroup.appendChild(mFrame);
     }
   }
 
