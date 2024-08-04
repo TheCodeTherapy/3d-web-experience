@@ -384,7 +384,7 @@ export class GroundPlane extends Group {
       this.add(this.floorMesh);
 
       this.grass = new Grass({
-        leavesCount: 3000000,
+        leavesCount: 3500000,
         radius: this.floorSize,
         leafBaseWidth: 0.03, //0.027,
         leafHeight: 0.32,
