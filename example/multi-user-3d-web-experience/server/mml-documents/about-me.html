@@ -48,6 +48,12 @@
     return image;
   }
 
+  function scale(element, sx, sy, sz) {
+    element.setAttribute("sx", sx);
+    element.setAttribute("sy", sy);
+    element.setAttribute("sz", sz);
+  }
+
   const now = document.timeline.currentTime;
 
   const discordModel = document.createElement("m-model");
@@ -99,6 +105,19 @@
   wrapper.appendChild(webLink);
   loopAnim(webModel, "y", 2, 2.15, now, 8000, true, "easeInOutQuad");
 
+  const modelScale = 0.6;
+  scale(discordModel, modelScale, modelScale, modelScale);
+  scale(githubModel, modelScale, modelScale, modelScale);
+  scale(webModel, modelScale, modelScale, modelScale);
+
+  function animateEveryScale(elements, start, end, duration, easing) {
+    for (let i = 0; i < elements.length; i++) {
+      animate(elements[i], "sx", start, end, duration, easing);
+      animate(elements[i], "sy", start, end, duration, easing);
+      animate(elements[i], "sz", start, end, duration, easing);
+    }
+  }
+
   function showImages() {
     if (imagesHidden === false) return;
     imagesHidden = false;
@@ -106,6 +125,7 @@
       animate(image, "sx", 0, 2, 1000, "easeOutBack");
       animate(image, "sy", 0, 2, 1000, "easeOutBack");
     });
+    animateEveryScale([discordModel, githubModel, webModel], 0.6, 0.8, 1000, "easeOutBack");
   }
 
   function hideImages() {
@@ -115,6 +135,7 @@
       animate(image, "sx", 2, 0, 1000, "easeInBack");
       animate(image, "sy", 2, 0, 1000, "easeInBack");
     });
+    animateEveryScale([discordModel, githubModel, webModel], 0.8, 0.6, 1000, "easeOutBack");
   }
 
   const playersInProbe = new Set();
