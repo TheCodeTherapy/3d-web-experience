@@ -107,8 +107,8 @@ jobs:
   #         git config --global user.email "lerna-ci@mml.io"
   #         git config --global user.name "lerna-ci-mml"
 
-          # Set up npm auth token from secret for publishing
-          npm config set //registry.npmjs.org/:_authToken=${NPM_TOKEN}
+  #         # Set up npm auth token from secret for publishing
+  #         npm config set //registry.npmjs.org/:_authToken=${NPM_TOKEN}
 
   #         # Publish the current commit as an "experimental" version
   #         version="0.0.0-experimental-$(git rev-parse --short HEAD)-$(date +'%Y%m%d')"
@@ -138,8 +138,8 @@ jobs:
   #         git config --global user.email "lerna-ci@mml.io"
   #         git config --global user.name "lerna-ci-mml"
 
-          # Set up npm auth token from secret for publishing
-          npm config set //registry.npmjs.org/:_authToken=${NPM_TOKEN}
+  #         # Set up npm auth token from secret for publishing
+  #         echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > .npmrc
 
   #         # Attempt to publish at the current version - this will skip if the version already exists
   #         echo "Attempting to publishing latest version"
