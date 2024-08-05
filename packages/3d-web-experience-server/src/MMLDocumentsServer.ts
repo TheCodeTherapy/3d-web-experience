@@ -68,7 +68,7 @@ export class MMLDocumentsServer {
       .on("add", (fullPath) => {
         const relativePath = path.relative(this.directory, fullPath);
         console.log(`MML Document '${relativePath}' has been added`);
-        const contents = getMmlDocumentContent(fullPath);
+        const contents = checkDevEnv(getMmlDocumentContent(fullPath));
         const document = new EditableNetworkedDOM(
           url.pathToFileURL(fullPath).toString(),
           LocalObservableDOMFactory,
@@ -84,7 +84,7 @@ export class MMLDocumentsServer {
       .on("change", (fullPath) => {
         const relativePath = path.relative(this.directory, fullPath);
         console.log(`MML Document '${relativePath}' has been changed`);
-        const contents = getMmlDocumentContent(fullPath);
+        const contents = checkDevEnv(getMmlDocumentContent(fullPath));
         const documentState = this.documents.get(relativePath);
         if (!documentState) {
           console.error(`MML Document '${relativePath}' not found`);

@@ -64,11 +64,13 @@ const app = new Networked3dWebExperienceClient(holder, {
     airAnimation: airAnimationSettings,
     doubleJumpAnimation: doubleJumpAnimationSettings,
   },
-  mmlDocuments: { example: { url: `${protocol}//${host}/mml-documents/example-mml.html` } },
+  mmlDocuments: { example: { url: `${protocol}//${host}/mml-documents/playground.html` } },
   environmentConfiguration: {
     skybox: {
       hdrJpgUrl: hdrJpgUrl,
     },
+    groundPlane: true,
+    groundPlaneType: "grass",
   },
   avatarConfiguration: {
     availableAvatars: [
