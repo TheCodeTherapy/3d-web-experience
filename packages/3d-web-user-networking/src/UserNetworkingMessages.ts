@@ -3,6 +3,7 @@ export const USER_NETWORKING_IDENTITY_MESSAGE_TYPE = "identity";
 export const USER_NETWORKING_USER_AUTHENTICATE_MESSAGE_TYPE = "user_auth";
 export const USER_NETWORKING_USER_PROFILE_MESSAGE_TYPE = "user_profile";
 export const USER_NETWORKING_USER_UPDATE_MESSAGE_TYPE = "user_update";
+export const USER_NETWORKING_SERVER_BROADCAST_MESSAGE_TYPE = "broadcast";
 export const USER_NETWORKING_SERVER_ERROR_MESSAGE_TYPE = "error";
 export const USER_NETWORKING_PING_MESSAGE_TYPE = "ping";
 export const USER_NETWORKING_PONG_MESSAGE_TYPE = "pong";
@@ -59,6 +60,12 @@ export type UserNetworkingServerError = {
   message: string;
 };
 
+export type UserNetworkingServerBroadcast = {
+  type: typeof USER_NETWORKING_SERVER_BROADCAST_MESSAGE_TYPE;
+  broadcastType: string;
+  payload: any;
+};
+
 export type UserNetworkingServerPingMessage = {
   type: typeof USER_NETWORKING_PING_MESSAGE_TYPE;
 };
@@ -68,6 +75,7 @@ export type FromUserNetworkingServerMessage =
   | UserNetworkingProfileMessage
   | UserNetworkingDisconnectedMessage
   | UserNetworkingServerPingMessage
+  | UserNetworkingServerBroadcast
   | UserNetworkingServerError;
 
 export type UserNetworkingClientPongMessage = {

@@ -3,7 +3,7 @@ import { createRef, forwardRef } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, Root } from "react-dom/client";
 
-import { AvatarType } from "./AvatarType";
+import { AvatarConfiguration, AvatarType } from "./AvatarType";
 import { AvatarSelectionUIComponent } from "./components/AvatarPanel/AvatarSectionUIComponent";
 
 const ForwardedAvatarSelectionUIComponent = forwardRef(AvatarSelectionUIComponent);
@@ -14,12 +14,9 @@ export type CustomAvatar = AvatarType & {
 
 export type AvatarSelectionUIProps = {
   holderElement: HTMLElement;
-  clientId: number;
   visibleByDefault?: boolean;
-  availableAvatars: Array<AvatarType>;
   sendMessageToServerMethod: (avatar: CustomAvatar) => void;
-  enableCustomAvatar?: boolean;
-};
+} & AvatarConfiguration;
 
 export class AvatarSelectionUI {
   private root: Root;
@@ -36,15 +33,23 @@ export class AvatarSelectionUI {
     this.config.sendMessageToServerMethod(avatar);
   };
 
+  public updateAvatarConfig(avatarConfig: AvatarConfiguration) {
+    this.config = {
+      ...this.config,
+      ...avatarConfig,
+    };
+    this.init();
+  }
+
   init() {
     flushSync(() =>
       this.root.render(
         <ForwardedAvatarSelectionUIComponent
           ref={this.appRef}
           onUpdateUserAvatar={this.onUpdateUserAvatar}
-          visibleByDefault={false}
+          visibleByDefault={this.config.visibleByDefault}
           availableAvatars={this.config.availableAvatars}
-          enableCustomAvatar={this.config.enableCustomAvatar}
+          allowCustomAvatars={this.config.allowCustomAvatars}
         />,
       ),
     );

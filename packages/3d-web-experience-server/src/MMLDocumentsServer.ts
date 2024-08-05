@@ -1,6 +1,6 @@
-import fs from "fs";
-import path from "path";
-import url from "url";
+import fs from "node:fs";
+import path from "node:path";
+import url from "node:url";
 
 import chokidar, { FSWatcher } from "chokidar";
 import { EditableNetworkedDOM, LocalObservableDOMFactory } from "networked-dom-server";
@@ -28,8 +28,13 @@ export class MMLDocumentsServer {
     }
   >();
   private watcher: FSWatcher;
+  private watchPattern: string;
 
-  constructor(private directory: string) {
+  constructor(
+    private directory: string,
+    watchPattern: string,
+  ) {
+    this.watchPattern = path.resolve(directory, watchPattern);
     this.watch();
   }
 
@@ -55,48 +60,48 @@ export class MMLDocumentsServer {
   }
 
   private watch() {
-    this.watcher = chokidar.watch(this.directory, {
+    this.watcher = chokidar.watch(this.watchPattern, {
       ignored: /^\./,
       persistent: true,
     });
     this.watcher
-      .on("add", (relativeFilePath) => {
-        const filename = path.basename(relativeFilePath);
-        console.log(`Example document '${filename}' has been added`);
-        const contents = checkDevEnv(getMmlDocumentContent(relativeFilePath));
+      .on("add", (fullPath) => {
+        const relativePath = path.relative(this.directory, fullPath);
+        console.log(`MML Document '${relativePath}' has been added`);
+        const contents = getMmlDocumentContent(fullPath);
         const document = new EditableNetworkedDOM(
-          url.pathToFileURL(filename).toString(),
+          url.pathToFileURL(fullPath).toString(),
           LocalObservableDOMFactory,
         );
         document.load(contents);
 
         const currentData = {
-          documentPath: filename,
+          documentPath: fullPath,
           document,
         };
-        this.documents.set(filename, currentData);
+        this.documents.set(relativePath, currentData);
       })
-      .on("change", (relativeFilePath) => {
-        const filename = path.basename(relativeFilePath);
-        console.log(`Example document '${filename}' has been changed`);
-        const contents = checkDevEnv(getMmlDocumentContent(relativeFilePath));
-        const documentState = this.documents.get(filename);
+      .on("change", (fullPath) => {
+        const relativePath = path.relative(this.directory, fullPath);
+        console.log(`MML Document '${relativePath}' has been changed`);
+        const contents = getMmlDocumentContent(fullPath);
+        const documentState = this.documents.get(relativePath);
         if (!documentState) {
-          console.error(`Example document '${filename}' not found`);
+          console.error(`MML Document '${relativePath}' not found`);
           return;
         }
         documentState.document.load(contents);
       })
-      .on("unlink", (relativeFilePath) => {
-        const filename = path.basename(relativeFilePath);
-        console.log(`Example document '${filename}' has been removed`);
-        const documentState = this.documents.get(filename);
+      .on("unlink", (fullPath) => {
+        const relativePath = path.relative(this.directory, fullPath);
+        console.log(`MML Document '${relativePath}' has been removed`);
+        const documentState = this.documents.get(relativePath);
         if (!documentState) {
-          console.error(`Example document '${filename}' not found`);
+          console.error(`MML Document '${relativePath}' not found`);
           return;
         }
         documentState.document.dispose();
-        this.documents.delete(filename);
+        this.documents.delete(relativePath);
       })
       .on("error", (error) => {
         console.error("Error whilst watching directory", error);

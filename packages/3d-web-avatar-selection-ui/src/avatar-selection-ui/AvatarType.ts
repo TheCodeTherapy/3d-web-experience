@@ -19,3 +19,8 @@ export type AvatarType = {
       mmlCharacterUrl: string;
     }
 );
+
+export type AvatarConfiguration = {
+  availableAvatars: Array<AvatarType>;
+  allowCustomAvatars?: boolean;
+};

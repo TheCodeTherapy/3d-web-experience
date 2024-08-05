@@ -1,4 +1,8 @@
-import { AvatarSelectionUI, AvatarType } from "@mml-io/3d-web-avatar-selection-ui";
+import {
+  AvatarSelectionUI,
+  AvatarType,
+  AvatarConfiguration,
+} from "@mml-io/3d-web-avatar-selection-ui";
 import {
   AnimationConfig,
   CameraManager,
@@ -44,6 +48,7 @@ import {
   IMMLScene,
   LoadingProgressManager,
   registerCustomElementsToWindow,
+  setGlobalDocumentTimeManager,
   setGlobalMMLScene,
 } from "mml-web";
 import { AudioListener, Euler, Scene, Vector3 } from "three";
@@ -67,25 +72,23 @@ export type MMLDocumentConfiguration = {
   };
 };
 
-export type AvatarConfiguration = {
-  availableAvatars?: Array<AvatarType>;
-  allowCustomAvatars?: boolean;
-};
-
 export type Networked3dWebExperienceClientConfig = {
+  userNetworkAddress: string;
   sessionToken: string;
-  chatNetworkAddress?: string;
   chatVisibleByDefault?: boolean;
   userNameToColorOptions?: StringToHslOptions;
-  voiceChatAddress?: string;
-  userNetworkAddress: string;
-  mmlDocuments?: Array<MMLDocumentConfiguration>;
   animationConfig: AnimationConfig;
-  environmentConfiguration?: EnvironmentConfiguration;
-  skyboxHdrJpgUrl: string;
-  enableTweakPane?: boolean;
+  voiceChatAddress?: string;
   updateURLLocation?: boolean;
+  onServerBroadcast?: (broadcast: { broadcastType: string; payload: any }) => void;
+} & UpdatableConfig;
+
+export type UpdatableConfig = {
+  chatNetworkAddress?: string | null;
+  mmlDocuments?: { [key: string]: MMLDocumentConfiguration };
+  environmentConfiguration?: EnvironmentConfiguration;
   avatarConfiguration?: AvatarConfiguration;
+  enableTweakPane?: boolean;
 };
 
 export class Networked3dWebExperienceClient {
@@ -94,7 +97,7 @@ export class Networked3dWebExperienceClient {
 
   private scene = new Scene();
   private composer: Composer;
-  private tweakPane?: TweakPane;
+  private tweakPane: TweakPane | null = null;
   private audioListener = new AudioListener();
 
   private cameraManager: CameraManager;
@@ -110,7 +113,7 @@ export class Networked3dWebExperienceClient {
   private virtualJoystick: VirtualJoystick;
 
   private mmlCompositionScene: MMLCompositionScene;
-  private mmlFrames: Array<HTMLElement> = [];
+  private mmlFrames: { [key: string]: HTMLElement } = {};
 
   private clientId: number | null = null;
   private networkClient: UserNetworkingClient;
@@ -133,7 +136,6 @@ export class Networked3dWebExperienceClient {
   private loadingScreen: LoadingScreen;
   private errorScreen?: ErrorScreen;
   private currentRequestAnimationFrame: number | null = null;
-
   private groundPlane: GroundPlane | null = null;
 
   constructor(
@@ -173,19 +175,10 @@ export class Networked3dWebExperienceClient {
       spawnSun: true,
       environmentConfiguration: this.config.environmentConfiguration,
     });
-
-    this.composer.useHDRJPG(this.config.skyboxHdrJpgUrl);
     this.canvasHolder.appendChild(this.composer.renderer.domElement);
 
     if (this.config.enableTweakPane !== false) {
-      this.tweakPane = new TweakPane(
-        this.element,
-        this.composer.renderer,
-        this.scene,
-        this.composer.effectComposer,
-      );
-      this.cameraManager.setupTweakPane(this.tweakPane);
-      this.composer.setupTweakPane(this.tweakPane);
+      this.setupTweakPane();
     }
 
     const resizeObserver = new ResizeObserver(() => {
@@ -253,6 +246,9 @@ export class Networked3dWebExperienceClient {
             this.disposeWithError(error.message);
         }
       },
+      onServerBroadcast: (broadcast: { broadcastType: string; payload: any }) => {
+        this.config.onServerBroadcast?.(broadcast);
+      },
     });
 
     this.characterManager = new CharacterManager({
@@ -276,14 +272,7 @@ export class Networked3dWebExperienceClient {
     });
     this.scene.add(this.characterManager.group);
 
-    if (this.config.environmentConfiguration?.groundPlane !== false) {
-      this.groundPlane = new GroundPlane(this.config.environmentConfiguration?.groundPlaneType);
-      this.collisionsManager.addMeshesGroup(this.groundPlane);
-      if (this.groundPlane.grass) {
-        this.scene.add(this.groundPlane.grass);
-      }
-      this.scene.add(this.groundPlane);
-    }
+    this.setGroundPlaneEnabled(this.config.environmentConfiguration?.groundPlane ?? true);
 
     this.setupMMLScene();
 
@@ -305,6 +294,56 @@ export class Networked3dWebExperienceClient {
       }
     });
     this.loadingProgressManager.setInitialLoad(true);
+  }
+
+  private setGroundPlaneEnabled(enabled: boolean) {
+    if (enabled && this.groundPlane === null) {
+      this.groundPlane = new GroundPlane();
+      this.collisionsManager.addMeshesGroup(this.groundPlane);
+      this.scene.add(this.groundPlane);
+    } else if (!enabled && this.groundPlane !== null) {
+      this.collisionsManager.removeMeshesGroup(this.groundPlane);
+      this.scene.remove(this.groundPlane);
+      this.groundPlane = null;
+    }
+  }
+
+  public updateConfig(config: Partial<UpdatableConfig>) {
+    this.config = {
+      ...this.config,
+      ...config,
+    };
+    if (config.environmentConfiguration) {
+      this.composer.updateEnvironmentConfiguration(config.environmentConfiguration);
+      this.setGroundPlaneEnabled(config.environmentConfiguration.groundPlane ?? true);
+    }
+
+    if (config.avatarConfiguration && this.avatarSelectionUI) {
+      this.avatarSelectionUI?.updateAvatarConfig(config.avatarConfiguration);
+    }
+
+    if (config.enableTweakPane !== undefined) {
+      if (config.enableTweakPane === false && this.tweakPane !== null) {
+        this.tweakPane.dispose();
+        this.tweakPane = null;
+      } else if (config.enableTweakPane === true && this.tweakPane === null) {
+        this.setupTweakPane();
+      }
+    }
+
+    if (config.chatNetworkAddress !== undefined) {
+      if (config.chatNetworkAddress === null && this.networkChat !== null) {
+        this.networkChat.stop();
+        this.networkChat = null;
+        this.textChatUI?.dispose();
+        this.textChatUI = null;
+      } else {
+        this.connectToTextChat();
+      }
+    }
+    if (config.mmlDocuments) {
+      this.setMMLDocuments(config.mmlDocuments);
+    }
   }
 
   static createFullscreenHolder(): HTMLDivElement {
@@ -412,6 +451,20 @@ export class Networked3dWebExperienceClient {
     }
   }
 
+  private setupTweakPane() {
+    if (this.tweakPane) {
+      return;
+    }
+    this.tweakPane = new TweakPane(
+      this.element,
+      this.composer.renderer,
+      this.scene,
+      this.composer.effectComposer,
+    );
+    this.cameraManager.setupTweakPane(this.tweakPane);
+    this.composer.setupTweakPane(this.tweakPane);
+  }
+
   private connectToTextChat() {
     if (this.clientId === null) {
       return;
@@ -461,28 +514,12 @@ export class Networked3dWebExperienceClient {
   }
 
   private mountAvatarSelectionUI() {
-    if (
-      !this.config.avatarConfiguration?.availableAvatars?.length &&
-      !this.config.avatarConfiguration?.allowCustomAvatars
-    ) {
-      return;
-    }
-
-    if (this.clientId === null) {
-      throw new Error("Client ID not set");
-    }
-    const ownIdentity = this.userProfiles.get(this.clientId);
-    if (!ownIdentity) {
-      throw new Error("Own identity not found");
-    }
-
     this.avatarSelectionUI = new AvatarSelectionUI({
       holderElement: this.element,
-      clientId: this.clientId,
       visibleByDefault: false,
-      availableAvatars: this.config.avatarConfiguration?.availableAvatars ?? [],
       sendMessageToServerMethod: this.sendIdentityUpdateToServer.bind(this),
-      enableCustomAvatar: this.config.avatarConfiguration?.allowCustomAvatars,
+      availableAvatars: this.config.avatarConfiguration?.availableAvatars ?? [],
+      allowCustomAvatars: this.config.avatarConfiguration?.allowCustomAvatars,
     });
     this.avatarSelectionUI.init();
   }
@@ -560,11 +597,11 @@ export class Networked3dWebExperienceClient {
   public dispose() {
     this.networkClient.stop();
     this.networkChat?.stop();
-    for (const mmlFrame of this.mmlFrames) {
-      mmlFrame.remove();
+    for (const [key, element] of Object.entries(this.mmlFrames)) {
+      element.remove();
     }
+    this.mmlFrames = {};
     this.textChatUI?.dispose();
-    this.mmlFrames = [];
     this.mmlCompositionScene.dispose();
     this.composer.dispose();
     this.tweakPane?.dispose();
@@ -592,36 +629,9 @@ export class Networked3dWebExperienceClient {
     });
     this.scene.add(this.mmlCompositionScene.group);
     setGlobalMMLScene(this.mmlCompositionScene.mmlScene as IMMLScene);
+    setGlobalDocumentTimeManager(this.mmlCompositionScene.documentTimeManager);
 
-    if (this.config.mmlDocuments) {
-      for (const mmlDocument of this.config.mmlDocuments) {
-        const frameElement = document.createElement("m-frame");
-        frameElement.setAttribute("src", mmlDocument.url);
-        if (mmlDocument.position) {
-          frameElement.setAttribute("x", mmlDocument.position.x.toString());
-          frameElement.setAttribute("y", mmlDocument.position.y.toString());
-          frameElement.setAttribute("z", mmlDocument.position.z.toString());
-        }
-        if (mmlDocument.rotation) {
-          frameElement.setAttribute("rx", mmlDocument.rotation.x.toString());
-          frameElement.setAttribute("ry", mmlDocument.rotation.y.toString());
-          frameElement.setAttribute("rz", mmlDocument.rotation.z.toString());
-        }
-        if (mmlDocument.scale) {
-          if (mmlDocument.scale.x !== undefined) {
-            frameElement.setAttribute("sx", mmlDocument.scale.x.toString());
-          }
-          if (mmlDocument.scale.y !== undefined) {
-            frameElement.setAttribute("sy", mmlDocument.scale.y.toString());
-          }
-          if (mmlDocument.scale.z !== undefined) {
-            frameElement.setAttribute("sz", mmlDocument.scale.z.toString());
-          }
-        }
-        document.body.appendChild(frameElement);
-        this.mmlFrames.push(frameElement);
-      }
-    }
+    this.setMMLDocuments(this.config.mmlDocuments ?? {});
 
     const mmlProgressManager = this.mmlCompositionScene.mmlScene.getLoadingProgressManager!()!;
     this.loadingProgressManager.addLoadingDocument(mmlProgressManager, "mml", mmlProgressManager);
@@ -629,5 +639,72 @@ export class Networked3dWebExperienceClient {
       this.loadingProgressManager.updateDocumentProgress(mmlProgressManager);
     });
     mmlProgressManager.setInitialLoad(true);
+  }
+
+  private createFrame(mmlDocument: MMLDocumentConfiguration) {
+    const frameElement = document.createElement("m-frame");
+    frameElement.setAttribute("src", mmlDocument.url);
+    this.updateFrameAttributes(frameElement, mmlDocument);
+    return frameElement;
+  }
+
+  private updateFrameAttributes(frameElement: HTMLElement, mmlDocument: MMLDocumentConfiguration) {
+    const existingSrc = frameElement.getAttribute("src");
+    if (existingSrc !== mmlDocument.url) {
+      frameElement.setAttribute("src", mmlDocument.url);
+    }
+    if (mmlDocument.position) {
+      frameElement.setAttribute("x", mmlDocument.position.x.toString());
+      frameElement.setAttribute("y", mmlDocument.position.y.toString());
+      frameElement.setAttribute("z", mmlDocument.position.z.toString());
+    } else {
+      frameElement.setAttribute("x", "0");
+      frameElement.setAttribute("y", "0");
+      frameElement.setAttribute("z", "0");
+    }
+    if (mmlDocument.rotation) {
+      frameElement.setAttribute("rx", mmlDocument.rotation.x.toString());
+      frameElement.setAttribute("ry", mmlDocument.rotation.y.toString());
+      frameElement.setAttribute("rz", mmlDocument.rotation.z.toString());
+    } else {
+      frameElement.setAttribute("rx", "0");
+      frameElement.setAttribute("ry", "0");
+      frameElement.setAttribute("rz", "0");
+    }
+    if (mmlDocument.scale?.x !== undefined) {
+      frameElement.setAttribute("sx", mmlDocument.scale.x.toString());
+    } else {
+      frameElement.setAttribute("sx", "1");
+    }
+    if (mmlDocument.scale?.y !== undefined) {
+      frameElement.setAttribute("sy", mmlDocument.scale.y.toString());
+    } else {
+      frameElement.setAttribute("sy", "1");
+    }
+    if (mmlDocument.scale?.z !== undefined) {
+      frameElement.setAttribute("sz", mmlDocument.scale.z.toString());
+    } else {
+      frameElement.setAttribute("sz", "1");
+    }
+  }
+
+  private setMMLDocuments(mmlDocuments: { [key: string]: MMLDocumentConfiguration }) {
+    const newFramesMap: { [key: string]: HTMLElement } = {};
+    for (const [key, mmlDocSpec] of Object.entries(mmlDocuments)) {
+      const existing = this.mmlFrames[key];
+      if (!existing) {
+        const frameElement = this.createFrame(mmlDocSpec);
+        document.body.appendChild(frameElement);
+        newFramesMap[key] = frameElement;
+      } else {
+        delete this.mmlFrames[key];
+        newFramesMap[key] = existing;
+        this.updateFrameAttributes(existing, mmlDocSpec);
+      }
+    }
+    for (const [key, element] of Object.entries(this.mmlFrames)) {
+      element.remove();
+    }
+    this.mmlFrames = newFramesMap;
   }
 }

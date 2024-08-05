@@ -53,6 +53,7 @@ export type Networked3dWebExperienceServerConfig = {
   };
   mmlServing?: {
     documentsWatchPath: string;
+    documentsDirectoryRoot: string;
     documentsUrl: string;
   };
   userAuthenticator: UserAuthenticator;
@@ -67,7 +68,8 @@ export class Networked3dWebExperienceServer {
 
   constructor(private config: Networked3dWebExperienceServerConfig) {
     if (this.config.mmlServing) {
-      this.mmlDocumentsServer = new MMLDocumentsServer(this.config.mmlServing.documentsWatchPath);
+      const { documentsWatchPath, documentsDirectoryRoot } = this.config.mmlServing;
+      this.mmlDocumentsServer = new MMLDocumentsServer(documentsDirectoryRoot, documentsWatchPath);
     }
 
     if (this.config.chatNetworkPath) {
@@ -179,9 +181,10 @@ export class Networked3dWebExperienceServer {
     const mmlServing = this.config.mmlServing;
     // Handle example document sockets
     if (mmlServing && mmlDocumentsServer) {
-      app.ws(`${mmlServing.documentsUrl}:filename`, (ws: WebSocket, req: express.Request) => {
-        const { filename } = req.params;
-        mmlDocumentsServer.handle(filename, ws);
+      app.ws(`${mmlServing.documentsUrl}*`, (ws: WebSocket, req: express.Request) => {
+        const path = req.params[0];
+        console.log("document requested", { path });
+        mmlDocumentsServer.handle(path, ws);
       });
     }
 

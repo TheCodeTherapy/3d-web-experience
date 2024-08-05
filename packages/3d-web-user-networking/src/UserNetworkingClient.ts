@@ -2,15 +2,16 @@ import { ReconnectingWebSocket, WebsocketFactory, WebsocketStatus } from "./Reco
 import { UserNetworkingClientUpdate, UserNetworkingCodec } from "./UserNetworkingCodec";
 import {
   CharacterDescription,
-  USER_NETWORKING_DISCONNECTED_MESSAGE_TYPE,
   FromUserNetworkingClientMessage,
   FromUserNetworkingServerMessage,
+  USER_NETWORKING_DISCONNECTED_MESSAGE_TYPE,
   USER_NETWORKING_IDENTITY_MESSAGE_TYPE,
   USER_NETWORKING_PING_MESSAGE_TYPE,
+  USER_NETWORKING_SERVER_BROADCAST_MESSAGE_TYPE,
   USER_NETWORKING_SERVER_ERROR_MESSAGE_TYPE,
-  UserNetworkingServerErrorType,
   USER_NETWORKING_USER_AUTHENTICATE_MESSAGE_TYPE,
   USER_NETWORKING_USER_PROFILE_MESSAGE_TYPE,
+  UserNetworkingServerErrorType,
 } from "./UserNetworkingMessages";
 
 export type UserNetworkingClientConfig = {
@@ -26,6 +27,7 @@ export type UserNetworkingClientConfig = {
     characterDescription: CharacterDescription,
   ) => void;
   onServerError: (error: { message: string; errorType: UserNetworkingServerErrorType }) => void;
+  onServerBroadcast?: (broadcast: { broadcastType: string; payload: any }) => void;
 };
 
 export class UserNetworkingClient extends ReconnectingWebSocket {
@@ -72,6 +74,17 @@ export class UserNetworkingClient extends ReconnectingWebSocket {
           break;
         case USER_NETWORKING_PING_MESSAGE_TYPE: {
           this.sendMessage({ type: "pong" } as FromUserNetworkingClientMessage);
+          break;
+        }
+        case USER_NETWORKING_SERVER_BROADCAST_MESSAGE_TYPE: {
+          if (this.config.onServerBroadcast) {
+            this.config.onServerBroadcast({
+              broadcastType: parsed.broadcastType,
+              payload: parsed.payload,
+            });
+          } else {
+            console.warn("Unhandled broadcast", parsed);
+          }
           break;
         }
         default:

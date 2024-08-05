@@ -11,6 +11,7 @@ import {
   ChatProbe,
   LoadingProgressManager,
   LinkProps,
+  MMLDocumentTimeManager,
 } from "mml-web";
 import { AudioListener, Group, Object3D, PerspectiveCamera, Scene, WebGLRenderer } from "three";
 
@@ -30,6 +31,7 @@ export class MMLCompositionScene {
   public group: Group;
 
   public readonly mmlScene: IMMLScene;
+  public readonly documentTimeManager: MMLDocumentTimeManager;
   private readonly promptManager: PromptManager;
   private readonly interactionManager: InteractionManager;
   private readonly interactionListener: InteractionListener;
@@ -49,6 +51,7 @@ export class MMLCompositionScene {
     this.interactionManager = interactionManager;
     this.interactionListener = interactionListener;
     this.loadingProgressManager = new LoadingProgressManager();
+    this.documentTimeManager = new MMLDocumentTimeManager();
 
     this.mmlScene = {
       getAudioListener: () => this.config.audioListener,

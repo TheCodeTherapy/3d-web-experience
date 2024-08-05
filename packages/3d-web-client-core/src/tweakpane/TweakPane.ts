@@ -12,6 +12,7 @@ import { FolderApi, Pane } from "tweakpane";
 
 import { CameraManager } from "../camera/CameraManager";
 import { LocalController } from "../character/LocalController";
+import { EventHandlerCollection } from "../input/EventHandlerCollection";
 import { BrightnessContrastSaturation } from "../rendering/post-effects/bright-contrast-sat";
 import { GaussGrainEffect } from "../rendering/post-effects/gauss-grain";
 import { Sun } from "../sun/Sun";
@@ -50,6 +51,7 @@ export class TweakPane {
   private saveVisibilityInLocalStorage: boolean = true;
   public guiVisible: boolean = false;
   private tweakPaneWrapper: HTMLDivElement;
+  private eventHandlerCollection: EventHandlerCollection;
 
   constructor(
     private holderElement: HTMLElement,
@@ -105,25 +107,27 @@ export class TweakPane {
 
     this.export = this.gui.addFolder({ title: "import / export", expanded: false });
 
-    this.setupGUIListeners();
-    window.addEventListener("keydown", (e) => {
+    this.eventHandlerCollection = new EventHandlerCollection();
+
+    const gui = this.gui as any;
+    const paneElement: HTMLElement = gui.containerElem_;
+    paneElement.style.right = this.guiVisible ? "0px" : "-450px";
+    this.eventHandlerCollection.add(this.gui.element, "mouseenter", () => setTweakpaneActive(true));
+    this.eventHandlerCollection.add(this.gui.element, "mousemove", () => setTweakpaneActive(true));
+    this.eventHandlerCollection.add(this.gui.element, "mousedown", () => setTweakpaneActive(true));
+    this.eventHandlerCollection.add(this.gui.element, "mouseleave", () =>
+      setTweakpaneActive(false),
+    );
+    this.eventHandlerCollection.add(this.gui.element, "mouseup", () => setTweakpaneActive(false));
+    this.eventHandlerCollection.add(window, "keydown", (e) => {
       this.processKey(e);
     });
   }
 
-  private setupGUIListeners(): void {
-    const gui = this.gui as any;
-    const paneElement: HTMLElement = gui.containerElem_;
-    paneElement.style.right = this.guiVisible ? "0px" : "-450px";
-    this.gui.element.addEventListener("mouseenter", () => setTweakpaneActive(true));
-    this.gui.element.addEventListener("mousemove", () => setTweakpaneActive(true));
-    this.gui.element.addEventListener("mousedown", () => setTweakpaneActive(true));
-    this.gui.element.addEventListener("mouseleave", () => setTweakpaneActive(false));
-    this.gui.element.addEventListener("mouseup", () => setTweakpaneActive(false));
-  }
-
   private processKey(e: KeyboardEvent): void {
-    if (e.key === "p") this.toggleGUI();
+    if (e.key === "p") {
+      this.toggleGUI();
+    }
   }
 
   public setupRenderPane(
@@ -180,6 +184,7 @@ export class TweakPane {
   }
 
   public dispose() {
+    this.eventHandlerCollection.clear();
     this.gui.dispose();
     this.tweakPaneWrapper.remove();
   }

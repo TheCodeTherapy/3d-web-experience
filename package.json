@@ -6,7 +6,6 @@
     "node": "20.x"
   },
   "scripts": {
-    "preinstall": "node check-node-version.js",
     "build": "lerna run --stream build",
     "start": "npm run start -w @example/multi-user-3d-web-experience-server",
     "iterate": "npm run build && lerna run --parallel --stream iterate",

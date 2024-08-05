@@ -17,7 +17,7 @@ type AvatarSelectionUIProps = {
   onUpdateUserAvatar: (avatar: AvatarType) => void;
   visibleByDefault?: boolean;
   availableAvatars: AvatarType[];
-  enableCustomAvatar?: boolean;
+  allowCustomAvatars?: boolean;
 };
 
 enum CustomAvatarType {
@@ -100,6 +100,10 @@ export const AvatarSelectionUIComponent: ForwardRefRenderFunction<any, AvatarSel
     }
   };
 
+  if (!props.availableAvatars.length && !props.allowCustomAvatars) {
+    return null;
+  }
+
   return (
     <>
       <div className={styles.menuButton} onClick={handleRootClick}>
@@ -135,89 +139,89 @@ export const AvatarSelectionUIComponent: ForwardRefRenderFunction<any, AvatarSel
                     (selectedAvatar?.mmlCharacterString &&
                       selectedAvatar?.mmlCharacterString === avatar.mmlCharacterString));
 
-                return (
-                  <div
-                    key={index}
-                    className={styles.avatarSelectionUiAvatar}
-                    onClick={() => selectAvatar(avatar)}
-                  >
-                    <div className={styles.avatarSelectionUiAvatarImgContainer}>
-                      {isSelected && <SelectedPill />}
-                      {avatar.thumbnailUrl ? (
-                        <img src={avatar.thumbnailUrl} alt={avatar.name} />
-                      ) : (
-                        <div>No Image Available</div>
-                      )}
-                      <p>{avatar.name}</p>
-                      <span className={styles.tooltipText}>{avatar.name}</span>
+                  return (
+                    <div
+                      key={index}
+                      className={styles.avatarSelectionUiAvatar}
+                      onClick={() => selectAvatar(avatar)}
+                    >
+                      <div className={styles.avatarSelectionUiAvatarImgContainer}>
+                        {isSelected && <SelectedPill />}
+                        {avatar.thumbnailUrl ? (
+                          <img src={avatar.thumbnailUrl} alt={avatar.name} />
+                        ) : (
+                          <div>No Image Available</div>
+                        )}
+                        <p>{avatar.name}</p>
+                        <span className={styles.tooltipText}>{avatar.name}</span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
-        {props.enableCustomAvatar && (
-          <div className={styles.customAvatarSection}>
-            {!!props.availableAvatars.length && <hr />}
-            <h2>Custom Avatar Section</h2>
-            <input
-              type="radio"
-              id="html"
-              name="customAvatarType"
-              onChange={() => handleTypeSwitch(CustomAvatarType.mmlUrl)}
-              defaultChecked={customAvatarType === CustomAvatarType.mmlUrl}
-              checked={customAvatarType === CustomAvatarType.mmlUrl}
-            />
-            <label htmlFor="html">MML URL</label>
-            <input
-              type="radio"
-              id="mml"
-              name="customAvatarType"
-              onChange={() => handleTypeSwitch(CustomAvatarType.mml)}
-              defaultChecked={customAvatarType === CustomAvatarType.mml}
-              checked={customAvatarType === CustomAvatarType.mml}
-            />
-            <label htmlFor="mml">MML</label>
-            <input
-              type="radio"
-              id="glb"
-              name="customAvatarType"
-              onChange={() => handleTypeSwitch(CustomAvatarType.meshFileUrl)}
-              defaultChecked={customAvatarType === CustomAvatarType.meshFileUrl}
-              checked={customAvatarType === CustomAvatarType.meshFileUrl}
-            />
-            <label htmlFor="glb">Mesh URL</label>
-            {selectedAvatar?.isCustomAvatar && <SelectedPill />}
-            <div className={styles.customAvatarInputSection}>
-              {customAvatarType === CustomAvatarType.mml ? (
-                <textarea
-                  ref={textareaRef}
-                  className={styles.customAvatarInput}
-                  value={customAvatarValue}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyPress}
-                  placeholder={getPlaceholderByType(customAvatarType)}
-                  rows={4}
-                />
-              ) : (
-                <input
-                  ref={inputRef}
-                  className={styles.customAvatarInput}
-                  value={customAvatarValue}
-                  onKeyDown={handleKeyPress}
-                  onChange={handleInputChange}
-                  placeholder={getPlaceholderByType(customAvatarType)}
-                />
-              )}
-              <button disabled={!customAvatarValue} type="button" onClick={addCustomAvatar}>
-                Set
-              </button>
+          )}
+          {props.allowCustomAvatars && (
+            <div className={styles.customAvatarSection}>
+              {!!props.availableAvatars.length && <hr />}
+              <h2>Custom Avatar Section</h2>
+              <input
+                type="radio"
+                id="html"
+                name="customAvatarType"
+                onChange={() => handleTypeSwitch(CustomAvatarType.mmlUrl)}
+                defaultChecked={customAvatarType === CustomAvatarType.mmlUrl}
+                checked={customAvatarType === CustomAvatarType.mmlUrl}
+              />
+              <label htmlFor="html">MML URL</label>
+              <input
+                type="radio"
+                id="mml"
+                name="customAvatarType"
+                onChange={() => handleTypeSwitch(CustomAvatarType.mml)}
+                defaultChecked={customAvatarType === CustomAvatarType.mml}
+                checked={customAvatarType === CustomAvatarType.mml}
+              />
+              <label htmlFor="mml">MML</label>
+              <input
+                type="radio"
+                id="glb"
+                name="customAvatarType"
+                onChange={() => handleTypeSwitch(CustomAvatarType.meshFileUrl)}
+                defaultChecked={customAvatarType === CustomAvatarType.meshFileUrl}
+                checked={customAvatarType === CustomAvatarType.meshFileUrl}
+              />
+              <label htmlFor="glb">Mesh URL</label>
+              {selectedAvatar?.isCustomAvatar && <SelectedPill />}
+              <div className={styles.customAvatarInputSection}>
+                {customAvatarType === CustomAvatarType.mml ? (
+                  <textarea
+                    ref={textareaRef}
+                    className={styles.customAvatarInput}
+                    value={customAvatarValue}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyPress}
+                    placeholder={getPlaceholderByType(customAvatarType)}
+                    rows={4}
+                  />
+                ) : (
+                  <input
+                    ref={inputRef}
+                    className={styles.customAvatarInput}
+                    value={customAvatarValue}
+                    onKeyDown={handleKeyPress}
+                    onChange={handleInputChange}
+                    placeholder={getPlaceholderByType(customAvatarType)}
+                  />
+                )}
+                <button disabled={!customAvatarValue} type="button" onClick={addCustomAvatar}>
+                  Set
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-      )
+          )}
+        </div>
+      )}
     </>
   );
 };

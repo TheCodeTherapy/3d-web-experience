@@ -83,9 +83,11 @@ export class UserNetworkingServer {
   }
 
   private pingClients() {
+    const message: FromUserNetworkingServerMessage = { type: "ping" };
+    const messageString = JSON.stringify(message);
     this.authenticatedClientsById.forEach((client) => {
       if (client.socket.readyState === WebSocketOpenStatus) {
-        client.socket.send(JSON.stringify({ type: "ping" } as FromUserNetworkingServerMessage));
+        client.socket.send(messageString);
       }
     });
   }
@@ -96,6 +98,20 @@ export class UserNetworkingServer {
       id++;
     }
     return id;
+  }
+
+  public broadcastMessage(broadcastType: string, broadcastPayload: any) {
+    const message: FromUserNetworkingServerMessage = {
+      type: "broadcast",
+      broadcastType,
+      payload: broadcastPayload,
+    };
+    const messageString = JSON.stringify(message);
+    for (const [, client] of this.authenticatedClientsById) {
+      if (client.socket.readyState === WebSocketOpenStatus) {
+        client.socket.send(messageString);
+      }
+    }
   }
 
   public connectClient(socket: WebSocket) {

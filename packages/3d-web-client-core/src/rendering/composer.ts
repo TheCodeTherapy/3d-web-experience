@@ -31,6 +31,7 @@ import {
   Scene,
   ShadowMapType,
   SRGBColorSpace,
+  Texture,
   ToneMapping,
   Vector2,
   WebGLRenderer,
@@ -66,7 +67,14 @@ export type EnvironmentConfiguration = {
     blurriness?: number;
     azimuthalAngle?: number;
     polarAngle?: number;
-  };
+  } & (
+    | {
+        hdrJpgUrl: string;
+      }
+    | {
+        hdrUrl: string;
+      }
+  );
   envMap?: {
     intensity?: number;
   };
@@ -88,8 +96,6 @@ export class Composer {
   private height: number = 1;
   private resizeListener: () => void;
   public resolution: Vector2 = new Vector2(this.width, this.height);
-
-  private isEnvHDRI: boolean = false;
 
   private readonly scene: Scene;
   public postPostScene: Scene;
@@ -123,6 +129,14 @@ export class Composer {
 
   private ambientLight: AmbientLight | null = null;
   private environmentConfiguration?: EnvironmentConfiguration;
+
+  private skyboxState: {
+    src: {
+      hdrJpgUrl?: string;
+      hdrUrl?: string;
+    };
+    latestPromise: Promise<unknown> | null;
+  } = { src: {}, latestPromise: null };
 
   public sun: Sun | null = null;
   public spawnSun: boolean;
@@ -266,6 +280,14 @@ export class Composer {
       this.scene.add(this.sun);
     }
 
+    if (this.environmentConfiguration?.skybox) {
+      if ("hdrJpgUrl" in this.environmentConfiguration.skybox) {
+        this.useHDRJPG(this.environmentConfiguration.skybox.hdrJpgUrl);
+      } else if ("hdrUrl" in this.environmentConfiguration.skybox) {
+        this.useHDRI(this.environmentConfiguration.skybox.hdrUrl);
+      }
+    }
+
     this.updateSunValues();
 
     this.resizeListener = () => {
@@ -273,6 +295,22 @@ export class Composer {
     };
     window.addEventListener("resize", this.resizeListener, false);
     this.fitContainer();
+  }
+
+  public updateEnvironmentConfiguration(environmentConfiguration: EnvironmentConfiguration) {
+    this.environmentConfiguration = environmentConfiguration;
+
+    if (environmentConfiguration.skybox) {
+      if ("hdrJpgUrl" in environmentConfiguration.skybox) {
+        this.useHDRJPG(environmentConfiguration.skybox.hdrJpgUrl);
+      } else if ("hdrUrl" in environmentConfiguration.skybox) {
+        this.useHDRI(environmentConfiguration.skybox.hdrUrl);
+      }
+    }
+
+    this.updateSkyboxAndEnvValues();
+    this.updateAmbientLightValues();
+    this.updateSunValues();
   }
 
   public setupTweakPane(tweakPane: TweakPane) {
@@ -370,74 +408,76 @@ export class Composer {
     );
   }
 
-  public useHDRJPG(url: string, fromFile: boolean = false): void {
-    const pmremGenerator = new PMREMGenerator(this.renderer);
-    const hdrJpg = new HDRJPGLoader(this.renderer).load(url, () => {
-      const hdrJpgEquirectangularMap = hdrJpg.renderTarget.texture;
+  private async loadHDRJPG(url: string): Promise<Texture> {
+    return new Promise((resolve, reject) => {
+      const pmremGenerator = new PMREMGenerator(this.renderer);
+      const hdrJpg = new HDRJPGLoader(this.renderer).load(url, () => {
+        const hdrJpgEquirectangularMap = hdrJpg.renderTarget.texture;
+        hdrJpgEquirectangularMap.mapping = EquirectangularReflectionMapping;
+        hdrJpgEquirectangularMap.needsUpdate = true;
 
-      hdrJpgEquirectangularMap.mapping = EquirectangularReflectionMapping;
-      hdrJpgEquirectangularMap.needsUpdate = true;
-
-      const envMap = pmremGenerator!.fromEquirectangular(hdrJpgEquirectangularMap).texture;
-      if (envMap) {
-        envMap.colorSpace = LinearSRGBColorSpace;
-        envMap.needsUpdate = true;
-        this.scene.environment = envMap;
-        this.scene.environmentIntensity = envValues.envMapIntensity;
-        this.scene.environmentRotation = new Euler(
-          MathUtils.degToRad(envValues.skyboxPolarAngle),
-          MathUtils.degToRad(envValues.skyboxAzimuthalAngle),
-          0,
-        );
-        this.scene.background = envMap;
-        this.scene.backgroundIntensity = envValues.skyboxIntensity;
-        this.scene.backgroundBlurriness = envValues.skyboxBlurriness;
-        this.scene.backgroundRotation = new Euler(
-          MathUtils.degToRad(envValues.skyboxPolarAngle),
-          MathUtils.degToRad(envValues.skyboxAzimuthalAngle),
-          0,
-        );
-        this.isEnvHDRI = true;
+        const envMap = pmremGenerator!.fromEquirectangular(hdrJpgEquirectangularMap).texture;
         hdrJpgEquirectangularMap.dispose();
         pmremGenerator!.dispose();
-      }
-
-      hdrJpg.dispose();
-    });
-  }
-
-  public useHDRI(url: string, fromFile: boolean = false): void {
-    if ((this.isEnvHDRI && fromFile === false) || !this.renderer) {
-      return;
-    }
-    const pmremGenerator = new PMREMGenerator(this.renderer);
-    new RGBELoader(new LoadingManager()).load(
-      url,
-      (texture) => {
-        const envMap = pmremGenerator!.fromEquirectangular(texture).texture;
+        hdrJpg.dispose();
         if (envMap) {
           envMap.colorSpace = LinearSRGBColorSpace;
           envMap.needsUpdate = true;
-          this.scene.environment = envMap;
-          this.scene.environmentIntensity = envValues.envMapIntensity;
-          this.scene.environmentRotation = new Euler(
-            MathUtils.degToRad(envValues.skyboxPolarAngle),
-            MathUtils.degToRad(envValues.skyboxAzimuthalAngle),
-            0,
-          );
-          this.scene.background = envMap;
-          this.scene.backgroundIntensity = envValues.skyboxIntensity;
-          this.scene.backgroundBlurriness = envValues.skyboxBlurriness;
-          this.isEnvHDRI = true;
-          texture.dispose();
-          pmremGenerator!.dispose();
+          resolve(envMap);
+        } else {
+          reject("Failed to generate environment map");
         }
-      },
-      () => {},
-      (error: ErrorEvent) => {
-        console.error(`Can't load ${url}: ${JSON.stringify(error)}`);
-      },
-    );
+      });
+    });
+  }
+
+  private async loadHDRi(url: string): Promise<Texture> {
+    return new Promise((resolve, reject) => {
+      const pmremGenerator = new PMREMGenerator(this.renderer);
+      new RGBELoader(new LoadingManager()).load(url, (texture) => {
+        const envMap = pmremGenerator!.fromEquirectangular(texture).texture;
+        texture.dispose();
+        pmremGenerator!.dispose();
+        if (envMap) {
+          envMap.colorSpace = LinearSRGBColorSpace;
+          envMap.needsUpdate = true;
+          resolve(envMap);
+        } else {
+          reject("Failed to generate environment map");
+        }
+      });
+    });
+  }
+
+  public useHDRJPG(url: string, fromFile: boolean = false): void {
+    if (this.skyboxState.src.hdrJpgUrl === url) {
+      return;
+    }
+
+    const hdrJPGPromise = this.loadHDRJPG(url);
+    this.skyboxState.src = { hdrJpgUrl: url };
+    this.skyboxState.latestPromise = hdrJPGPromise;
+    hdrJPGPromise.then((envMap) => {
+      if (this.skyboxState.latestPromise !== hdrJPGPromise) {
+        return;
+      }
+      this.applyEnvMap(envMap);
+    });
+  }
+
+  public useHDRI(url: string): void {
+    if (this.skyboxState.src.hdrUrl === url) {
+      return;
+    }
+    const hdrPromise = this.loadHDRi(url);
+    this.skyboxState.src = { hdrUrl: url };
+    this.skyboxState.latestPromise = hdrPromise;
+    hdrPromise.then((envMap) => {
+      if (this.skyboxState.latestPromise !== hdrPromise) {
+        return;
+      }
+      this.applyEnvMap(envMap);
+    });
   }
 
   public setHDRIFromFile(): void {
@@ -455,7 +495,7 @@ export class Composer {
       const fileURL = URL.createObjectURL(file);
       if (fileURL) {
         if (extension === "hdr") {
-          this.useHDRI(fileURL, true);
+          this.useHDRI(fileURL);
         } else if (extension === "jpg") {
           this.useHDRJPG(fileURL);
         } else {
@@ -543,5 +583,23 @@ export class Composer {
         this.environmentConfiguration.ambientLight.intensity;
     }
     this.setAmbientLight();
+  }
+
+  private applyEnvMap(envMap: Texture) {
+    this.scene.environment = envMap;
+    this.scene.environmentIntensity = envValues.envMapIntensity;
+    this.scene.environmentRotation = new Euler(
+      MathUtils.degToRad(envValues.skyboxPolarAngle),
+      MathUtils.degToRad(envValues.skyboxAzimuthalAngle),
+      0,
+    );
+    this.scene.background = envMap;
+    this.scene.backgroundIntensity = envValues.skyboxIntensity;
+    this.scene.backgroundBlurriness = envValues.skyboxBlurriness;
+    this.scene.backgroundRotation = new Euler(
+      MathUtils.degToRad(envValues.skyboxPolarAngle),
+      MathUtils.degToRad(envValues.skyboxAzimuthalAngle),
+      0,
+    );
   }
 }

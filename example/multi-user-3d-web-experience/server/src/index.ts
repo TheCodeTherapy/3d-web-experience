@@ -46,7 +46,8 @@ const userAuthenticator = new BasicUserAuthenticator(characterDescription, {
 
 const webClientBuildDir = path.join(dirname, "../../client/build/");
 const indexContent = fs.readFileSync(path.join(webClientBuildDir, "index.html"), "utf8");
-const mmlDocumentsWatchPath = path.resolve(path.join(dirname, "../mml-documents"), "*.html");
+const mmlDocumentsDirectoryRoot = path.resolve(dirname, "../mml-documents");
+const mmlDocumentsWatchPath = "**/*.html";
 
 dotenv.config();
 const { app } = enableWs(express());
@@ -78,6 +79,7 @@ const networked3dWebExperienceServer = new Networked3dWebExperienceServer({
   userAuthenticator,
   mmlServing: {
     documentsWatchPath: mmlDocumentsWatchPath,
+    documentsDirectoryRoot: mmlDocumentsDirectoryRoot,
     documentsUrl: "/mml-documents/",
   },
   webClientServing: {

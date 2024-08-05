@@ -36,5 +36,7 @@ dist
 .env.test.local
 .env.production.local
 
-.npmrc
 .nx
+
+.envrc
+.direnv
