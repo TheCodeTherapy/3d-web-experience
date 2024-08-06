@@ -1,0 +1,279 @@
+<m-group id="piano-group" sx="0.95" sy="0.45" sz="0.4" y="-1.32" z="-12">
+  <m-group id="piano-keys" x="-13" y="1" z="-3"></m-group>
+</m-group>
+
+<script>
+  const pianoKeysGroup = document.getElementById("piano-keys");
+
+  const numberOfOctaves = 3;
+
+  const whiteKeyWidth = 1.29;
+  const blackKeyOffset = whiteKeyWidth * 0.5 + 0.32;
+
+  const whiteKeyTypes = ["left", "middle", "right", "left", "middle", "middle", "right"];
+  const blackKeyPositions = [0, 1, 3, 4, 5];
+  const whiteKeysOffsets = [0, 1.29, 2.58, 3.64, 4.93, 6.14, 7.43];
+  const blackKeysOffsets = [0.69, 1.91, 4.32, 5.53, 6.705, 10, 10, 10];
+
+  const mp3NotesFiles = [
+    "note_C3.mp3",
+    "note_D3.mp3",
+    "note_E3.mp3",
+    "note_F3.mp3",
+    "note_G3.mp3",
+    "note_A3.mp3",
+    "note_B3.mp3",
+    "note_Db3.mp3",
+    "note_Eb3.mp3",
+    "note_Gb3.mp3",
+    "note_Ab3.mp3",
+    "note_Bb3.mp3",
+    "note_C4.mp3",
+    "note_D4.mp3",
+    "note_E4.mp3",
+    "note_F4.mp3",
+    "note_G4.mp3",
+    "note_A4.mp3",
+    "note_B4.mp3",
+    "note_Db4.mp3",
+    "note_Eb4.mp3",
+    "note_Gb4.mp3",
+    "note_Ab4.mp3",
+    "note_Bb4.mp3",
+    "note_C5.mp3",
+    "note_D5.mp3",
+    "note_E5.mp3",
+    "note_F5.mp3",
+    "note_G5.mp3",
+    "note_A5.mp3",
+    "note_B5.mp3",
+    "note_Db5.mp3",
+    "note_Eb5.mp3",
+    "note_Gb5.mp3",
+    "note_Ab5.mp3",
+    "note_Bb5.mp3",
+    "note_C6.mp3",
+  ];
+
+  let totalKeys = 0;
+
+  const keyboard = new Map();
+  const playerCollisionRemovalSchedule = new Map();
+  const collisionRemovalDelay = 250;
+  const mp3Notes = new Map();
+
+  const pressRotation = 1.25;
+
+  window.addEventListener("disconnected", (e) => {
+    handleDisconnection(e.detail.connectionId);
+  });
+
+  function createNote(xPos) {
+    const now = document.timeline.currentTime;
+    const note = document.createElement("m-audio");
+    const url = `/assets/playground/${mp3NotesFiles[totalKeys]}`;
+    note.setAttribute("src", url);
+    note.setAttribute("x", xPos);
+    note.setAttribute("y", 1);
+    note.setAttribute("z", 0);
+    note.setAttribute("loop", false);
+    note.setAttribute("enabled", true);
+    note.setAttribute("volume", 1);
+    note.setAttribute("start-time", now - 4000);
+    note.setAttribute("pause-time", now);
+    mp3Notes.set(totalKeys, {
+      url: url,
+      id: totalKeys,
+      note: note,
+    });
+    pianoKeysGroup.appendChild(note);
+  }
+
+  function playNote(id) {
+    const noteObject = mp3Notes.get(id);
+    const now = document.timeline.currentTime;
+    noteObject.note.setAttribute("volume", 3);
+    noteObject.note.setAttribute("start-time", now);
+    noteObject.note.setAttribute("pause-time", now + 4000);
+  }
+
+  function createKey(keyType, xPosition) {
+    const fileName =
+      keyType === "full" ? "white" : keyType === "black" ? "black" : `white_${keyType}`;
+    const url = `/assets/playground/piano_key_${fileName}.glb`;
+    const key = document.createElement("m-model");
+    const id = totalKeys;
+    key.setAttribute("id", id);
+    key.setAttribute("src", url);
+    key.setAttribute("x", xPosition);
+    key.setAttribute("y", keyType === "black" ? -0.2 : 0);
+    key.setAttribute("z", keyType === "black" ? 0 : 0);
+    key.setAttribute("collision-interval", 50);
+    pianoKeysGroup.appendChild(key);
+    key.addEventListener("click", (e) => handleClickOnKey(id));
+    key.addEventListener("collisionstart", ({ detail }) =>
+      handleCollisionEnter(id, detail.connectionId),
+    );
+    key.addEventListener("collisionmove", ({ detail }) =>
+      handleCollisionEnter(id, detail.connectionId),
+    );
+    key.addEventListener("collisionend", ({ detail }) =>
+      handleCollisionLeave(id, detail.connectionId),
+    );
+    keyboard.set(totalKeys, {
+      id: totalKeys,
+      key: key,
+      playersColliding: new Set(),
+      isPressed: false,
+      color: keyType === "black" ? "black" : "white",
+    });
+    createNote(xPosition, 0);
+    totalKeys++;
+  }
+
+  function handleCollisionEnter(id, connectionId) {
+    const keyObject = keyboard.get(id);
+    if (!keyObject.playersColliding.has(connectionId)) {
+      keyObject.playersColliding.add(connectionId);
+    }
+
+    // Update the removal time in the schedule without deleting
+    const scheduleKey = `${id}-${connectionId}`;
+    playerCollisionRemovalSchedule.set(scheduleKey, {
+      keyId: id,
+      playerId: connectionId,
+      removalTime: Date.now() + collisionRemovalDelay,
+    });
+
+    keyPress(keyObject);
+  }
+
+  function handleCollisionLeave(id, connectionId) {
+    const keyObject = keyboard.get(id);
+    schedulePlayerCollisionRemoval(id, connectionId);
+    keyRelease(keyObject);
+  }
+
+  function schedulePlayerCollisionRemoval(id, connectionId) {
+    const scheduleKey = `${id}-${connectionId}`;
+    const removalTime = Date.now() + collisionRemovalDelay;
+
+    playerCollisionRemovalSchedule.set(scheduleKey, {
+      keyId: id,
+      playerId: connectionId,
+      removalTime: removalTime,
+    });
+  }
+
+  function handleDisconnection(id) {
+    keyboard.forEach((keyObject) => {
+      if (keyObject.playersColliding.has(id)) {
+        keyObject.playersColliding.delete(id);
+      }
+    });
+  }
+
+  function animate(element, attr, start, end, duration, easing, callback) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("start-time", document.timeline.currentTime);
+    anim.setAttribute("end-time", document.timeline.currentTime + duration);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("easing", easing);
+    anim.setAttribute("loop", false);
+    element.appendChild(anim);
+    setTimeout(() => {
+      element.setAttribute(attr, end);
+      element.removeChild(anim);
+      if (typeof callback !== "undefined" && callback !== null) {
+        callback();
+      }
+    }, duration);
+  }
+
+  function keyRelease(keyObject) {
+    const rotation = keyObject.color === "white" ? 2 : 3.5;
+    if (keyObject.playersColliding.size > 0) return;
+    animate(keyObject.key, "rx", rotation, 0, 100, "easeInOutQuad", () => {
+      keyObject.isPressed = false;
+    });
+  }
+
+  function keyPress(keyObject) {
+    if (keyObject.isPressed) return;
+    const rotation = keyObject.color === "white" ? 2 : 3.5;
+    animate(keyObject.key, "rx", 0, rotation, 100, "easeInOutQuad", () => {
+      playNote(keyObject.id);
+      keyObject.isPressed = true;
+    });
+    if (keyObject.playersColliding.size === 0) {
+      setTimeout(() => keyRelease(keyObject), 100);
+    }
+  }
+
+  function handleClickOnKey(id) {
+    const keyObject = keyboard.get(id);
+    keyPress(keyObject);
+  }
+
+  function createKeys() {
+    let xPosition = 0;
+    const width = 8.44 * numberOfOctaves + 1.15;
+    const body = document.createElement("m-cube");
+    body.setAttribute("color", "#303030");
+    body.setAttribute("width", width);
+    body.setAttribute("height", 2);
+    body.setAttribute("depth", 1.5);
+    body.setAttribute("x", width / 2 - 0.53);
+    body.setAttribute("y", 1);
+    body.setAttribute("z", -0.5);
+    pianoKeysGroup.appendChild(body);
+
+    const o = 8.49;
+
+    for (let octave = 0; octave < numberOfOctaves; octave++) {
+      whiteKeyTypes.forEach((keyType, index) => {
+        const offset = whiteKeysOffsets[index];
+        xPosition = octave > 0 ? offset + o * octave : offset;
+        createKey(keyType, xPosition);
+      });
+
+      // Create black keys
+      blackKeyPositions.forEach((position, index) => {
+        const offset = blackKeysOffsets[index];
+        xPosition = octave > 0 ? offset + o * octave : offset;
+        createKey("black", xPosition);
+      });
+    }
+
+    // Adding the C6 note after the last octave
+    if (numberOfOctaves > 0) {
+      const c6Position = o * numberOfOctaves + whiteKeysOffsets[0]; // Calculating the position for the C6 key
+      createKey("full", c6Position); // Assuming C6 will have the type "white_left"
+    }
+  }
+
+  setInterval(() => {
+    const currentTime = Date.now();
+    const toRemove = [];
+
+    playerCollisionRemovalSchedule.forEach((schedule, key) => {
+      if (currentTime >= schedule.removalTime) {
+        const keyObject = keyboard.get(schedule.keyId);
+        if (keyObject) {
+          keyObject.playersColliding.delete(schedule.playerId);
+        }
+        keyRelease(keyObject);
+        toRemove.push(key);
+      }
+    });
+
+    toRemove.forEach((key) => {
+      playerCollisionRemovalSchedule.delete(key);
+    });
+  }, 50);
+
+  createKeys();
+</script>
