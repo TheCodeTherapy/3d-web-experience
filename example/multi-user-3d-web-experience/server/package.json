@@ -28,7 +28,8 @@
     "networked-dom-server": "0.17.1",
     "ws": "8.18.0",
     "livekit-server-sdk": "2.6.0",
-    "dotenv": "16.4.5"
+    "dotenv": "16.4.5",
+    "canvas": "2.11.2"
   },
   "devDependencies": {
     "@types/cors": "2.8.17",
