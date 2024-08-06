@@ -1,7 +1,7 @@
 {
   "name": "@example/web-avatar-editor-server",
   "private": true,
-  "version": "0.18.0",
+  "version": "0.19.0",
   "engines": {
     "node": "20.x"
   },
@@ -17,7 +17,7 @@
     "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
   },
   "dependencies": {
-    "@example/web-avatar-editor-client": "^0.18.0",
+    "@example/web-avatar-editor-client": "^0.19.0",
     "chokidar": "^3.6.0",
     "cors": "^2.8.5",
     "express": "4.19.2",

@@ -1,7 +1,7 @@
 {
   "name": "@example/local-only-multi-user-3d-web-experience-client",
   "private": true,
-  "version": "0.18.0",
+  "version": "0.19.0",
   "files": [
     "/build"
   ],
@@ -14,10 +14,10 @@
     "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
   },
   "dependencies": {
-    "@mml-io/3d-web-client-core": "^0.18.0",
-    "@mml-io/3d-web-text-chat": "^0.18.0",
-    "@mml-io/3d-web-user-networking": "^0.18.0",
-    "@mml-io/3d-web-voice-chat": "^0.18.0",
+    "@mml-io/3d-web-client-core": "^0.19.0",
+    "@mml-io/3d-web-text-chat": "^0.19.0",
+    "@mml-io/3d-web-user-networking": "^0.19.0",
+    "@mml-io/3d-web-voice-chat": "^0.19.0",
     "@mml-io/networked-dom-document": "0.17.1",
     "mml-web": "0.17.1",
     "mml-web-runner": "0.17.1",
