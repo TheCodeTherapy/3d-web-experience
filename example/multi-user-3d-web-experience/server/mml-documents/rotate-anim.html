@@ -54,40 +54,37 @@
   const modelAnim = document.getElementById("model-anim");
   const codeImage = document.getElementById("code-image");
 
-  // display ========================================================
-  class AttributesToSVG {
-    svgOpening = `<svg xmlns="http://www.w3.org/2000/svg"`;
-    fontFamily = `font-family="monospace"`;
-    lineHeight = 0;
+  class AttributesToCanvasImage {
+    image = null;
+    canvas = document.createElement("canvas");
+    ctx = this.canvas.getContext("2d");
 
-    fontSize = 0;
-    fontSizeAttr = "";
-    color = "";
-    strokeWidth = "";
-    sharedTextAttrs = "";
-    defaultColorAttrs = "";
+    width = 300;
+    height = 300;
+    lineHeight = 0;
+    maxLineCharacters = 0;
+    fonstSize = 50;
 
     openingTag = "";
     closingTag = "";
 
+    color = "#ffffff";
     attributeColor = "#ff77aa";
     eqColor = "#777777";
     valueColor = "#33aaff";
 
-    constructor(fontSize, color, openingTag, closingTag) {
-      this.fontSize = fontSize;
-      this.fontSizeAttr = `font-size="${fontSize}px"`;
-      this.lineHeight = parseFloat((fontSize * 1.1).toFixed(2));
-      this.color = `fill="${color}" stroke="${color}"`;
-      this.strokeWidth = `stroke-width="${Math.round(fontSize * 0.05)}px"`;
-      this.sharedTextAttrs = `${this.fontFamily} ${this.fontSizeAttr} ${this.strokeWidth}`;
-      this.defaultColorAttrs = `${this.color}`;
-      this.openingTag = this.escapeForSVG(openingTag);
-      this.closingTag = this.escapeForSVG(closingTag);
-    }
+    attributes = [];
 
-    escapeForSVG(text) {
-      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    constructor(targetImage, element, fontSize, color, tag) {
+      this.image = targetImage;
+      this.fontSize = fontSize;
+      this.lineHeight = parseFloat((this.fontSize * 1.05).toFixed(2));
+      this.color = color;
+
+      this.openingTag = `<${tag}`;
+      this.closingTag = `></${tag}>`;
+
+      this.getElementAttributes(element);
     }
 
     getElementAttributes(element) {
@@ -96,62 +93,55 @@
         let val = element.getAttribute(attr);
         const numberVal = parseFloat(val);
         if (!isNaN(numberVal)) val = numberVal.toFixed(2);
-        attributes.push(`${attr}="${val}"`);
+        const attribute = `${attr}="${val}"`;
+        attributes.push(attribute);
+        const attributeLength = attribute.length;
+        if (this.maxLineCharacters < attributeLength) {
+          this.maxLineCharacters = attributeLength;
+        }
       }
-      return attributes;
+      this.attributes = attributes;
+      this.canvas.width = (this.maxLineCharacters + 4) * this.fonstSize * 0.3;
+      this.canvas.height = this.fontSize * (this.attributes.length + 2) * 1.25;
+      const imageWidth = Math.round(this.canvas.width * 100) / 10000;
+      const imageHeight = Math.round(this.canvas.height * 100) / 10000;
+      this.image.setAttribute("width", imageWidth);
+      this.image.setAttribute("height", imageHeight);
+      this.image.setAttribute("emissive", 12);
+      this.ctx.fillStyle = "rgba(0, 0, 0, 0)";
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      this.paintCanvas();
     }
 
-    getTextTag(content, yPosition, collorAttributes) {
-      let tag = `<text x="10" y="${yPosition}" ${this.sharedTextAttrs} ${collorAttributes}>`;
-      tag = `${tag} ${content} </text>`;
-      return tag;
-    }
-
-    getHighlightedTextTag(content, yPosition) {
-      let [attr, value] = content.split("=");
-      value = value.replace("/assets/playground", "https://mgz.me");
-
-      const attrColor = `fill="${this.attributeColor}" stroke="${this.attributeColor}"`;
-      const eqColor = `fill="${this.eqColor}" stroke="${this.eqColor}"`;
-      const valueColor = `fill="${this.valueColor}" stroke="${this.valueColor}"`;
-
-      let xOffset = this.fontSize;
-      let tag = `<text x="${xOffset}" y="${yPosition}" ${this.sharedTextAttrs} ${attrColor}>${attr}</text>`;
-      xOffset += attr.length * this.fontSize * 0.65;
-      tag += `<text x="${xOffset}" y="${yPosition}" ${this.sharedTextAttrs} ${eqColor}>=</text>`;
-      xOffset += this.fontSize * 0.65;
-      tag += `<text x="${xOffset}" y="${yPosition}" ${this.sharedTextAttrs} ${valueColor}>${value}</text>`;
-      return tag;
-    }
-
-    createAttributesSVG(imageElement, element) {
-      const attrs = this.getElementAttributes(element);
-      let maxTextWidth = 0;
-      let innerContent = "";
-      innerContent += this.getTextTag(this.openingTag, this.lineHeight, this.defaultColorAttrs);
-      attrs.forEach((attr, index) => {
-        const yPos = this.lineHeight * (index + 2);
-        innerContent += this.getHighlightedTextTag(attr, yPos);
-        const currentWidth = (attr.length + 4) * (this.fontSize * 0.6);
-        maxTextWidth = Math.max(maxTextWidth, currentWidth);
-      });
-      innerContent += this.getTextTag(
-        this.closingTag,
-        this.lineHeight * (attrs.length + 2),
-        this.defaultColorAttrs,
-      );
-      const svgWidth = maxTextWidth + 20;
-      const svgHeight = (attrs.length + 3) * this.lineHeight + 30;
-      const svgURI = encodeURIComponent(
-        `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">${innerContent}</svg>`,
-      );
-      imageElement.setAttribute("src", `data:image/svg+xml,${svgURI}`);
+    paintCanvas() {
+      this.ctx.font = `900 ${this.fontSize}px monospace`;
+      let yPos = this.lineHeight;
+      this.ctx.fillStyle = this.color;
+      this.ctx.fillText(this.openingTag, 0, yPos);
+      yPos += this.lineHeight;
+      for (let i = 0; i < this.attributes.length; i++) {
+        let xOffset = this.fonstSize * 0.6;
+        let [attr, value] = this.attributes[i].split("=");
+        value = value.replace("/assets/playground", "https://mgz.me");
+        this.ctx.fillStyle = this.attributeColor;
+        this.ctx.fillText(attr, xOffset, yPos);
+        xOffset += this.fonstSize * (attr.length + 1) * 0.3;
+        this.ctx.fillStyle = this.eqColor;
+        this.ctx.fillText("=", xOffset, yPos);
+        xOffset += this.fonstSize * 2 * 0.3;
+        this.ctx.fillStyle = this.valueColor;
+        this.ctx.fillText(value, xOffset, yPos);
+        yPos += this.lineHeight;
+        xOffset = this.fonstSize;
+      }
+      this.ctx.fillStyle = this.color;
+      this.ctx.fillText(this.closingTag, 0, yPos);
+      const dataUrl = this.canvas.toDataURL("image/png");
+      this.image.setAttribute("src", dataUrl);
     }
   }
 
-  const attrToSVG = new AttributesToSVG(100, "#cccc44", "<m-attr-anim", "/></m-attr-anim>");
-  attrToSVG.createAttributesSVG(codeImage, modelAnim);
-  // ================================================================
+  const attrCodeImage = new AttributesToCanvasImage(codeImage, modelAnim, 25, "#cccc33", "m-model");
 
   let rotationSpeed = 1;
   const minRotationSpeed = -10;
@@ -209,7 +199,7 @@
     }
 
     rotationSpeed = newRotationSpeed;
-    attrToSVG.createAttributesSVG(codeImage, modelAnim);
+    attrCodeImage.getElementAttributes(modelAnim);
   }
 
   function increaseRotation() {
