@@ -1,4 +1,4 @@
-<m-group id="piano-group" sx="0.95" sy="0.45" sz="0.4" y="-1.32" z="-12">
+<m-group id="piano-group" sx="0.95" sy="0.45" sz="0.5" y="-1.34" z="-12">
   <m-group id="piano-keys" x="-13" y="1" z="-3"></m-group>
 </m-group>
 
@@ -59,7 +59,7 @@
 
   const keyboard = new Map();
   const playerCollisionRemovalSchedule = new Map();
-  const collisionRemovalDelay = 250;
+  const collisionRemovalDelay = 120;
   const mp3Notes = new Map();
 
   const pressRotation = 1.25;
@@ -94,7 +94,7 @@
     const now = document.timeline.currentTime;
     noteObject.note.setAttribute("volume", 3);
     noteObject.note.setAttribute("start-time", now);
-    noteObject.note.setAttribute("pause-time", now + 4000);
+    noteObject.note.setAttribute("pause-time", now + 2000);
   }
 
   function createKey(keyType, xPosition) {
@@ -106,7 +106,7 @@
     key.setAttribute("id", id);
     key.setAttribute("src", url);
     key.setAttribute("x", xPosition);
-    key.setAttribute("y", keyType === "black" ? -0.2 : 0);
+    key.setAttribute("y", keyType === "black" ? -0.17 : 0);
     key.setAttribute("z", keyType === "black" ? 0 : 0);
     key.setAttribute("collision-interval", 50);
     pianoKeysGroup.appendChild(key);
@@ -240,7 +240,6 @@
         createKey(keyType, xPosition);
       });
 
-      // Create black keys
       blackKeyPositions.forEach((position, index) => {
         const offset = blackKeysOffsets[index];
         xPosition = octave > 0 ? offset + o * octave : offset;
@@ -248,10 +247,9 @@
       });
     }
 
-    // Adding the C6 note after the last octave
     if (numberOfOctaves > 0) {
-      const c6Position = o * numberOfOctaves + whiteKeysOffsets[0]; // Calculating the position for the C6 key
-      createKey("full", c6Position); // Assuming C6 will have the type "white_left"
+      const c6Position = o * numberOfOctaves + whiteKeysOffsets[0];
+      createKey("full", c6Position);
     }
   }
 
