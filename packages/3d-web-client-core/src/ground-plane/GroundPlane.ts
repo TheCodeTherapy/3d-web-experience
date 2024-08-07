@@ -373,7 +373,7 @@ export class GroundPlane extends Group {
       this.floorMaterial.map = this.floorTexture;
       this.floorMaterial.needsUpdate = true;
     } else if (groundPlaneType === "grass") {
-      this.floorSize = 80;
+      this.floorSize = 90;
       this.floorGeometry = new CircleGeometry(this.floorSize, 32);
       this.floorMaterial = new TexturedMaterial(20.0, {
         color: new Color(0x77bb99),
@@ -384,12 +384,12 @@ export class GroundPlane extends Group {
       this.add(this.floorMesh);
 
       this.grass = new Grass({
-        leavesCount: 3500000,
+        leavesCount: 5000000,
         radius: this.floorSize,
         leafBaseWidth: 0.03, //0.027,
         leafHeight: 0.32,
-        windForce: 1.1,
-        windSpeed: 0.9,
+        windForce: 1.05,
+        windSpeed: 0.91,
       });
     }
   }
