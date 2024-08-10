@@ -40,3 +40,4 @@ dist
 
 .envrc
 .direnv
+renamed-packages.json
