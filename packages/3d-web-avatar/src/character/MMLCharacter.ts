@@ -1,4 +1,4 @@
-import { ModelLoadResult } from "@mml-io/model-loader";
+import { ModelLoadResult } from "@thecodetherapy/model-loader";
 import {
   Bone,
   BufferAttribute,

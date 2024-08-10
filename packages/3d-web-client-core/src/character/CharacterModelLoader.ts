@@ -1,4 +1,4 @@
-import { ModelLoader, ModelLoadResult } from "@mml-io/model-loader";
+import { ModelLoader, ModelLoadResult } from "@thecodetherapy/model-loader";
 import { AnimationClip, Object3D } from "three";
 
 class LRUCache<K, V> {

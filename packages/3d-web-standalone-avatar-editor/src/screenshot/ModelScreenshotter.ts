@@ -1,4 +1,4 @@
-import { ModelLoader } from "@mml-io/model-loader";
+import { ModelLoader } from "@thecodetherapy/model-loader";
 import {
   AnimationMixer,
   Box3,
