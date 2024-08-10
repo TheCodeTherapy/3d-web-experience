@@ -542,11 +542,13 @@ export class Composer {
     }
     if (typeof this.environmentConfiguration?.sun?.azimuthalAngle === "number") {
       sunValues.sunPosition.sunAzimuthalAngle = this.environmentConfiguration.sun.azimuthalAngle;
-      this.sun?.setAzimuthalAngle(this.environmentConfiguration.sun.azimuthalAngle);
+      this.sun?.setAzimuthalAngle(
+        this.environmentConfiguration.sun.azimuthalAngle * (Math.PI / 180),
+      );
     }
     if (typeof this.environmentConfiguration?.sun?.polarAngle === "number") {
       sunValues.sunPosition.sunPolarAngle = this.environmentConfiguration.sun.polarAngle;
-      this.sun?.setPolarAngle(this.environmentConfiguration.sun.polarAngle);
+      this.sun?.setPolarAngle(this.environmentConfiguration.sun.polarAngle * (Math.PI / 180));
     }
   }
 
