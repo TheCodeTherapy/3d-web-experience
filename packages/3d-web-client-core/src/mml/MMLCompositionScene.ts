@@ -12,7 +12,7 @@ import {
   LoadingProgressManager,
   LinkProps,
   MMLDocumentTimeManager,
-} from "@thecodetherapy/mml-web";
+} from "mml-web";
 import { AudioListener, Group, Object3D, PerspectiveCamera, Scene, WebGLRenderer } from "three";
 
 import { CollisionsManager } from "../collisions/CollisionsManager";

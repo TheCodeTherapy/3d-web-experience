@@ -1,9 +1,9 @@
-import { IframeWrapper, MMLScene, registerCustomElementsToWindow } from "@thecodetherapy/mml-web";
+import { IframeWrapper, MMLScene, registerCustomElementsToWindow } from "mml-web";
 import {
   EditableNetworkedDOM,
   IframeObservableDOMFactory,
   MMLWebRunnerClient,
-} from "@thecodetherapy/mml-web-runner";
+} from "mml-web-runner";
 import { Euler, Vector3 } from "three";
 
 import exampleMMLDocumentHTML from "./example-mml.html";

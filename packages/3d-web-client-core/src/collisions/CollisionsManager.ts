@@ -2,7 +2,7 @@ import {
   getRelativePositionAndRotationRelativeToObject,
   MElement,
   MMLCollisionTrigger,
-} from "@thecodetherapy/mml-web";
+} from "mml-web";
 import {
   Box3,
   BufferGeometry,

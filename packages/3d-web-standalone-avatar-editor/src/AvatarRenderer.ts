@@ -1,5 +1,5 @@
 import { TimeManager, CameraManager, CollisionsManager } from "@mml-io/3d-web-client-core";
-import { ModelLoader, ModelLoadResult } from "@thecodetherapy/model-loader";
+import { ModelLoader, ModelLoadResult } from "@mml-io/model-loader";
 import {
   AnimationClip,
   AnimationMixer,

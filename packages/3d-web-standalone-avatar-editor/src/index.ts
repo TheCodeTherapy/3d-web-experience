@@ -8,4 +8,4 @@ export { MMLCharacter, parseMMLDescription, createMMLCharacterString } from "@mm
 export { AvatarRenderer } from "./AvatarRenderer";
 export { AvatarVisualizer } from "./AvatarVisualizer";
 export { ModelScreenshotter } from "./screenshot/ModelScreenshotter";
-export { ModelLoader } from "@thecodetherapy/model-loader";
+export { ModelLoader } from "@mml-io/model-loader";

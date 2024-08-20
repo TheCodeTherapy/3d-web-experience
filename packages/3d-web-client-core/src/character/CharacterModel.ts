@@ -3,7 +3,7 @@ import {
   type MMLCharacterDescription,
   parseMMLDescription,
 } from "@mml-io/3d-web-avatar";
-import { ModelLoader } from "@thecodetherapy/model-loader";
+import { ModelLoader } from "@mml-io/model-loader";
 import {
   AnimationAction,
   AnimationClip,

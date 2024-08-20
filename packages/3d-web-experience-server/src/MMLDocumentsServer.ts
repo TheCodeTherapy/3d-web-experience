@@ -2,10 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import url from "node:url";
 
-import {
-  EditableNetworkedDOM,
-  LocalObservableDOMFactory,
-} from "@thecodetherapy/networked-dom-server";
+import { EditableNetworkedDOM, LocalObservableDOMFactory } from "networked-dom-server";
 import chokidar, { FSWatcher } from "chokidar";
 import WebSocket from "ws";
 
