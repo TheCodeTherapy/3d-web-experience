@@ -12,6 +12,7 @@ import React, {
 import { useClickOutside } from "../../helpers";
 
 import styles from "./EditorPanelComponent.module.css";
+import { defaultEditorExtensions } from "./extensions";
 import { editorTheme } from "./theme";
 
 type EditorPanelProps = {
@@ -30,7 +31,7 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
   const [editorValue, setEditorValue] = useState<string>("");
   const [documentList, setDocumentList] = useState<string[]>([]);
   const [documentsWithCopies, setDocumentsWithCopies] = useState<string[]>([]);
-  const [selectedDocument, setSelectedDocument] = useState<string>("");
+  const [selectedDocument, setSelectedDocument] = useState<string>(""); // Controls currently selected doc
   const [fetching, setFetching] = useState<boolean>(true);
 
   const { onUpdate } = props;
@@ -41,8 +42,23 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
     setIsVisible(false);
   });
 
+  // Fetch the content of a selected document
+  const fetchDocumentContent = async (docName: string) => {
+    try {
+      setFetching(true);
+      const response = await fetch(`/mml-documents/${docName}`);
+      const data = await response.json();
+      setEditorValue(data.content);
+      setSelectedDocument(docName); // Mark this document as selected
+      setFetching(false);
+    } catch (error) {
+      setFetching(false);
+      console.error("Error fetching document:", error);
+    }
+  };
+
   // Fetch list of documents
-  const fetchDocumentList = async () => {
+  const fetchDocumentList = useCallback(async () => {
     try {
       setFetching(true);
       const response = await fetch("/mml-documents-list");
@@ -53,48 +69,42 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
       const copiesResponse = await fetch("/mml-documents-copies");
       const copiesData = await copiesResponse.json();
       setDocumentsWithCopies(copiesData.documents);
+
+      // If no document is selected, load the first document by default
+      if (!selectedDocument && data.documents.length > 0) {
+        fetchDocumentContent(data.documents[0]); // Automatically fetch the first document
+      }
+
       setFetching(false);
     } catch (error) {
       setFetching(false);
       console.error("Error fetching document list:", error);
     }
-  };
-
-  // Fetch the content of a selected document
-  const fetchDocumentContent = async (docName: string) => {
-    try {
-      setFetching(true);
-      const response = await fetch(`/mml-documents/${docName}`);
-      const data = await response.json();
-      setEditorValue(data.content);
-      setSelectedDocument(docName);
-      setFetching(false);
-    } catch (error) {
-      setFetching(false);
-      console.error("Error fetching document:", error);
-    }
-  };
+  }, [selectedDocument]);
 
   // Save the document content
-  const saveDocument = useCallback(async (content: string, docName: string) => {
-    try {
-      const response = await fetch(`/mml-documents/${docName}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content }),
-      });
+  const saveDocument = useCallback(
+    async (content: string, docName: string) => {
+      try {
+        const response = await fetch(`/mml-documents/${docName}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ content }),
+        });
 
-      const result = await response.json();
-      // Refresh document list and content after save
-      await fetchDocumentList();
-      await fetchDocumentContent(docName);
-    } catch (error) {
-      setFetching(false);
-      console.error("Error saving document:", error);
-    }
-  }, []);
+        const result = await response.json();
+        // Refresh document list and content after save
+        await fetchDocumentList();
+        await fetchDocumentContent(docName);
+      } catch (error) {
+        setFetching(false);
+        console.error("Error saving document:", error);
+      }
+    },
+    [fetchDocumentList],
+  );
 
   // Restore the original document from its copy
   const restoreDocument = async (docName: string) => {
@@ -159,24 +169,6 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
     bracketMatching: true,
   };
 
-  const defaultAttrs = {
-    attrs: {
-      x: ["string"],
-      y: ["string"],
-      z: ["string"],
-      sx: ["string"],
-      sy: ["string"],
-      sz: ["string"],
-      rx: ["string"],
-      ry: ["string"],
-      rz: ["string"],
-      visible: ["boolean"],
-      debug: ["boolean"],
-      id: ["string"],
-      class: ["string"],
-    },
-  };
-
   return (
     <div
       ref={containerRef}
@@ -187,66 +179,53 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
     >
       {fetching && <div className={styles.loading}>Loading...</div>}
       <div className={styles.documentList}>
-        <h4>Documents</h4>
-        <ul>
-          {documentList.map((docName) => (
-            <li
-              key={docName}
-              className={selectedDocument === docName ? styles.selectedDocument : ""}
-            >
-              <span onClick={() => fetchDocumentContent(docName)}>{docName}</span>
-              {documentsWithCopies.includes(docName) && (
-                <button
-                  onClick={() => restoreDocument(docName)}
-                  title="Restore original"
-                  className={styles.restoreButton}
-                >
-                  ⟳
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+        <div id="file-list-header" className={styles.fileListHeader}>
+          <span className={styles.fileListTitle}>Documents</span>
+        </div>
+        <div id="file-list-body" className={styles.fileListBody}>
+          <ul>
+            {documentList.map((docName) => (
+              <li
+                key={docName}
+                className={selectedDocument === docName ? styles.selectedDocument : ""}
+                onClick={() => fetchDocumentContent(docName)} // Moved onClick here
+              >
+                <span>{docName}</span>
+                {documentsWithCopies.includes(docName) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent triggering document load
+                      restoreDocument(docName);
+                    }}
+                    title="Restore original"
+                    className={styles.restoreButton}
+                  >
+                    ⟳
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
       <div className={styles.editorWrapper} ref={editorRef}>
-        <CodeMirror
-          className={styles.editor}
-          value={editorValue}
-          basicSetup={setup}
-          extensions={[
-            html({
-              matchClosingTags: true,
-              autoCloseTags: true,
-              extraTags: {
-                "m-group": defaultAttrs,
-                "m-cube": defaultAttrs,
-                "m-sphere": defaultAttrs,
-                "m-plane": defaultAttrs,
-                "m-cylinder": defaultAttrs,
-                "m-light": defaultAttrs,
-                "m-model": defaultAttrs,
-                "m-character": defaultAttrs,
-                "m-frame": defaultAttrs,
-                "m-audio": defaultAttrs,
-                "m-image": defaultAttrs,
-                "m-video": defaultAttrs,
-                "m-label": defaultAttrs,
-                "m-position-probe": defaultAttrs,
-                "m-prompt": defaultAttrs,
-                "m-link": defaultAttrs,
-                "m-interaction": defaultAttrs,
-                "m-chat-probe": defaultAttrs,
-                "m-attr-anim": defaultAttrs,
-                "m-attr-lerp": defaultAttrs,
-              },
-            }),
-          ]}
-          theme={editorTheme}
-          onChange={(val) => {
-            setEditorValue(val); // Update the editor value as the user types
-          }}
-          autoFocus={true}
-        />
+        <div id="editor-header" className={styles.editorHeader}>
+          <span className={styles.headerTitle}>
+            Editing: {selectedDocument}{" "}
+            {documentsWithCopies.includes(selectedDocument) ? "(modified)" : ""}{" "}
+          </span>
+        </div>
+        <div id="editor-body" className={styles.editorBody}>
+          <CodeMirror
+            className={styles.editor}
+            value={editorValue}
+            basicSetup={setup}
+            extensions={defaultEditorExtensions}
+            theme={editorTheme}
+            onChange={(val) => setEditorValue(val)}
+            autoFocus={true}
+          />
+        </div>
       </div>
     </div>
   );

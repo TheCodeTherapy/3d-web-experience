@@ -1,9 +1,57 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { indentMore, indentLess } from "@codemirror/commands";
+import { html } from "@codemirror/lang-html";
 import { indentUnit, foldService } from "@codemirror/language";
 import { keymap, Decoration, MatchDecorator, ViewPlugin } from "@codemirror/view";
 import { StateCommand } from "@uiw/react-codemirror";
 import { basicSetup, EditorView } from "codemirror";
+
+const defaultAttrs = {
+  attrs: {
+    x: ["string"],
+    y: ["string"],
+    z: ["string"],
+    sx: ["string"],
+    sy: ["string"],
+    sz: ["string"],
+    rx: ["string"],
+    ry: ["string"],
+    rz: ["string"],
+    visible: ["boolean"],
+    debug: ["boolean"],
+    id: ["string"],
+    class: ["string"],
+  },
+};
+
+export const defaultEditorExtensions = [
+  html({
+    matchClosingTags: true,
+    autoCloseTags: true,
+    extraTags: {
+      "m-group": defaultAttrs,
+      "m-cube": defaultAttrs,
+      "m-sphere": defaultAttrs,
+      "m-plane": defaultAttrs,
+      "m-cylinder": defaultAttrs,
+      "m-light": defaultAttrs,
+      "m-model": defaultAttrs,
+      "m-character": defaultAttrs,
+      "m-frame": defaultAttrs,
+      "m-audio": defaultAttrs,
+      "m-image": defaultAttrs,
+      "m-video": defaultAttrs,
+      "m-label": defaultAttrs,
+      "m-position-probe": defaultAttrs,
+      "m-prompt": defaultAttrs,
+      "m-link": defaultAttrs,
+      "m-interaction": defaultAttrs,
+      "m-chat-probe": defaultAttrs,
+      "m-attr-anim": defaultAttrs,
+      "m-attr-lerp": defaultAttrs,
+    },
+  }),
+];
 
 export const indentSelectionLess: StateCommand = ({ state, dispatch }) => {
   if (state.readOnly) return false;
