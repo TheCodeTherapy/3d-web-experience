@@ -24,6 +24,7 @@ import {
   TweakPane,
   VirtualJoystick,
 } from "@mml-io/3d-web-client-core";
+import { EditorUI } from "@mml-io/3d-web-client-editor";
 import {
   ChatNetworkingClient,
   ChatNetworkingClientChatMessage,
@@ -137,6 +138,9 @@ export class Networked3dWebExperienceClient {
   private errorScreen?: ErrorScreen;
   private currentRequestAnimationFrame: number | null = null;
   private groundPlane: GroundPlane | null = null;
+
+  private handleEditorUpdate: (content: string) => void;
+  private mmlEditorUI: EditorUI;
 
   constructor(
     private holderElement: HTMLElement,
@@ -275,6 +279,16 @@ export class Networked3dWebExperienceClient {
     this.setGroundPlaneEnabled(this.config.environmentConfiguration?.groundPlane ?? true);
 
     this.setupMMLScene();
+
+    this.handleEditorUpdate = (content: string) => {
+      // no-op
+    };
+    this.mmlEditorUI = new EditorUI({
+      holderElement: this.element,
+      visible: false,
+      onUpdate: this.handleEditorUpdate.bind(this),
+    });
+    this.mmlEditorUI.init();
 
     this.loadingScreen = new LoadingScreen(this.loadingProgressManager);
     this.element.append(this.loadingScreen.element);
@@ -539,6 +553,7 @@ export class Networked3dWebExperienceClient {
     this.cameraManager.update();
     this.composer.sun?.updateCharacterPosition(this.characterManager.localCharacter?.position);
     this.composer.render(this.timeManager);
+
     if (this.tweakPane?.guiVisible) {
       this.tweakPane.updateStats(this.timeManager);
       this.tweakPane.updateCameraData(this.cameraManager);
@@ -551,6 +566,11 @@ export class Networked3dWebExperienceClient {
         }
       }
     }
+
+    if (this.mmlEditorUI.isVisible === false && this.keyInputManager.isKeyPressed("e")) {
+      this.mmlEditorUI.setVisible(true);
+    }
+
     this.currentRequestAnimationFrame = requestAnimationFrame(() => {
       this.update();
     });

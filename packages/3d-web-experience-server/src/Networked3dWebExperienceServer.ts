@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import {
   CHAT_NETWORKING_SERVER_ERROR_MESSAGE_TYPE,
   CHAT_NETWORKING_SERVER_SHUTDOWN_ERROR_TYPE,
@@ -182,9 +185,9 @@ export class Networked3dWebExperienceServer {
     // Handle example document sockets
     if (mmlServing && mmlDocumentsServer) {
       app.ws(`${mmlServing.documentsUrl}*`, (ws: WebSocket, req: express.Request) => {
-        const path = req.params[0];
-        console.log("document requested", { path });
-        mmlDocumentsServer.handle(path, ws);
+        const p = req.params[0];
+        console.log("document requested", { p });
+        mmlDocumentsServer.handle(p, ws);
       });
     }
 
@@ -196,5 +199,135 @@ export class Networked3dWebExperienceServer {
         express.static(this.config.assetServing.assetsDir),
       );
     }
+
+    // Endpoint to list all tracked MML documents
+    app.get("/mml-documents-list", (req, res) => {
+      if (this.mmlDocumentsServer) {
+        const documentList = this.mmlDocumentsServer.getDocumentList();
+        const filteredDocumentList = documentList.filter((doc) => !doc.endsWith(".copy.html"));
+        res.json({ documents: filteredDocumentList });
+      } else {
+        res.status(500).json({ message: "MML Document server is not initialized." });
+      }
+    });
+
+    // Get the list of documents that have a ".copy.html" version
+    app.get("/mml-documents-copies", (req, res) => {
+      if (this.mmlDocumentsServer) {
+        const documentList = this.mmlDocumentsServer.getDocumentList();
+        const documentsWithCopies = documentList.filter((documentName: string) => {
+          const copyName = documentName.split(".")[0] + ".copy.html";
+          const copyPath = path.join(
+            this.config.mmlServing?.documentsDirectoryRoot || "",
+            copyName,
+          );
+          return fs.existsSync(copyPath);
+        });
+        res.json({ documents: documentsWithCopies });
+      } else {
+        res.status(500).json({ message: "MML Document server is not initialized." });
+      }
+    });
+
+    // Restore the original document from its ".copy.html" version
+    app.post("/mml-documents/:documentName/restore", (req, res) => {
+      const documentName = req.params.documentName;
+      const documentCopyName = documentName.split(".")[0] + ".copy.html";
+
+      const documentPath = path.join(
+        this.config.mmlServing?.documentsDirectoryRoot || "",
+        documentName,
+      );
+      const documentCopyPath = path.join(
+        this.config.mmlServing?.documentsDirectoryRoot || "",
+        documentCopyName,
+      );
+
+      if (!fs.existsSync(documentCopyPath)) {
+        return res.status(404).json({ message: "No backup copy found for this document." });
+      }
+
+      // Copy the backup back to the original
+      fs.copyFile(documentCopyPath, documentPath, (err) => {
+        if (err) {
+          console.error(`Error restoring document ${documentName}:`, err);
+          return res.status(500).json({ message: "Unable to restore the document." });
+        }
+
+        // Delete the backup copy
+        fs.unlink(documentCopyPath, (unlinkError) => {
+          if (unlinkError) {
+            console.error(`Error deleting backup for document ${documentName}:`, err);
+            return res.status(500).json({ message: "Unable to delete the backup document." });
+          }
+
+          // Reload the document into the server's in-memory cache
+          const documentState = this.mmlDocumentsServer?.documents.get(documentName);
+          if (documentState) {
+            const restoredContent = fs.readFileSync(documentPath, "utf8");
+            documentState.document.load(restoredContent);
+          }
+
+          res.status(200).json({ message: "Document restored successfully." });
+        });
+      });
+    });
+
+    // Get the content of an MML document
+    app.get("/mml-documents/:documentName", (req, res) => {
+      const documentName = req.params.documentName;
+      const documentPath = path.join(
+        this.config.mmlServing?.documentsDirectoryRoot || "",
+        documentName,
+      );
+
+      fs.readFile(documentPath, "utf8", (err, data) => {
+        if (err) {
+          console.error(`Error reading document ${documentName}:`, err);
+          return res.status(500).json({ message: "Document not found or unable to read." });
+        }
+
+        res.json({ content: data });
+      });
+    });
+
+    app.post("/mml-documents/:documentName", express.json(), (req, res) => {
+      const documentName = req.params.documentName;
+      const documentCopyName = documentName.split(".")[0] + ".copy.html";
+
+      const documentPath = path.join(
+        this.config.mmlServing?.documentsDirectoryRoot || "",
+        documentName,
+      );
+      const documentCopyPath = path.join(
+        this.config.mmlServing?.documentsDirectoryRoot || "",
+        documentCopyName,
+      );
+
+      const newContent = req.body.content;
+
+      if (!newContent) {
+        return res.status(400).json({ message: "No content provided to update the document." });
+      }
+
+      if (!fs.existsSync(documentCopyPath)) {
+        fs.copyFileSync(documentPath, documentCopyPath);
+      }
+
+      fs.writeFile(documentPath, newContent, "utf8", (err) => {
+        if (err) {
+          console.error(`Error writing to document ${documentName}:`, err);
+          return res.status(500).json({ message: "Unable to write the document." });
+        }
+
+        // Reload the document into the server's in-memory cache
+        const documentState = this.mmlDocumentsServer?.documents.get(documentName);
+        if (documentState) {
+          documentState.document.load(newContent);
+        }
+
+        res.status(200).json({ message: "Document updated successfully." });
+      });
+    });
   }
 }

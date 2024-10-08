@@ -20,7 +20,7 @@ const checkDevEnv = (mmlDocumentContent: string): string => {
 };
 
 export class MMLDocumentsServer {
-  private documents = new Map<
+  public documents = new Map<
     string,
     {
       documentPath: string;
@@ -57,6 +57,10 @@ export class MMLDocumentsServer {
     ws.on("close", () => {
       document.removeWebSocket(ws as any);
     });
+  }
+
+  public getDocumentList(): string[] {
+    return Array.from(this.documents.keys());
   }
 
   private watch() {
