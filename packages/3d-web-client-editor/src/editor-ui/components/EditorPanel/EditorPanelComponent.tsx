@@ -159,6 +159,24 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
     bracketMatching: true,
   };
 
+  const defaultAttrs = {
+    attrs: {
+      x: ["string"],
+      y: ["string"],
+      z: ["string"],
+      sx: ["string"],
+      sy: ["string"],
+      sz: ["string"],
+      rx: ["string"],
+      ry: ["string"],
+      rz: ["string"],
+      visible: ["boolean"],
+      debug: ["boolean"],
+      id: ["string"],
+      class: ["string"],
+    },
+  };
+
   return (
     <div
       ref={containerRef}
@@ -200,15 +218,26 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
               matchClosingTags: true,
               autoCloseTags: true,
               extraTags: {
-                "m-group": {},
-                "m-cube": {},
-                "m-sphere": {},
-                "m-plane": {},
-                "m-cylinder": {},
-                "m-light": {},
-                "m-attr-anim": {},
-                "m-attr-lerp": {},
-                "m-position-probe": {},
+                "m-group": defaultAttrs,
+                "m-cube": defaultAttrs,
+                "m-sphere": defaultAttrs,
+                "m-plane": defaultAttrs,
+                "m-cylinder": defaultAttrs,
+                "m-light": defaultAttrs,
+                "m-model": defaultAttrs,
+                "m-character": defaultAttrs,
+                "m-frame": defaultAttrs,
+                "m-audio": defaultAttrs,
+                "m-image": defaultAttrs,
+                "m-video": defaultAttrs,
+                "m-label": defaultAttrs,
+                "m-position-probe": defaultAttrs,
+                "m-prompt": defaultAttrs,
+                "m-link": defaultAttrs,
+                "m-interaction": defaultAttrs,
+                "m-chat-probe": defaultAttrs,
+                "m-attr-anim": defaultAttrs,
+                "m-attr-lerp": defaultAttrs,
               },
             }),
           ]}
