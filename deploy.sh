@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source .env
+
 # Check if environment variables are set and non-empty
 if [ -z "$vpsuser" ] || [ -z "$vpsaddress" ] || [ -z "$mmlappdir" ]; then
   echo "Error: One or more required env variables (vpsuser, vpsaddress, mmlappdir) are not set or are empty."
