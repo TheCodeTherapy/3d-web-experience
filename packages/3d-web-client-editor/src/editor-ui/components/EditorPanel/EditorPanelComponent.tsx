@@ -31,6 +31,7 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
   const [documentList, setDocumentList] = useState<string[]>([]);
   const [documentsWithCopies, setDocumentsWithCopies] = useState<string[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<string>("");
+  const [fetching, setFetching] = useState<boolean>(true);
 
   const { onUpdate } = props;
 
@@ -43,6 +44,7 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
   // Fetch list of documents
   const fetchDocumentList = async () => {
     try {
+      setFetching(true);
       const response = await fetch("/mml-documents-list");
       const data = await response.json();
       setDocumentList(data.documents);
@@ -51,7 +53,9 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
       const copiesResponse = await fetch("/mml-documents-copies");
       const copiesData = await copiesResponse.json();
       setDocumentsWithCopies(copiesData.documents);
+      setFetching(false);
     } catch (error) {
+      setFetching(false);
       console.error("Error fetching document list:", error);
     }
   };
@@ -59,11 +63,14 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
   // Fetch the content of a selected document
   const fetchDocumentContent = async (docName: string) => {
     try {
+      setFetching(true);
       const response = await fetch(`/mml-documents/${docName}`);
       const data = await response.json();
       setEditorValue(data.content);
       setSelectedDocument(docName);
+      setFetching(false);
     } catch (error) {
+      setFetching(false);
       console.error("Error fetching document:", error);
     }
   };
@@ -80,11 +87,11 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
       });
 
       const result = await response.json();
-
       // Refresh document list and content after save
       await fetchDocumentList();
       await fetchDocumentContent(docName);
     } catch (error) {
+      setFetching(false);
       console.error("Error saving document:", error);
     }
   }, []);
@@ -92,6 +99,7 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
   // Restore the original document from its copy
   const restoreDocument = async (docName: string) => {
     try {
+      setFetching(true);
       const response = await fetch(`/mml-documents/${docName}/restore`, {
         method: "POST",
       });
@@ -102,6 +110,7 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
       await fetchDocumentContent(docName);
       await fetchDocumentList();
     } catch (error) {
+      setFetching(false);
       console.error("Error restoring document:", error);
     }
   };
@@ -158,6 +167,7 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
       onMouseMove={() => setIsHovered(true)}
       className={`${styles.editorContainer}  ${isVisible ? styles.visible : styles.hidden} ${isHovered ? styles.hovered : styles.notHovered}`}
     >
+      {fetching && <div className={styles.loading}>Loading...</div>}
       <div className={styles.documentList}>
         <h4>Documents</h4>
         <ul>
