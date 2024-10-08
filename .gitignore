@@ -38,6 +38,7 @@ dist
 
 .nx
 
+*.copy.html
 .envrc
 .direnv
 renamed-packages.json
