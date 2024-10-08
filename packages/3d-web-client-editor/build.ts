@@ -1,3 +1,4 @@
+// @ts-ignore
 import cssModulesPlugin from "esbuild-css-modules-plugin";
 
 import { handleLibraryBuild } from "../../utils/build-library";
