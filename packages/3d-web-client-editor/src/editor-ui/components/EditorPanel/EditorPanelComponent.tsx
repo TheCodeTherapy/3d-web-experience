@@ -175,6 +175,7 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
     allowMultipleSelections: true,
     closeBrackets: true,
     bracketMatching: true,
+    lintKeymap: true,
   };
 
   return (
@@ -185,7 +186,7 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
       onMouseMove={() => setIsHovered(true)}
       className={`${styles.editorContainer}  ${isVisible ? styles.visible : styles.hidden} ${isHovered ? styles.hovered : styles.notHovered}`}
     >
-      {fetching && <div className={styles.loading}>Loading...</div>}
+      {fetching && <div className={styles.loading}>LOADING</div>}
       <div className={styles.documentList}>
         <div id="file-list-header" className={styles.fileListHeader}>
           <span className={styles.fileListTitle}>Documents</span>
