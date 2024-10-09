@@ -127,6 +127,31 @@
   height: 30px;
   padding: 0px 0px 0px 12px;
   line-height: 30px;
+  display: inline-flex;
+  flex-direction: row;
+}
+
+.controls {
+  margin: 0px 3px 0px auto;
+}
+
+.button {
+  color: #dde;
+  cursor: pointer;
+  background-color: rgba(30, 30, 30, 0.3);
+  border: none;
+  border-radius: 5px;
+  transition: all .3s ease-in-out;
+  padding: 4px;
+}
+
+.button:hover {
+  background-color: rgba(119, 170, 255, 0.9);
+}
+
+.actionText {
+  font-weight: 900;
+  color: white;
 }
 
 .headerTitle {

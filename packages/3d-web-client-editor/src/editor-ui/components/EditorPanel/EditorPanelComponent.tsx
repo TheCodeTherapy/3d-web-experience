@@ -33,6 +33,8 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
   const [documentsWithCopies, setDocumentsWithCopies] = useState<string[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<string>(""); // Controls currently selected doc
   const [fetching, setFetching] = useState<boolean>(true);
+  const [fetchedValue, setFetchedValue] = useState<string>("");
+  const [canApply, setCanApply] = useState<boolean>(false);
 
   const { onUpdate } = props;
 
@@ -48,8 +50,9 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
       setFetching(true);
       const response = await fetch(`/mml-documents/${docName}`);
       const data = await response.json();
+      setFetchedValue(data.content);
       setEditorValue(data.content);
-      setSelectedDocument(docName); // Mark this document as selected
+      setSelectedDocument(docName);
       setFetching(false);
     } catch (error) {
       setFetching(false);
@@ -85,6 +88,9 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
   // Save the document content
   const saveDocument = useCallback(
     async (content: string, docName: string) => {
+      if (content === fetchedValue) {
+        return;
+      }
       try {
         const response = await fetch(`/mml-documents/${docName}`, {
           method: "POST",
@@ -98,12 +104,14 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
         // Refresh document list and content after save
         await fetchDocumentList();
         await fetchDocumentContent(docName);
+        setFetchedValue(content);
+        setCanApply(false);
       } catch (error) {
         setFetching(false);
         console.error("Error saving document:", error);
       }
     },
-    [fetchDocumentList],
+    [fetchDocumentList, fetchedValue],
   );
 
   // Restore the original document from its copy
@@ -188,13 +196,13 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
               <li
                 key={docName}
                 className={selectedDocument === docName ? styles.selectedDocument : ""}
-                onClick={() => fetchDocumentContent(docName)} // Moved onClick here
+                onClick={() => fetchDocumentContent(docName)}
               >
                 <span>{docName}</span>
                 {documentsWithCopies.includes(docName) && (
                   <button
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent triggering document load
+                      e.stopPropagation();
                       restoreDocument(docName);
                     }}
                     title="Restore original"
@@ -214,6 +222,23 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
             Editing: {selectedDocument}{" "}
             {documentsWithCopies.includes(selectedDocument) ? "(modified)" : ""}{" "}
           </span>
+          <div className={styles.controls}>
+            <div className={styles.applyChanges}>
+              {canApply && (
+                <button
+                  className={styles.button}
+                  onClick={() => {
+                    const trimmedValue = editorValue.trim();
+                    onUpdate(trimmedValue);
+                    saveDocument(trimmedValue, selectedDocument);
+                  }}
+                  title="Apply changes"
+                >
+                  <span className={styles.actionText}>Apply</span> (Alt+Enter)
+                </button>
+              )}
+            </div>
+          </div>
         </div>
         <div id="editor-body" className={styles.editorBody}>
           <CodeMirror
@@ -222,7 +247,10 @@ const EditorPanelComponent = (props: EditorPanelProps, ref: ForwardedRef<EditorP
             basicSetup={setup}
             extensions={defaultEditorExtensions}
             theme={editorTheme}
-            onChange={(val) => setEditorValue(val)}
+            onChange={(val) => {
+              setCanApply(val !== fetchedValue);
+              setEditorValue(val);
+            }}
             autoFocus={true}
           />
         </div>
