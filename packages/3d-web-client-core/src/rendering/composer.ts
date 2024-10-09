@@ -49,6 +49,7 @@ import { toneMappingValues } from "../tweakpane/blades/toneMappingFolder";
 import { TweakPane } from "../tweakpane/TweakPane";
 
 import { BrightnessContrastSaturation } from "./post-effects/bright-contrast-sat";
+import { DenoiseEffect } from "./post-effects/denoiose";
 import { GaussGrainEffect } from "./post-effects/gauss-grain";
 import { N8SSAOPass } from "./post-effects/n8-ssao/N8SSAOPass";
 
@@ -126,6 +127,9 @@ export class Composer {
 
   private readonly gaussGrainEffect = GaussGrainEffect;
   private readonly gaussGrainPass: ShaderPass;
+
+  private readonly denoiseEffect = DenoiseEffect;
+  private readonly denoisePass: ShaderPass;
 
   private ambientLight: AmbientLight | null = null;
   private environmentConfiguration?: EnvironmentConfiguration;
@@ -258,6 +262,10 @@ export class Composer {
     this.gaussGrainEffect.uniforms.amount.value = extrasValues.grain;
     this.gaussGrainEffect.uniforms.alpha.value = 1.0;
 
+    this.denoisePass = new ShaderPass(this.denoiseEffect, "tDiffuse");
+    this.denoiseEffect.uniforms.amount.value = 0.3;
+    this.denoiseEffect.uniforms.alpha.value = 1.0;
+
     this.smaaPass = new EffectPass(this.camera, this.smaaEffect);
 
     this.effectComposer.addPass(this.renderPass);
@@ -274,6 +282,7 @@ export class Composer {
     this.effectComposer.addPass(this.toneMappingPass);
     this.effectComposer.addPass(this.bcsPass);
     this.effectComposer.addPass(this.gaussGrainPass);
+    this.effectComposer.addPass(this.denoisePass);
 
     if (this.spawnSun === true) {
       this.sun = new Sun();
@@ -383,6 +392,8 @@ export class Composer {
     this.toneMappingPass.setSize(this.width, this.height);
     this.gaussGrainPass.setSize(this.width, this.height);
     this.gaussGrainEffect.uniforms.resolution.value = new Vector2(this.width, this.height);
+    this.denoisePass.setSize(this.width, this.height);
+    this.denoiseEffect.uniforms.resolution.value = new Vector2(this.width, this.height);
     this.renderer.setSize(this.width, this.height);
   }
 
