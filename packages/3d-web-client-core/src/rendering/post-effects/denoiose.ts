@@ -7,6 +7,9 @@ export const DenoiseEffect = new ShaderMaterial({
     tDiffuse: new Uniform(null),
     resolution: new Uniform(new Vector2()),
     time: new Uniform(0.0),
+    distBias: new Uniform(0.6),
+    tolerance: new Uniform(20.0),
+    multiplier: new Uniform(1.5),
     amount: new Uniform(0.0),
     alpha: new Uniform(0.0),
   },
@@ -18,15 +21,15 @@ export const DenoiseEffect = new ShaderMaterial({
     uniform sampler2D tDiffuse;
     uniform vec2 resolution;
     uniform float time;
+    uniform float distBias;
+    uniform float tolerance;
+    uniform float multiplier;
     uniform float amount;
     uniform float alpha;
 
     const float PI = acos(-1.0);
     const float goldenAngle = 3.0 * PI - sqrt(5.0) * PI;
-    const float pixelMultiplier = 1.5;
-    const float inverseHUETolerance = 20.0;
-    const int samples = 32;
-    const float distBias = 0.6;
+    const int samples = 64;
 
     #define pow(a,b) pow(max(a,0.0), b)
 
@@ -51,13 +54,13 @@ export const DenoiseEffect = new ShaderMaterial({
 
       for (float x = 0.0; x <= float(samples); x++) {
         pixelRotated *= rotate;
-        vec2 offset = pixelMultiplier * pixelRotated * sqrt(x) * 0.5;
+        vec2 offset = multiplier * pixelRotated * sqrt(x) * 0.5;
         float influence = 1.0 - sampleTrueRadius * pow(dot(offset, offset), distBias);
         offset *= samplePixel;
         vec3 denoisedCol = texture(tex, uv + offset).rgb;
         influence *= influence * influence;
         influence *= (
-          pow(0.5 + 0.5 * dot(sampleCenterNorm, normalize(denoisedCol)), inverseHUETolerance) *
+          pow(0.5 + 0.5 * dot(sampleCenterNorm, normalize(denoisedCol)), tolerance) *
           pow(1.0 - abs(length(denoisedCol) - length(sampleCenterSat)), 8.0)
         );
         influenceSum += influence;

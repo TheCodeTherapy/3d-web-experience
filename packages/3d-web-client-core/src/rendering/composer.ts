@@ -41,6 +41,7 @@ import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 import { Sun } from "../sun/Sun";
 import { TimeManager } from "../time/TimeManager";
 import { bcsValues } from "../tweakpane/blades/bcsFolder";
+import { denoiseValues } from "../tweakpane/blades/denoiseFolder";
 import { envValues, sunValues } from "../tweakpane/blades/environmentFolder";
 import { extrasValues } from "../tweakpane/blades/postExtrasFolder";
 import { rendererValues } from "../tweakpane/blades/rendererFolder";
@@ -263,7 +264,10 @@ export class Composer {
     this.gaussGrainEffect.uniforms.alpha.value = 1.0;
 
     this.denoisePass = new ShaderPass(this.denoiseEffect, "tDiffuse");
-    this.denoiseEffect.uniforms.amount.value = 0.3;
+    this.denoiseEffect.uniforms.distBias.value = denoiseValues.distBias;
+    this.denoiseEffect.uniforms.tolerance.value = denoiseValues.tolerance;
+    this.denoiseEffect.uniforms.multiplier.value = denoiseValues.multiplier;
+    this.denoiseEffect.uniforms.amount.value = denoiseValues.amount;
     this.denoiseEffect.uniforms.alpha.value = 1.0;
 
     this.smaaPass = new EffectPass(this.camera, this.smaaEffect);
@@ -334,6 +338,7 @@ export class Composer {
       this.bcs,
       this.bloomEffect,
       this.gaussGrainEffect,
+      this.denoiseEffect,
       this.spawnSun,
       this.sun,
       this.setHDRIFromFile.bind(this),

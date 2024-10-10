@@ -14,6 +14,7 @@ import { CameraManager } from "../camera/CameraManager";
 import { LocalController } from "../character/LocalController";
 import { EventHandlerCollection } from "../input/EventHandlerCollection";
 import { BrightnessContrastSaturation } from "../rendering/post-effects/bright-contrast-sat";
+import { DenoiseEffect } from "../rendering/post-effects/denoiose";
 import { GaussGrainEffect } from "../rendering/post-effects/gauss-grain";
 import { Sun } from "../sun/Sun";
 import { TimeManager } from "../time/TimeManager";
@@ -22,6 +23,7 @@ import { BrightnessContrastSaturationFolder } from "./blades/bcsFolder";
 import { CameraFolder } from "./blades/cameraFolder";
 import { CharacterControlsFolder } from "./blades/characterControlsFolder";
 import { CharacterFolder } from "./blades/characterFolder";
+import { DenoiseFolder } from "./blades/denoiseFolder";
 import { EnvironmentFolder } from "./blades/environmentFolder";
 import { PostExtrasFolder } from "./blades/postExtrasFolder";
 import { RendererFolder, rendererValues } from "./blades/rendererFolder";
@@ -40,6 +42,7 @@ export class TweakPane {
   private ssaoFolder: SSAOFolder;
   private bcsFolder: BrightnessContrastSaturationFolder;
   private postExtrasFolder: PostExtrasFolder;
+  private denoiseFolder: DenoiseFolder;
   // @ts-ignore
   private character: CharacterFolder;
   private environment: EnvironmentFolder;
@@ -98,6 +101,7 @@ export class TweakPane {
     this.ssaoFolder = new SSAOFolder(this.gui, false);
     this.bcsFolder = new BrightnessContrastSaturationFolder(this.gui, false);
     this.postExtrasFolder = new PostExtrasFolder(this.gui, false);
+    this.denoiseFolder = new DenoiseFolder(this.gui, false);
     this.character = new CharacterFolder(this.gui, false);
     this.environment = new EnvironmentFolder(this.gui, false);
     this.camera = new CameraFolder(this.gui, false);
@@ -141,6 +145,7 @@ export class TweakPane {
     brightnessContrastSaturation: typeof BrightnessContrastSaturation,
     bloomEffect: BloomEffect,
     gaussGrainEffect: typeof GaussGrainEffect,
+    denoiseEffect: typeof DenoiseEffect,
     hasLighting: boolean,
     sun: Sun | null,
     setHDR: () => void,
@@ -160,6 +165,7 @@ export class TweakPane {
     this.ssaoFolder.setupChangeEvent(composer, normalPass, ppssaoEffect, ppssaoPass, n8aopass);
     this.bcsFolder.setupChangeEvent(brightnessContrastSaturation);
     this.postExtrasFolder.setupChangeEvent(bloomEffect, gaussGrainEffect);
+    this.denoiseFolder.setupChangeEvent(denoiseEffect);
     this.environment.setupChangeEvent(
       this.scene,
       setHDR,
