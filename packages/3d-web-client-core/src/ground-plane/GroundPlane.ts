@@ -11,7 +11,7 @@ import {
   LinearFilter,
   LinearMipMapLinearFilter,
   LinearMipmapLinearFilter,
-  LoadingManager,
+  MathUtils,
   Mesh,
   MeshStandardMaterial,
   NearestFilter,
@@ -26,6 +26,9 @@ import {
   UniformsUtils,
   Vector3,
 } from "three";
+import { Water } from "three/examples/jsm/objects/Water.js";
+
+import { sunValues } from "../tweakpane/blades/environmentFolder";
 
 // Create a simple 2x2 checkerboard image
 const canvas = document.createElement("canvas");
@@ -348,8 +351,9 @@ export class GroundPlane extends Group {
   private floorMesh: Mesh | null = null;
 
   public grass: Grass | null = null;
+  public water: Water | null = null;
 
-  constructor(groundPlaneType?: "neutral" | "grass" | undefined) {
+  constructor(groundPlaneType?: "neutral" | "grass" | undefined, useWater?: boolean) {
     super();
 
     if (groundPlaneType === undefined || groundPlaneType === "neutral") {
@@ -391,10 +395,44 @@ export class GroundPlane extends Group {
         windForce: 1.05,
         windSpeed: 0.91,
       });
+
+      if (useWater) {
+        const waterGeomery = new PlaneGeometry(10000, 10000);
+        this.water = new Water(waterGeomery, {
+          textureWidth: 512,
+          textureHeight: 512,
+          waterNormals: new TextureLoader().load(
+            "/assets/textures/waternormals.jpg",
+            function (texture) {
+              texture.wrapS = texture.wrapT = RepeatWrapping;
+            },
+          ),
+          sunDirection: new Vector3(),
+          sunColor: new Color(sunValues.sunColor.r, sunValues.sunColor.g, sunValues.sunColor.b),
+          waterColor: 0xaaddff,
+          distortionScale: 2.1,
+          fog: false,
+        });
+        this.water.rotation.x = -Math.PI / 2;
+        this.water.position.y = -0.3;
+      }
     }
   }
 
   public update(deltaTime: number) {
     this.grass?.update(deltaTime);
+    if (this.water) {
+      this.water.material.uniforms.time.value += deltaTime * 0.2;
+      const sunAzimuthalAngle = MathUtils.degToRad(sunValues.sunPosition.sunAzimuthalAngle);
+      const sunPolarAngle = MathUtils.degToRad(sunValues.sunPosition.sunPolarAngle);
+      const sun = new Vector3();
+      sun.setFromSphericalCoords(1, sunPolarAngle, -sunAzimuthalAngle + Math.PI / 2);
+      this.water.material.uniforms.sunDirection.value.copy(sun).normalize();
+      this.water.material.uniforms.sunColor.value = new Color(
+        sunValues.sunColor.r,
+        sunValues.sunColor.g,
+        sunValues.sunColor.b,
+      );
+    }
   }
 }

@@ -71,6 +71,7 @@ const app = new Networked3dWebExperienceClient(holder, {
     },
     groundPlane: true,
     groundPlaneType: "grass",
+    groundPlaneOnWater: true,
   },
   avatarConfiguration: {
     availableAvatars: [

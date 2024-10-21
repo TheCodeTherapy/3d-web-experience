@@ -312,10 +312,16 @@ export class Networked3dWebExperienceClient {
 
   private setGroundPlaneEnabled(enabled: boolean) {
     if (enabled && this.groundPlane === null) {
-      this.groundPlane = new GroundPlane(this.config.environmentConfiguration?.groundPlaneType);
+      this.groundPlane = new GroundPlane(
+        this.config.environmentConfiguration?.groundPlaneType,
+        this.config.environmentConfiguration?.groundPlaneOnWater,
+      );
       this.collisionsManager.addMeshesGroup(this.groundPlane);
       if (this.groundPlane.grass) {
         this.scene.add(this.groundPlane.grass);
+      }
+      if (this.groundPlane.water) {
+        this.scene.add(this.groundPlane.water);
       }
       this.scene.add(this.groundPlane);
     } else if (!enabled && this.groundPlane !== null) {

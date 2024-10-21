@@ -64,6 +64,7 @@ type ComposerContructorArgs = {
 export type EnvironmentConfiguration = {
   groundPlane?: boolean;
   groundPlaneType?: "neutral" | "grass" | undefined;
+  groundPlaneOnWater?: boolean;
   skybox?: {
     intensity?: number;
     blurriness?: number;
