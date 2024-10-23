@@ -133,6 +133,9 @@ export class Composer {
   private readonly denoiseEffect = DenoiseEffect;
   private readonly denoisePass: ShaderPass;
 
+  private readonly backgroundModePixelRatio: number = 0.25;
+  private backgroundMode: boolean = false;
+
   private ambientLight: AmbientLight | null = null;
   private environmentConfiguration?: EnvironmentConfiguration;
 
@@ -307,8 +310,20 @@ export class Composer {
     this.resizeListener = () => {
       this.fitContainer();
     };
+
+    this.handleWindowMessage = this.handleWindowMessage.bind(this);
+    window.addEventListener("message", this.handleWindowMessage);
+
     window.addEventListener("resize", this.resizeListener, false);
     this.fitContainer();
+  }
+
+  private handleWindowMessage(event: MessageEvent) {
+    if (event.data.pause) {
+      this.backgroundMode = true;
+    } else if (event.data.resume) {
+      this.backgroundMode = false;
+    }
   }
 
   public updateEnvironmentConfiguration(environmentConfiguration: EnvironmentConfiguration) {
@@ -358,6 +373,7 @@ export class Composer {
 
   public dispose() {
     window.removeEventListener("resize", this.resizeListener);
+    window.removeEventListener("message", this.handleWindowMessage);
     this.renderer.dispose();
   }
 
@@ -374,15 +390,27 @@ export class Composer {
     this.height = parentElement.clientHeight;
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.resolution.set(
-      this.width * window.devicePixelRatio,
-      this.height * window.devicePixelRatio,
-    );
-    this.effectComposer.setSize(
-      this.width / window.devicePixelRatio,
-      this.height / window.devicePixelRatio,
-    );
+    if (this.backgroundMode) {
+      this.renderer.setPixelRatio(this.backgroundModePixelRatio);
+      this.resolution.set(
+        this.width * this.backgroundModePixelRatio,
+        this.height * this.backgroundModePixelRatio,
+      );
+      this.effectComposer.setSize(
+        this.width / this.backgroundModePixelRatio,
+        this.height / this.backgroundModePixelRatio,
+      );
+    } else {
+      this.renderer.setPixelRatio(window.devicePixelRatio);
+      this.resolution.set(
+        this.width * window.devicePixelRatio,
+        this.height * window.devicePixelRatio,
+      );
+      this.effectComposer.setSize(
+        this.width / window.devicePixelRatio,
+        this.height / window.devicePixelRatio,
+      );
+    }
     this.renderPass.setSize(this.width, this.height);
     if (ppssaoValues.enabled) {
       this.normalPass.setSize(this.width, this.height);
@@ -404,6 +432,14 @@ export class Composer {
   }
 
   public render(timeManager: TimeManager): void {
+    if (this.backgroundMode) {
+      if (this.renderer.pixelRatio !== this.backgroundModePixelRatio) {
+        this.renderer.pixelRatio = this.backgroundModePixelRatio;
+      }
+      if (timeManager.frame % 2 !== 0) {
+        return;
+      }
+    }
     this.renderer.info.reset();
     this.normalPass.texture.needsUpdate = true;
     this.gaussGrainEffect.uniforms.time.value = timeManager.time;
