@@ -311,8 +311,11 @@ export class Composer {
       this.fitContainer();
     };
 
+    this.setBackgroundMode = this.setBackgroundMode.bind(this);
+    this.setForegroundMode = this.setForegroundMode.bind(this);
     this.handleWindowMessage = this.handleWindowMessage.bind(this);
-    window.addEventListener("message", this.handleWindowMessage);
+    this.fitContainer = this.fitContainer.bind(this);
+    window.addEventListener("message", this.handleWindowMessage.bind(this));
 
     window.addEventListener("resize", this.resizeListener, false);
     this.fitContainer();
@@ -320,10 +323,22 @@ export class Composer {
 
   private handleWindowMessage(event: MessageEvent) {
     if (event.data.pause) {
-      this.backgroundMode = true;
+      this.setBackgroundMode();
     } else if (event.data.resume) {
-      this.backgroundMode = false;
+      this.setForegroundMode();
     }
+  }
+
+  private setBackgroundMode() {
+    this.backgroundMode = true;
+    this.renderer.pixelRatio = this.backgroundModePixelRatio;
+    this.fitContainer();
+  }
+
+  private setForegroundMode() {
+    this.backgroundMode = false;
+    this.renderer.pixelRatio = window.devicePixelRatio;
+    this.fitContainer();
   }
 
   public updateEnvironmentConfiguration(environmentConfiguration: EnvironmentConfiguration) {
@@ -432,11 +447,8 @@ export class Composer {
   }
 
   public render(timeManager: TimeManager): void {
-    if (this.backgroundMode) {
-      if (this.renderer.pixelRatio !== this.backgroundModePixelRatio) {
-        this.renderer.pixelRatio = this.backgroundModePixelRatio;
-      }
-      if (timeManager.frame % 2 !== 0) {
+    if (this.backgroundMode === true) {
+      if (timeManager.frame % 4 !== 0) {
         return;
       }
     }
