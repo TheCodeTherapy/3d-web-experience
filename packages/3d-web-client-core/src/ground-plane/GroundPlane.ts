@@ -399,8 +399,8 @@ export class GroundPlane extends Group {
       if (useWater) {
         const waterGeomery = new PlaneGeometry(10000, 10000);
         this.water = new Water(waterGeomery, {
-          textureWidth: 512,
-          textureHeight: 512,
+          textureWidth: 2048,
+          textureHeight: 2048,
           waterNormals: new TextureLoader().load(
             "/assets/textures/waternormals.jpg",
             function (texture) {
@@ -409,12 +409,13 @@ export class GroundPlane extends Group {
           ),
           sunDirection: new Vector3(),
           sunColor: new Color(sunValues.sunColor.r, sunValues.sunColor.g, sunValues.sunColor.b),
-          waterColor: 0xaaddff,
-          distortionScale: 2.1,
+          waterColor: 0x004477,
+          distortionScale: 3.0,
           fog: false,
+          side: FrontSide,
         });
         this.water.rotation.x = -Math.PI / 2;
-        this.water.position.y = -0.3;
+        this.water.position.set(0, 1075, 0);
       }
     }
   }
