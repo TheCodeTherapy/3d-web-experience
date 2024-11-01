@@ -9,7 +9,11 @@
         <m-video collide="false" id="wait-indicator" src="/assets/playground/wait.webm" x="0" y="1.35" z="1.1" sy="0" emissive="5"></m-video>
         <m-attr-anim attr="ry" start="-5" end="5" duration="12000" loop="true" ping-pong="true" easing="easeInOutQuint"></m-attr-anim>
       </m-model>
-  
+      
+      <m-audio id="spin-audio" src="/assets/playground/spin.mp3" loop="false" start-time="-10000" volume="0"></m-audio>
+      <m-audio id="horn-audio" src="/assets/playground/horn.mp3" loop="false" start-time="-10000" volume="0"></m-audio>
+      <m-model id="horn-model" src="/assets/playground/viking_horn.glb" sx="0" sy="0" sz="0" x="-0.8" y="2.5" z="1" rx="-20" ry="220" collide="false"></m-model>
+      <m-model id="thumb-model" src="/assets/playground/thumb.glb" sx="0" sy="0" sz="0" y="1.8" x="-1.5" rx="0" collide="false"></m-model>
     </m-group>
     <m-image class="hidden" id="response-image" width="4" x="2.7" y="2.1" z="1" ry="-15" collide="false" emissive="12"></m-image>
     <m-attr-anim attr="y" start="0.2" end="0.35" duration="17000" loop="true" ping-pong="true" easing="easeInOutQuad"></m-attr-anim>
@@ -26,6 +30,11 @@
   const agentModel = document.getElementById("agent-model");
   const waitIndicator = document.getElementById("wait-indicator");
 
+  const thumbModel = document.getElementById("thumb-model");
+  const hornAudio = document.getElementById("horn-audio");
+  const hornModel = document.getElementById("horn-model");
+  const spinAudio = document.getElementById("spin-audio");
+
   const proximityProbe = document.getElementById("position-probe");
   const proximityMap = new Map();
   let latestProximityActivity = document.timeline.currentTime;
@@ -37,6 +46,10 @@
   const audioMarginDuration = 2000;
 
   const completionTimeout = 7000;
+
+  const thumbsUpRotation = 0;
+  const thumbsDownRotation = 180;
+  const thumbsNeutralRotation = 90;
 
   let threadId;
   let latestPromise = null;
@@ -140,7 +153,56 @@
   }
 
   function spin() {
-    animate(actionsWrapper, "ry", 0, 1440, 3000, "easeInOutQuint");
+    spinAudio.setAttribute("volume", 1);
+    spinAudio.setAttribute("start-time", document.timeline.currentTime);
+    spinAudio.setAttribute("pause-time", document.timeline.currentTime + 6000);
+    setTimeout(() => {
+      spinAudio.setAttribute("volume", 0);
+    }, 6000);
+    animate(actionsWrapper, "ry", 0, 1800, 3500, "easeInOutQuint");
+  }
+
+  function thumbsUp() {
+    animate(thumbModel, "sx", 0, 4, 1000, "easeInOutQuint");
+    animate(thumbModel, "sy", 0, 4, 1000, "easeInOutQuint");
+    animate(thumbModel, "sz", 0, 4, 1000, "easeInOutQuint");
+    animate(thumbModel, "rx", thumbsNeutralRotation, thumbsUpRotation, 1000, "easeInOutQuint");
+    setTimeout(() => {
+      animate(thumbModel, "sx", 4, 0, 1000, "easeInOutQuint");
+      animate(thumbModel, "sy", 4, 0, 1000, "easeInOutQuint");
+      animate(thumbModel, "sz", 4, 0, 1000, "easeInOutQuint");
+      animate(thumbModel, "rx", thumbsUpRotation, thumbsNeutralRotation, 1000, "easeInOutQuint");
+    }, 5000);
+  }
+
+  function thumbsDown() {
+    animate(thumbModel, "sx", 0, 4, 1000, "easeInOutQuint");
+    animate(thumbModel, "sy", 0, 4, 1000, "easeInOutQuint");
+    animate(thumbModel, "sz", 0, 4, 1000, "easeInOutQuint");
+    animate(thumbModel, "rx", thumbsNeutralRotation, thumbsDownRotation, 1000, "easeInOutQuint");
+    setTimeout(() => {
+      animate(thumbModel, "sx", 4, 0, 1000, "easeInOutQuint");
+      animate(thumbModel, "sy", 4, 0, 1000, "easeInOutQuint");
+      animate(thumbModel, "sz", 4, 0, 1000, "easeInOutQuint");
+      animate(thumbModel, "rx", thumbsDownRotation, thumbsNeutralRotation, 1000, "easeInOutQuint");
+    }, 5000);
+  }
+
+  function playHorn() {
+    hornAudio.setAttribute("volume", 1);
+    hornAudio.setAttribute("start-time", document.timeline.currentTime);
+    hornAudio.setAttribute("pause-time", document.timeline.currentTime + 6000);
+
+    animate(hornModel, "sx", 0, 4, 1000, "easeInOutQuint");
+    animate(hornModel, "sy", 0, 4, 1000, "easeInOutQuint");
+    animate(hornModel, "sz", 0, 4, 1000, "easeInOutQuint");
+
+    setTimeout(() => {
+      hornAudio.setAttribute("volume", 0);
+      animate(hornModel, "sx", 4, 0, 1000, "easeInOutQuint");
+      animate(hornModel, "sy", 4, 0, 1000, "easeInOutQuint");
+      animate(hornModel, "sz", 4, 0, 1000, "easeInOutQuint");
+    }, 6000);
   }
 
   function growWhileSpeaking(duration) {
@@ -257,7 +319,7 @@
     return pattern.test(str);
   }
 
-  async function createSpeech(tts, userId = null) {
+  async function createSpeech(tts) {
     const openAIURL = "https://api.openai.com/v1/audio/speech";
     const headers = {
       "Content-Type": "application/json",
@@ -286,14 +348,7 @@
     }
     const base64Audio = btoa(binary);
     const dataUrl = `data:audio/mp3;base64,${base64Audio}`;
-    let treatedUserId = null;
-    if (isNumberUnderscoreNumber(userId)) {
-      treatedUserId = `User ${userId.split("_")[1]}`;
-    } else {
-      treatedUserId = userId;
-    }
     queuedResponses.push({
-      userId: treatedUserId,
       dataUrl: dataUrl,
       duration: duration,
       text: tts
@@ -301,13 +356,13 @@
     processResponses();
   }
 
-  async function createSpeechWithTimeout(tts, userId = null) {
+  async function createSpeechWithTimeout(tts) {
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("Timeout: Speech creation took too long")), completionTimeout)
     );
 
     try {
-      await Promise.race([createSpeech(tts, userId), timeoutPromise]);
+      await Promise.race([createSpeech(tts), timeoutPromise]);
     } catch (error) {
       console.warn(error.message);
       // textToCanvas.updateText(tts);
@@ -332,7 +387,6 @@
 
   proximityProbe.addEventListener("positionenter", (event) => {
     const { connectionId } = event.detail;
-    console.log(`positionenter: ${connectionId}`);
     const { position, rotation } = event.detail.documentRelative;
     proximityMap.set(connectionId, { position, rotation });
     latestProximityActivity = document.timeline.currentTime;
@@ -440,17 +494,18 @@ completionText: ${completionText}
         } else if (completion.wait) {
           textToCanvas.updateText("Waiting");
         } else if (completion.action) {
-          textToCanvas.updateText(completion.action);
           if (completion.action === "spin") {
             spin();
+          } else if (completion.action === "thumbs_up") {
+            thumbsUp();
+          } else if (completion.action === "thumbs_down") {
+            thumbsDown();
+          } else if (completion.action === "blow_horn") {
+            playHorn();
           }
-        } else if (completion.message) {
-          if (completion.userId) {
-            createSpeechWithTimeout(completion.message, completion.userId);
-          } else {
-            createSpeechWithTimeout(completion.message);
-          }
-          
+        }
+        if (completion.message) {
+          createSpeechWithTimeout(completion.message);
         }
         hideWaiting();
       } catch (e) {
