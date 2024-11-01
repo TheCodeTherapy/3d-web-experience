@@ -4,7 +4,7 @@
 
     <m-group id="actions-wrapper">
   
-      <m-model id="agent-model" src="/assets/playground/brainzo.glb" anim="/assets/playground/brainzo.glb" collide="false" y="1.2" ry="0" sx="0.5" sy="0.5" sz="0.5">
+      <m-model id="agent-model" src="/assets/playground/brainzo_draco.glb" anim="/assets/playground/brainzo_draco.glb" collide="false" y="1.2" ry="0" sx="0.5" sy="0.5" sz="0.5">
         <m-cylinder radius="1.3" height="5" y="1.5" visible="false"></m-cylinder>
         <m-video collide="false" id="wait-indicator" src="/assets/playground/wait.webm" x="0" y="1.35" z="1.1" sy="0" emissive="5"></m-video>
         <m-attr-anim attr="ry" start="-5" end="5" duration="12000" loop="true" ping-pong="true" easing="easeInOutQuint"></m-attr-anim>
@@ -34,6 +34,10 @@
   let threadId;
   let latestPromise = null;
   let queuedMessages = [];
+
+  let queuedResponses = [];
+  let responseInProgress = false;
+
 
   class TextToCanvasImage {
     canvas = document.createElement("canvas");
@@ -118,7 +122,9 @@
   };
 
   function showWaiting() {
-    textToCanvas.updateText("Thinking...");
+    if (responseInProgress === false) {
+      textToCanvas.updateText("Thinking...");
+    }
     animate(waitIndicator, "sy", 0, 1, 500, "easeInOutQuint");
   }
 
@@ -141,6 +147,17 @@
     }, duration);
   }
 
+  function processResponses() {
+    if (queuedResponses.length === 0 || responseInProgress === true) {
+      return;
+    }
+    const response = queuedResponses.shift();
+    responseInProgress = true;
+    growWhileSpeaking(response.duration);
+    playAudio(response.dataUrl, response.duration);
+    textToCanvas.updateText(response.text);
+  }
+
   function playAudio(src, duration) {
     const now = document.timeline.currentTime;
     agentAudio.setAttribute("volume", audioVolume);
@@ -149,6 +166,10 @@
     agentAudio.setAttribute("src", src);
     setTimeout(() => {
       agentAudio.setAttribute("volume", 0);
+      setTimeout(() => {
+        responseInProgress = false;
+        processResponses();
+      }, audioMarginDuration / 2)
     }, duration + audioMarginDuration);
   }
 
@@ -219,7 +240,6 @@
     const durationSeconds = Math.ceil((arrayBuffer.byteLength * 8) / bitrate);
     return durationSeconds * 1000; // Convert to milliseconds
   }
-
   
   async function createSpeech(tts) {
     const openAIURL = "https://api.openai.com/v1/audio/speech";
@@ -242,7 +262,6 @@
     const audioBlob = await response.blob();
     const arrayBuffer = await audioBlob.arrayBuffer();
     const duration = await estimateMP3Duration(arrayBuffer, false);
-    growWhileSpeaking(duration + audioMarginDuration);
 
     const uint8Array = new Uint8Array(arrayBuffer);
     let binary = "";
@@ -251,8 +270,12 @@
     }
     const base64Audio = btoa(binary);
     const dataUrl = `data:audio/mp3;base64,${base64Audio}`;
-    textToCanvas.updateText(tts);
-    playAudio(dataUrl, duration);
+    queuedResponses.push({
+      dataUrl: dataUrl,
+      duration: duration,
+      text: tts
+    });
+    processResponses();
   }
 
   async function createSpeechWithTimeout(tts, timeoutDuration = 7000) {
@@ -264,7 +287,7 @@
       await Promise.race([createSpeech(tts), timeoutPromise]);
     } catch (error) {
       console.warn(error.message);
-      textToCanvas.updateText(tts);
+      // textToCanvas.updateText(tts);
     }
   }
 
