@@ -24,6 +24,7 @@
     "@mml-io/3d-web-text-chat": "^0.19.0",
     "@mml-io/3d-web-user-networking": "^0.19.0",
     "@mml-io/3d-web-voice-chat": "^0.19.0",
+    "bad-words": "^4.0.0",
     "mml-web": "0.18.0",
     "three": "0.163.0"
   },

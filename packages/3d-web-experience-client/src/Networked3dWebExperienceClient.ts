@@ -45,6 +45,7 @@ import {
   WebsocketStatus,
 } from "@mml-io/3d-web-user-networking";
 import { VoiceChatManager, VoiceChatLiveKitManager } from "@mml-io/3d-web-voice-chat";
+import { Filter } from "bad-words";
 import {
   IMMLScene,
   LoadingProgressManager,
@@ -141,6 +142,8 @@ export class Networked3dWebExperienceClient {
 
   private handleEditorUpdate: (content: string) => void;
   private mmlEditorUI: EditorUI;
+
+  private filter = new Filter();
 
   constructor(
     private holderElement: HTMLElement,
@@ -424,7 +427,8 @@ export class Networked3dWebExperienceClient {
   }
 
   private sendChatMessageToServer(message: string): void {
-    this.mmlCompositionScene.onChatMessage(message);
+    const filteredMessage = this.filter.clean(message);
+    this.mmlCompositionScene.onChatMessage(filteredMessage);
     if (this.clientId === null || this.networkChat === null) return;
     this.networkChat.sendChatMessage(message);
   }

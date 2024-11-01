@@ -1,3 +1,4 @@
+import { Filter } from "bad-words";
 import WebSocket from "ws";
 
 import {
@@ -35,6 +36,7 @@ export class ChatNetworkingServer {
 
   private pingClientsIntervalTimer: NodeJS.Timeout;
   private heartbeatIntervalTimer: NodeJS.Timeout;
+  private filter = new Filter();
 
   constructor(private options: ChatNetworkingServerOptions) {
     this.pingClientsIntervalTimer = setInterval(this.pingClients.bind(this), pingPongRate);
@@ -147,10 +149,11 @@ export class ChatNetworkingServer {
 
           case CHAT_NETWORKING_CHAT_MESSAGE_TYPE:
             // eslint-disable-next-line no-case-declarations
+            const text = this.filter.clean(parsed.text);
             const asChatMessage: ChatNetworkingServerChatMessage = {
               type: CHAT_NETWORKING_CHAT_MESSAGE_TYPE,
               id: client.id,
-              text: parsed.text,
+              text: text,
             };
             this.sendToAuthenticated(asChatMessage, client);
             break;
