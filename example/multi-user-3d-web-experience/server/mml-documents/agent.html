@@ -1,0 +1,399 @@
+<m-group id="agent-group">
+  <m-audio id="agent-audio" y="2" z="-2.7" loop="false"></m-audio>
+  <m-group id="float-wrapper">
+
+    <m-group id="actions-wrapper">
+  
+      <m-model id="agent-model" src="/assets/playground/brainzo.glb" anim="/assets/playground/brainzo.glb" collide="false" y="1.2" ry="0" sx="0.5" sy="0.5" sz="0.5">
+        <m-cylinder radius="1.3" height="5" y="1.5" visible="false"></m-cylinder>
+        <m-video collide="false" id="wait-indicator" src="/assets/playground/wait.webm" x="0" y="1.35" z="1.1" sy="0" emissive="5"></m-video>
+        <m-attr-anim attr="ry" start="-5" end="5" duration="12000" loop="true" ping-pong="true" easing="easeInOutQuint"></m-attr-anim>
+      </m-model>
+  
+    </m-group>
+    <m-image class="hidden" id="response-image" width="4" x="2.7" y="2.1" z="1" ry="-15" collide="false" emissive="12"></m-image>
+    <m-attr-anim attr="y" start="0.2" end="0.35" duration="17000" loop="true" ping-pong="true" easing="easeInOutQuad"></m-attr-anim>
+  </m-group>
+  <m-chat-probe id="chat" range="10" debug="false"></m-chat-probe>
+</m-group>
+<script>
+  const apiKey = "OPENAI_API_KEY_GOES_HERE";
+  const assistantId = "OPENAI_AGENT_ID_GOES_HERE";
+
+  const actionsWrapper = document.getElementById("actions-wrapper");
+  const agentAudio = document.getElementById("agent-audio");
+  const agentModel = document.getElementById("agent-model");
+  const waitIndicator = document.getElementById("wait-indicator");
+
+  const connectionPrefix = Date.now()-1710000000000;
+  const connectedUsers = new Set();
+
+  const audioVolume = 3;
+  const audioMarginDuration = 2000;
+
+  let threadId;
+  let latestPromise = null;
+  let queuedMessages = [];
+
+  class TextToCanvasImage {
+    canvas = document.createElement("canvas");
+    ctx = this.canvas.getContext("2d");
+    maxLineCharacters = 42;
+
+    fontSize = 50;
+    lineHeight = this.fontSize * 1.2;
+    textColor = "#ffffff";
+
+    constructor(targetImage, text, fontSize = 50, textColor = "#ffffff") {
+        this.image = targetImage;
+        this.fontSize = fontSize;
+        this.lineHeight = parseFloat((this.fontSize * 1.2).toFixed(2));
+        this.textColor = textColor;
+
+        this.paintText(text);
+    }
+
+    splitTextIntoLines(text) {
+        const words = text.split(" ");
+        const lines = [];
+        let currentLine = "";
+
+        words.forEach((word) => {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            if (testLine.length <= this.maxLineCharacters) {
+                currentLine = testLine;
+            } else {
+                lines.push(currentLine);
+                currentLine = word;
+            }
+        });
+
+        if (currentLine) lines.push(currentLine);
+        return lines;
+    }
+
+    paintText(text) {
+        const lines = this.splitTextIntoLines(text);
+        this.canvas.width = this.fontSize * (this.maxLineCharacters + 1) * 0.6;
+        this.canvas.height = this.lineHeight * (lines.length + 1);
+
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.font = `900 ${this.fontSize}px monospace`;
+        this.ctx.fillStyle = this.textColor;
+
+        let yPos = this.lineHeight;
+        lines.forEach(line => {
+            this.ctx.fillText(line, 0, yPos);
+            yPos += this.lineHeight;
+        });
+
+        const dataUrl = this.canvas.toDataURL("image/png");
+        this.image.setAttribute("src", dataUrl);
+    }
+
+    updateText(newText) {
+        this.paintText(newText);
+    }
+  }
+
+  const imageElement = document.getElementById("response-image");
+  const text = "Hi, I'm Squig! Chat with me through the text chat box on the UI.";
+  const textToCanvas = new TextToCanvasImage(imageElement, text, 40, "#00ff00");
+
+  function animate(element, attr, start, end, duration, easing) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("start-time", document.timeline.currentTime);
+    anim.setAttribute("end-time", document.timeline.currentTime + duration);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("easing", easing);
+    anim.setAttribute("loop", false);
+    element.appendChild(anim);
+    setTimeout(() => {
+      element.setAttribute(attr, end);
+      element.removeChild(anim);
+    }, duration);
+  };
+
+  function showWaiting() {
+    textToCanvas.updateText("Thinking...");
+    animate(waitIndicator, "sy", 0, 1, 500, "easeInOutQuint");
+  }
+
+  function hideWaiting() {
+    animate(waitIndicator, "sy", 1, 0, 500, "easeInOutQuint");
+  }
+
+  function spin() {
+    animate(actionsWrapper, "ry", 0, 1440, 3000, "easeInOutQuint");
+  }
+
+  function growWhileSpeaking(duration) {
+    animate(agentModel, "sx", 0.5, 0.6, 2000, "easeOutBack");
+    animate(agentModel, "sy", 0.5, 0.6, 2000, "easeOutBack");
+    animate(agentModel, "sz", 0.5, 0.6, 2000, "easeOutBack");
+    setTimeout(() => {
+      animate(agentModel, "sx", 0.6, 0.5, 2000, "easeInOutQuint");
+      animate(agentModel, "sy", 0.6, 0.5, 2000, "easeInOutQuint");
+      animate(agentModel, "sz", 0.6, 0.5, 2000, "easeInOutQuint");
+    }, duration);
+  }
+
+  function playAudio(src, duration) {
+    const now = document.timeline.currentTime;
+    agentAudio.setAttribute("volume", audioVolume);
+    agentAudio.setAttribute("start-time", now);
+    agentAudio.setAttribute("pause-time", now + duration + audioMarginDuration);
+    agentAudio.setAttribute("src", src);
+    setTimeout(() => {
+      agentAudio.setAttribute("volume", 0);
+    }, duration + audioMarginDuration);
+  }
+
+  async function estimateMP3Duration(arrayBuffer, debug = false) {
+    const uint8Array = new Uint8Array(arrayBuffer);
+    let i = 0;
+    // Look for the first frame sync to determine CBR/VBR
+    while (i < uint8Array.length - 1) {
+      if (uint8Array[i] === 0xFF && (uint8Array[i + 1] & 0xE0) === 0xE0) break;
+      i++;
+    }
+    if (i >= uint8Array.length - 4) {
+      if (debug) {
+        console.log("No valid MP3 frame header found.");
+      }
+      return 0;
+    }
+
+    const headerOffset = i + 4;
+    const isXing = uint8Array.slice(headerOffset, headerOffset + 4).toString() === "88,105,110,103";
+    const isVBRI = uint8Array.slice(headerOffset, headerOffset + 4).toString() === "86,66,82,73";
+
+    if (isXing || isVBRI) {
+      if (debug) {
+        console.log("VBR MP3 detected.");
+      }
+      const headerPosition = isXing ? headerOffset : headerOffset + 32; // Xing is immediate; VBRI follows 32 bytes
+      const frames = (
+        (uint8Array[headerPosition + 8] << 24) |
+        (uint8Array[headerPosition + 9] << 16) |
+        (uint8Array[headerPosition + 10] << 8) |
+        uint8Array[headerPosition + 11]
+      );
+      const sampleRate = 44100; // Set or detect sample rate per frame headers
+      const durationSeconds = (frames * 1152) / sampleRate; // Frame duration in seconds
+
+      if (debug) {
+        console.log(`Frames: ${frames}, Sample rate: ${sampleRate}, Duration: ${durationSeconds}s`);
+      }
+      return Math.ceil(durationSeconds * 1000); // Convert to ms
+    } else {
+      if (debug) {
+        console.log("CBR MP3 detected.");
+      }
+    }
+
+    // Otherwise, estimate as Constant Bitrate (CBR) if no VBR info is available
+    const header = (uint8Array[i + 2] << 8) | uint8Array[i + 3];
+    const bitrateIndex = (header >> 4) & 0x0F;
+    const sampleRateIndex = (header >> 2) & 0x03;
+    if (debug) {
+      console.log(`Bitrate index: ${bitrateIndex}, Sample rate index: ${sampleRateIndex}`);
+    }
+    const bitrates = [0, 32000, 40000, 48000, 56000, 64000, 80000, 96000, 112000, 128000, 160000, 192000, 224000, 256000, 320000];
+    const sampleRates = [44100, 48000, 32000];
+    const bitrate = bitrates[bitrateIndex - 1];
+    const sampleRate = sampleRates[sampleRateIndex];
+    
+    if (debug) {
+      console.log(`Bitrate: ${bitrate}, Sample rate: ${sampleRate}`);
+    }
+
+    if (!bitrate || !sampleRate) {
+        console.warn("Invalid bitrate or sample rate.");
+        return 0;
+    }
+
+    const durationSeconds = Math.ceil((arrayBuffer.byteLength * 8) / bitrate);
+    return durationSeconds * 1000; // Convert to milliseconds
+  }
+
+  
+  async function createSpeech(tts) {
+    const openAIURL = "https://api.openai.com/v1/audio/speech";
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    };
+    const body = {
+      "model": "tts-1",
+      "input": tts,
+      "voice": "fable",
+      "response_format": "mp3"
+    };
+    const response = await fetch(openAIURL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    const audioBlob = await response.blob();
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const duration = await estimateMP3Duration(arrayBuffer, false);
+    growWhileSpeaking(duration + audioMarginDuration);
+
+    const uint8Array = new Uint8Array(arrayBuffer);
+    let binary = "";
+    for (let i = 0; i < uint8Array.length; i++) {
+      binary += String.fromCharCode(uint8Array[i]);
+    }
+    const base64Audio = btoa(binary);
+    const dataUrl = `data:audio/mp3;base64,${base64Audio}`;
+    textToCanvas.updateText(tts);
+    playAudio(dataUrl, duration);
+  }
+
+  async function createSpeechWithTimeout(tts, timeoutDuration = 7000) {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout: Speech creation took too long")), timeoutDuration)
+    );
+
+    try {
+      await Promise.race([createSpeech(tts), timeoutPromise]);
+    } catch (error) {
+      console.warn(error.message);
+      textToCanvas.updateText(tts);
+    }
+  }
+
+  function connectionIdToUserId(connectionId) {
+    return `${connectionPrefix}_${connectionId}`;
+  }
+
+  window.addEventListener("connected", (event) => {
+    connectedUsers.add(connectionIdToUserId(event.detail.connectionId));
+  });
+
+  window.addEventListener("disconnected", (event) => {
+    connectedUsers.delete(connectionIdToUserId(event.detail.connectionId));
+  });
+
+  async function sendMessages() {
+    showWaiting();
+    const messages = queuedMessages;
+    queuedMessages = [];
+    let res;
+    if (threadId) {
+      res = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "OpenAI-Beta": "assistants=v2",
+        },
+        body: JSON.stringify({
+          assistant_id: assistantId,
+          stream: true,
+          additional_messages: messages.map((message) => ({
+            role: "user",
+            content: JSON.stringify(message),
+          })),
+        }),
+      });
+    } else {
+      res = await fetch("https://api.openai.com/v1/threads/runs", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "OpenAI-Beta": "assistants=v2",
+        },
+        body: JSON.stringify({
+          assistant_id: assistantId,
+          stream: true,
+          thread: {
+            messages: messages.map((message) => ({
+              role: "user",
+              content: JSON.stringify(message),
+            }))
+          },
+        }),
+      });
+    }
+    if (!res.ok) {
+      console.log("ERROR", res.status, res.statusText, await res.text());
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+
+    const text = await res.text();
+    const lines = text.split("\n").filter(line => line.startsWith("data: ") && line !== "data: [DONE]").map(line => line.substring(6)).map(line => {
+      try {
+        return JSON.parse(line);
+      } catch (e) {
+        console.error("FAIlED TO PARSE LINE", line);
+        return { object: "unknown", data: line };
+      }
+    });
+
+    const completionLine = lines.find(line => line.object === "thread.message" && line.status === "completed" && line !== "data: [DONE]");
+    if (completionLine) {
+      if (completionLine.thread_id) {
+        threadId = completionLine.thread_id;
+      }
+      try {
+        let completionText = completionLine.content[0].text.value;
+        console.log(`
+#
+completionText: ${completionText}
+#
+        `);
+        completionText = completionText.replace(/【[^】]*】/g, "");
+        completionText = completionText.replace("```json\n", "").replace("```", "");
+        const completion = JSON.parse(completionText);
+        if (completion.ignore) {
+          textToCanvas.updateText("Ignoring");
+        } else if (completion.wait) {
+          textToCanvas.updateText("Waiting");
+        } else if (completion.action) {
+          textToCanvas.updateText(completion.action);
+          if (completion.action === "spin") {
+            spin();
+          }
+        } else if (completion.message) {
+          createSpeechWithTimeout(completion.message);
+        }
+        hideWaiting();
+      } catch (e) {
+        console.error("FAILED TO PARSE COMPLETION", completionLine.content[0].text.value, e);
+      }
+    }
+  }
+
+  function onQueue() {
+    if (latestPromise) {
+      return;
+    } else {
+      latestPromise = sendMessages().finally(() => {
+        latestPromise = null;
+        if (queuedMessages.length > 0) {
+          onQueue();
+        }
+      });
+    }
+  }
+
+  function submitMessage(message, userId) {
+    const time = Date.now() / 1000;
+    queuedMessages.push({ message, userId, time, nearbyUsers: Array.from(connectedUsers)});
+    onQueue();
+  }
+  
+  const chat = document.getElementById("chat");
+  chat.addEventListener("chat", (event) => {
+    const { message, connectionId } = event.detail;
+    submitMessage(message, connectionIdToUserId(connectionId));
+  });
+
+</script>

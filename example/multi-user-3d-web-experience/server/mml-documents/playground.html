@@ -1,9 +1,11 @@
 <m-group id="content-group">
+  <m-group id="wind-group"></m-group>
   <m-group id="altars-group"></m-group>
 </m-group>
 
 <script>
   const contentGroup = document.getElementById("content-group");
+  const windGroup = document.getElementById("wind-group");
   const altarsGroup = document.getElementById("altars-group");
 
   function createWindSFX(src, x, y, z, windVolume, startTime, debug) {
@@ -14,7 +16,7 @@
     wind.setAttribute("x", x);
     wind.setAttribute("y", y);
     wind.setAttribute("z", z);
-    contentGroup.appendChild(wind);
+    windGroup.appendChild(wind);
   }
 
   function loopAnim(element, attr, start, end, duration, pingPong, easing = undefined) {
@@ -31,6 +33,28 @@
     element.appendChild(anim);
   }
 
+  function placeWind(radius, sources) {
+    const angleStep = (2 * Math.PI) / sources;
+    const angleOffset = (sources - 1) / Math.PI;
+    const angleCorrection = Math.PI * 2 - 0.5;
+    const startRotation = -(angleStep * angleOffset) * (180 / Math.PI) + angleCorrection;
+    windGroup.setAttribute("ry", startRotation);
+
+    for (let i = 0; i < sources; i++) {
+      const now = document.timeline.currentTime;
+      const angle = i * angleStep;
+      const windOffset = 20;
+      const windX = Math.cos(angle) * (radius + windOffset);
+      const windY = 7;
+      const windZ = Math.sin(angle) * (radius + windOffset);
+      const windVolume = i % 2 === 0 ? 1 : 1.5;
+      const windDebug = false;
+      const windSrc = "/assets/playground/wind.mp3";
+      createWindSFX(windSrc, windX, windY, windZ, windVolume, now, windDebug);
+      loopAnim(windGroup, "ry", 0, 360, 150000, false);
+    }
+  }
+
   function placeAltars(parentElement, radius, numberOfAltars) {
     const angleStep = (2 * Math.PI) / numberOfAltars;
     const angleOffset = (numberOfAltars - 1) / Math.PI;
@@ -42,15 +66,6 @@
       const angle = i * angleStep;
 
       const now = document.timeline.currentTime;
-      const windOffset = 20;
-      const windX = Math.cos(angle) * (radius + windOffset);
-      const windY = 3;
-      const windZ = Math.sin(angle) * (radius + windOffset);
-      const windVolume = i % 2 === 0 ? 1 : 1.5;
-      const windDebug = false;
-      const windSrc = "/assets/playground/wind.mp3";
-
-      createWindSFX(windSrc, windX, windY, windZ, windVolume, now, windDebug);
 
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
@@ -100,13 +115,13 @@
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
       } else if (i === 5) {
-        mFrame.setAttribute("src", "wss:///mml-documents/rotate-anim.html");
+        mFrame.setAttribute("src", "wss:///mml-documents/agent.html");
         mFrame.setAttribute("x", x);
         mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
       } else if (i === 6) {
-        mFrame.setAttribute("src", "wss:///mml-documents/magic-stairs.html");
+        mFrame.setAttribute("src", "wss:///mml-documents/rotate-anim.html");
         mFrame.setAttribute("x", x);
         mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
@@ -118,30 +133,36 @@
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
       } else if (i === 8) {
-        mFrame.setAttribute("src", "wss:///mml-documents/dice.html");
+        mFrame.setAttribute("src", "wss:///mml-documents/magic-stairs.html");
         mFrame.setAttribute("x", x);
         mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
       } else if (i === 9) {
-        mFrame.setAttribute("src", "wss:///mml-documents/tic-tac-toe.html");
+        mFrame.setAttribute("src", "wss:///mml-documents/dice.html");
         mFrame.setAttribute("x", x);
         mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
       } else if (i === 10) {
-        mFrame.setAttribute("src", "wss:///mml-documents/live-coding.html");
+        mFrame.setAttribute("src", "wss:///mml-documents/tic-tac-toe.html");
         mFrame.setAttribute("x", x);
         mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
       } else if (i === 11) {
-        mFrame.setAttribute("src", "wss:///mml-documents/piano.html");
+        mFrame.setAttribute("src", "wss:///mml-documents/live-coding.html");
         mFrame.setAttribute("x", x);
         mFrame.setAttribute("y", mmlDocYPos);
         mFrame.setAttribute("z", z);
         mFrame.setAttribute("ry", ry);
       } else if (i === 12) {
+        mFrame.setAttribute("src", "wss:///mml-documents/piano.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 13) {
         mFrame.setAttribute("src", "wss:///mml-documents/links.html");
         mFrame.setAttribute("x", x);
         mFrame.setAttribute("y", mmlDocYPos);
@@ -156,7 +177,8 @@
     altarsGroup.setAttribute("y", 0);
   }
 
-  placeAltars(altarsGroup, 42, 13);
+  placeAltars(altarsGroup, 42, 14);
+  // placeWind(42, 6);
 
   addDocuments();
 </script>

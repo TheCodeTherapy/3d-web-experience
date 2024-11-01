@@ -3,8 +3,11 @@ import path from "node:path";
 import url from "node:url";
 
 import chokidar, { FSWatcher } from "chokidar";
+import dotenv from "dotenv";
 import { EditableNetworkedDOM, LocalObservableDOMFactory } from "networked-dom-server";
 import WebSocket from "ws";
+
+dotenv.config();
 
 const getMmlDocumentContent = (documentPath: string) => {
   return fs.readFileSync(documentPath, { encoding: "utf8", flag: "r" });
@@ -15,6 +18,21 @@ const checkDevEnv = (mmlDocumentContent: string): string => {
   if (process.env.NODE_ENV !== "production") {
     const regex = /wss:\/\/\//g;
     content = content.replace(regex, "ws:///");
+  }
+  return content;
+};
+
+const checkAPIKey = (mmlDocumentContent: string): string => {
+  let content = mmlDocumentContent;
+  if (process.env.OPENAI_API_KEY && process.env.OPENAI_AGENT_ID) {
+    if (
+      content.includes("OPENAI_API_KEY_GOES_HERE") &&
+      content.includes("OPENAI_AGENT_ID_GOES_HERE")
+    ) {
+      console.log("OpenAI API Key and Agent ID placeholders found in MML document");
+      content = content.replace("OPENAI_API_KEY_GOES_HERE", process.env.OPENAI_API_KEY);
+      content = content.replace("OPENAI_AGENT_ID_GOES_HERE", process.env.OPENAI_AGENT_ID);
+    }
   }
   return content;
 };
@@ -72,7 +90,7 @@ export class MMLDocumentsServer {
       .on("add", (fullPath) => {
         const relativePath = path.relative(this.directory, fullPath);
         console.log(`MML Document '${relativePath}' has been added`);
-        const contents = checkDevEnv(getMmlDocumentContent(fullPath));
+        const contents = checkDevEnv(checkAPIKey(getMmlDocumentContent(fullPath)));
         const document = new EditableNetworkedDOM(
           url.pathToFileURL(fullPath).toString(),
           LocalObservableDOMFactory,
@@ -88,7 +106,7 @@ export class MMLDocumentsServer {
       .on("change", (fullPath) => {
         const relativePath = path.relative(this.directory, fullPath);
         console.log(`MML Document '${relativePath}' has been changed`);
-        const contents = checkDevEnv(getMmlDocumentContent(fullPath));
+        const contents = checkDevEnv(checkAPIKey(getMmlDocumentContent(fullPath)));
         const documentState = this.documents.get(relativePath);
         if (!documentState) {
           console.error(`MML Document '${relativePath}' not found`);

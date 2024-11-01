@@ -10,7 +10,14 @@ fi
 
 echo "Deploying to $vpsuser@$vpsaddress..."
 
+ssh $vpsuser@$vpsaddress <<EOF
+bash -l -c "
+mkdir -p ${mmlappdir}
+"
+EOF
+
 scp ./example/multi-user-3d-web-experience/server/.env ${vpsuser}@${vpsaddress}:${mmlappdir}/example/multi-user-3d-web-experience/server/.
+scp ./packages/3d-web-experience-server/.env ${vpsuser}@${vpsaddress}:${mmlappdir}/packages/3d-web-experience-server/.env
 
 ssh $vpsuser@$vpsaddress <<EOF
 bash -l -c "

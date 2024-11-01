@@ -204,7 +204,10 @@ export class Networked3dWebExperienceServer {
     app.get("/mml-documents-list", (req, res) => {
       if (this.mmlDocumentsServer) {
         const documentList = this.mmlDocumentsServer.getDocumentList();
-        const filteredDocumentList = documentList.filter((doc) => !doc.endsWith(".copy.html"));
+        const filteredDocumentList = documentList.filter(
+          (doc) =>
+            !doc.endsWith(".copy.html") && !doc.includes("agent") && !doc.includes("playground"),
+        );
         res.json({ documents: filteredDocumentList });
       } else {
         res.status(500).json({ message: "MML Document server is not initialized." });
@@ -215,14 +218,16 @@ export class Networked3dWebExperienceServer {
     app.get("/mml-documents-copies", (req, res) => {
       if (this.mmlDocumentsServer) {
         const documentList = this.mmlDocumentsServer.getDocumentList();
-        const documentsWithCopies = documentList.filter((documentName: string) => {
-          const copyName = documentName.split(".")[0] + ".copy.html";
-          const copyPath = path.join(
-            this.config.mmlServing?.documentsDirectoryRoot || "",
-            copyName,
-          );
-          return fs.existsSync(copyPath);
-        });
+        const documentsWithCopies = documentList
+          .filter((documentName: string) => {
+            const copyName = documentName.split(".")[0] + ".copy.html";
+            const copyPath = path.join(
+              this.config.mmlServing?.documentsDirectoryRoot || "",
+              copyName,
+            );
+            return fs.existsSync(copyPath);
+          })
+          .filter((doc) => !doc.includes("agent") && !doc.includes("playground"));
         res.json({ documents: documentsWithCopies });
       } else {
         res.status(500).json({ message: "MML Document server is not initialized." });
