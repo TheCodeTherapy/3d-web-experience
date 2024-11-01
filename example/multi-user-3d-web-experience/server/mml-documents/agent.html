@@ -15,6 +15,7 @@
     <m-attr-anim attr="y" start="0.2" end="0.35" duration="17000" loop="true" ping-pong="true" easing="easeInOutQuad"></m-attr-anim>
   </m-group>
   <m-chat-probe id="chat" range="10" debug="false"></m-chat-probe>
+  <m-position-probe id="position-probe" range="10" debug="true"></m-position-probe>
 </m-group>
 <script>
   const apiKey = "OPENAI_API_KEY_GOES_HERE";
@@ -25,11 +26,17 @@
   const agentModel = document.getElementById("agent-model");
   const waitIndicator = document.getElementById("wait-indicator");
 
+  const proximityProbe = document.getElementById("position-probe");
+  const proximityMap = new Map();
+  let latestProximityActivity = document.timeline.currentTime;
+
   const connectionPrefix = Date.now()-1710000000000;
   const connectedUsers = new Set();
 
   const audioVolume = 3;
   const audioMarginDuration = 2000;
+
+  const completionTimeout = 7000;
 
   let threadId;
   let latestPromise = null;
@@ -155,7 +162,11 @@
     responseInProgress = true;
     growWhileSpeaking(response.duration);
     playAudio(response.dataUrl, response.duration);
-    textToCanvas.updateText(response.text);
+    if (response.userId) {
+      textToCanvas.updateText(`${response.userId}: ${response.text}`);
+    } else {
+      textToCanvas.updateText(response.text);
+    }
   }
 
   function playAudio(src, duration) {
@@ -241,7 +252,12 @@
     return durationSeconds * 1000; // Convert to milliseconds
   }
   
-  async function createSpeech(tts) {
+  function isNumberUnderscoreNumber(str) {
+    const pattern = /^\d+_\d+$/;
+    return pattern.test(str);
+  }
+
+  async function createSpeech(tts, userId = null) {
     const openAIURL = "https://api.openai.com/v1/audio/speech";
     const headers = {
       "Content-Type": "application/json",
@@ -270,7 +286,14 @@
     }
     const base64Audio = btoa(binary);
     const dataUrl = `data:audio/mp3;base64,${base64Audio}`;
+    let treatedUserId = null;
+    if (isNumberUnderscoreNumber(userId)) {
+      treatedUserId = `User ${userId.split("_")[1]}`;
+    } else {
+      treatedUserId = userId;
+    }
     queuedResponses.push({
+      userId: treatedUserId,
       dataUrl: dataUrl,
       duration: duration,
       text: tts
@@ -278,13 +301,13 @@
     processResponses();
   }
 
-  async function createSpeechWithTimeout(tts, timeoutDuration = 7000) {
+  async function createSpeechWithTimeout(tts, userId = null) {
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout: Speech creation took too long")), timeoutDuration)
+      setTimeout(() => reject(new Error("Timeout: Speech creation took too long")), completionTimeout)
     );
 
     try {
-      await Promise.race([createSpeech(tts), timeoutPromise]);
+      await Promise.race([createSpeech(tts, userId), timeoutPromise]);
     } catch (error) {
       console.warn(error.message);
       // textToCanvas.updateText(tts);
@@ -295,12 +318,49 @@
     return `${connectionPrefix}_${connectionId}`;
   }
 
+  function checkIfHasNearbyUsers(connectionId) {
+    if (responseInProgress === true) {
+      return;
+    }
+    if (proximityMap.size === 0) {
+      const diff = Math.ceil((document.timeline.currentTime - latestProximityActivity) / 1000);
+      if (diff > 10) {
+        textToCanvas.updateText(text);
+      }
+    }
+  }
+
+  proximityProbe.addEventListener("positionenter", (event) => {
+    const { connectionId } = event.detail;
+    console.log(`positionenter: ${connectionId}`);
+    const { position, rotation } = event.detail.documentRelative;
+    proximityMap.set(connectionId, { position, rotation });
+    latestProximityActivity = document.timeline.currentTime;
+  });
+
+  proximityProbe.addEventListener("positionmove", (event) => {
+    const { connectionId } = event.detail;
+    const { position, rotation } = event.detail.documentRelative;
+    proximityMap.set(connectionId, { position, rotation });
+    latestProximityActivity = document.timeline.currentTime;
+  });
+
+  proximityProbe.addEventListener("positionleave", (event) => {
+    const { connectionId } = event.detail;
+    if (proximityMap.has(connectionId)) {
+      proximityMap.delete(connectionId);
+    }
+  });
+
   window.addEventListener("connected", (event) => {
     connectedUsers.add(connectionIdToUserId(event.detail.connectionId));
   });
 
   window.addEventListener("disconnected", (event) => {
     connectedUsers.delete(connectionIdToUserId(event.detail.connectionId));
+    if (proximityMap.has(event.detail.connectionId)) {
+      proximityMap.delete(event.detail.connectionId);
+    }
   });
 
   async function sendMessages() {
@@ -385,7 +445,12 @@ completionText: ${completionText}
             spin();
           }
         } else if (completion.message) {
-          createSpeechWithTimeout(completion.message);
+          if (completion.userId) {
+            createSpeechWithTimeout(completion.message, completion.userId);
+          } else {
+            createSpeechWithTimeout(completion.message);
+          }
+          
         }
         hideWaiting();
       } catch (e) {
@@ -418,5 +483,9 @@ completionText: ${completionText}
     const { message, connectionId } = event.detail;
     submitMessage(message, connectionIdToUserId(connectionId));
   });
+
+  setInterval(() => {
+    checkIfHasNearbyUsers();
+  }, 1000);
 
 </script>
