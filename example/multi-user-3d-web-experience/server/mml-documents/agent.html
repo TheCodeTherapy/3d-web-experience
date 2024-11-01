@@ -57,6 +57,7 @@
 
   let queuedResponses = [];
   let responseInProgress = false;
+  let latestMessageTime = document.timeline.currentTime;
 
 
   class TextToCanvasImage {
@@ -382,6 +383,15 @@
       if (diff > 10) {
         textToCanvas.updateText(text);
       }
+    } else {
+      const diff = Math.ceil((document.timeline.currentTime - latestMessageTime) / 1000);
+      if (diff > 60) {
+        latestPromise = null;
+        queuedMessages = [];
+        queuedResponses = [];
+        responseInProgress = false;
+        textToCanvas.updateText(text);
+      }
     }
   }
 
@@ -535,6 +545,7 @@ completionText: ${completionText}
   
   const chat = document.getElementById("chat");
   chat.addEventListener("chat", (event) => {
+    latestMessageTime = document.timeline.currentTime;
     const { message, connectionId } = event.detail;
     submitMessage(message, connectionIdToUserId(connectionId));
   });
