@@ -35,8 +35,9 @@ export const rebuildOnDependencyChangesPlugin = {
           });
         });
       }
-      runningProcess = spawn("npm", ["run", "iterate:start"], {
+      runningProcess = spawn("npm run iterate:start", {
         stdio: "inherit",
+        shell: true,
       });
     });
   },

@@ -11,7 +11,7 @@
     "build": "rimraf ./build && tsx ./build.ts --build",
     "iterate": "tsx ./build.ts --watch",
     "iterate:start": "node ./build/index.js",
-    "start": "NODE_ENV=production node build/index.js",
+    "start": "cross-env NODE_ENV=production node build/index.js",
     "type-check": "tsc --noEmit",
     "lint": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
     "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"

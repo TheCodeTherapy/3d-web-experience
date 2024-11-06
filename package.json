@@ -29,6 +29,7 @@
     "@typescript-eslint/eslint-plugin": "^7.15.0",
     "@typescript-eslint/parser": "^7.15.0",
     "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
     "esbuild": "0.20.2",
     "esbuild-plugin-copy": "2.1.1",
     "eslint": "^8.57.0",
@@ -46,8 +47,8 @@
     "rfc6902": "^5.1.1",
     "rimraf": "^5.0.8",
     "tmp": "^0.2.3",
-    "ts-node": "^10.9.2",
     "ts-jest": "29.1.5",
+    "ts-node": "^10.9.2",
     "tsx": "4.16.2",
     "typescript": "^5.5.3"
   }
