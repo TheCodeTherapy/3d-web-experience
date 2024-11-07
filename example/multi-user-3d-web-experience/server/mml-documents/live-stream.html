@@ -1,4 +1,4 @@
-<m-group id="wrapper">
+<m-group id="wrapper" y="4.5" z="-9">
   <m-group id="video-wrapper" y="1.5" sx="0.2" sy="0.2" sz="0.2">
     <m-image
       id="stream-offline-label"
@@ -12,13 +12,23 @@
 </m-group>
 
 <script>
+  const streamURL = "whep://CLOUDFLARE_STREAM_URL_GOES_HERE";
+  const streamCheckURL = "//localhost/live-status";
+
+  let lastStreamRequestTime = 0;
+  const minimumRequestIntervalInSeconds = 15;
+  
+  let streamIsLive = false;
+  let stream = null;
+  let streamCheckInProgress = false;
+
+  const width = 21;
+  let videoExpanded = false;
+
   const wrapper = document.getElementById("wrapper");
   const videoWrapper = document.getElementById("video-wrapper");
   const streamOfflineLabel = document.getElementById("stream-offline-label");
   const tv = document.getElementById("tv");
-
-  let lastStreamRequestTime = 0;
-  const minimumRequestIntervalInSeconds = 15;
 
   const playersInProbe = new Set();
   const probe = document.createElement("m-position-probe");
@@ -44,13 +54,6 @@
   });
   wrapper.appendChild(probe);
 
-  const streamURL = "whep://director.millicast.com/api/whep/htmYPz/mml.mgz.me";
-  let streamIsLive = false;
-  let stream = null;
-
-  const width = 21;
-  let videoExpanded = false;
-
   function expandVideo() {
     if (videoExpanded === true) return;
     videoExpanded = true;
@@ -70,43 +73,47 @@
   function watchStream() {
     const now = document.timeline.currentTime;
     if (now - lastStreamRequestTime < minimumRequestIntervalInSeconds * 1000) return;
+    
+    if (streamCheckInProgress) return;
+
+    streamCheckInProgress = true;
     lastStreamRequestTime = now;
+
     var xhr = new XMLHttpRequest();
-    xhr.open("POST", "https://director.millicast.com/api/director/subscribe", true);
+    xhr.open("GET", streamCheckURL, true);
     xhr.setRequestHeader("Content-Type", "application/json");
+
     xhr.onreadystatechange = function () {
-      if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
-        if (streamIsLive === false) {
-          streamIsLive = true;
-          streamOfflineLabel.setAttribute("visible", false);
-          var jsonData = JSON.parse(xhr.responseText);
-          // console.log("Call Complete:", jsonData);
-          stream = document.createElement("m-video");
-          make16x9(stream, width);
-          stream.setAttribute("id", "live-stream");
-          stream.setAttribute("emissive", 1.9);
-          stream.setAttribute("volume", 3.5);
-          stream.setAttribute("src", streamURL);
-          videoWrapper.appendChild(stream);
-          expandVideo();
+      if (this.readyState === XMLHttpRequest.DONE) {
+        streamCheckInProgress = false;
+
+        if (this.status === 200) {
+          if (streamIsLive === false) {
+            streamIsLive = true;
+            streamOfflineLabel.setAttribute("visible", false);
+            var jsonData = JSON.parse(xhr.responseText);
+            stream = document.createElement("m-video");
+            make16x9(stream, width);
+            stream.setAttribute("id", "live-stream");
+            stream.setAttribute("emissive", 1.9);
+            stream.setAttribute("volume", 3.5);
+            stream.setAttribute("src", streamURL);
+            videoWrapper.appendChild(stream);
+            expandVideo();
+          }
+        } else {
+          console.log("Stream is offline");
+          streamIsLive = false;
+          streamOfflineLabel.setAttribute("visible", true);
+          if (stream !== null) {
+            videoWrapper.removeChild(stream);
+            stream = null;
+          }
+          shrinkVideo();
         }
-      } else if (this.status !== 200) {
-        streamIsLive = false;
-        streamOfflineLabel.setAttribute("visible", true);
-        if (stream !== null) {
-          videoWrapper.removeChild(stream);
-          stream = null;
-        }
-        shrinkVideo();
       }
     };
-    xhr.send(
-      JSON.stringify({
-        streamAccountId: "htmYPz",
-        streamName: "mml.mgz.me",
-        unauthorizedSubscribe: true,
-      }),
-    );
+    xhr.send();
   }
 
   setInterval(() => {
@@ -114,7 +121,7 @@
     if (hasWatchers) {
       watchStream();
     }
-  }, 1000);
+  }, 10000);
 
   function animate(element, attr, start, end, duration, easing, loop = false) {
     const anim = document.createElement("m-attr-anim");

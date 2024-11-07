@@ -34,6 +34,25 @@ const checkAPIKey = (mmlDocumentContent: string): string => {
       content = content.replace("OPENAI_AGENT_ID_GOES_HERE", process.env.OPENAI_AGENT_ID);
     }
   }
+  if (process.env.CLOUDFLARE_STREAM_URL) {
+    if (content.includes("CLOUDFLARE_STREAM_URL_GOES_HERE")) {
+      console.log("Cloudflare Stream URL placeholder found in MML document");
+      content = content.replace(
+        "CLOUDFLARE_STREAM_URL_GOES_HERE",
+        process.env.CLOUDFLARE_STREAM_URL,
+      );
+    }
+
+    if (content.includes("//localhost/live-status")) {
+      content = content.replace(
+        "//localhost/live-status",
+        process.env.NODE_ENV !== "production"
+          ? "http://localhost:8080/live-status"
+          : "https://mml.mgz.me/live-status",
+      );
+    }
+    //
+  }
   return content;
 };
 

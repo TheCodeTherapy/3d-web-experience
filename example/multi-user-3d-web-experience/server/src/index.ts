@@ -4,9 +4,11 @@ import url from "url";
 
 import { Networked3dWebExperienceServer } from "@mml-io/3d-web-experience-server";
 import type { CharacterDescription } from "@mml-io/3d-web-user-networking";
+import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import enableWs from "express-ws";
+import fetch from "node-fetch";
 
 import { BasicUserAuthenticator } from "./BasicUserAuthenticator";
 import { registerDolbyVoiceRoutes, registerLiveKitVoiceRoutes } from "./voice-routes";
@@ -52,6 +54,7 @@ const mmlDocumentsWatchPath = "**/*.html";
 dotenv.config();
 const { app } = enableWs(express());
 app.enable("trust proxy");
+app.use(cors());
 
 const VOICE_CHAT_PASSWORD = process.env.VOICE_CHAT_PASSWORD ?? "";
 
@@ -97,6 +100,49 @@ const networked3dWebExperienceServer = new Networked3dWebExperienceServer({
   },
 });
 networked3dWebExperienceServer.registerExpressRoutes(app);
+
+async function checkLiveStatus(): Promise<boolean> {
+  const liveCheckURL = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/stream/live_inputs/${process.env.CLOUDFLARE_LIVE_INPUT_ID}`;
+
+  const liveCheckOptions = {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Auth-Email": process.env.CLOUDFLARE_AUTH_EMAIL || "",
+      Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+    },
+  };
+
+  try {
+    const response = await fetch(liveCheckURL, liveCheckOptions);
+    const json = await response.json();
+    if (json.result && json.result.status.current.state === "connected") {
+      return true;
+    } else {
+      return false;
+    }
+  } catch (err) {
+    console.error("error:" + err);
+    return false;
+  }
+}
+
+if (
+  process.env.CLOUDFLARE_STREAM_URL &&
+  process.env.CLOUDFLARE_AUTH_EMAIL &&
+  process.env.CLOUDFLARE_API_TOKEN &&
+  process.env.CLOUDFLARE_ACCOUNT_ID &&
+  process.env.CLOUDFLARE_LIVE_INPUT_ID
+) {
+  app.get("/live-status", async (req, res) => {
+    const isLive = await checkLiveStatus();
+    if (isLive) {
+      res.status(200).json({ live: true });
+    } else {
+      res.status(404).json({ live: false });
+    }
+  });
+}
 
 // Start listening
 console.log("Listening on port", PORT);
