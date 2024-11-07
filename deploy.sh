@@ -18,6 +18,7 @@ EOF
 
 scp ./example/multi-user-3d-web-experience/server/.env ${vpsuser}@${vpsaddress}:${mmlappdir}/example/multi-user-3d-web-experience/server/.
 scp ./packages/3d-web-experience-server/.env ${vpsuser}@${vpsaddress}:${mmlappdir}/packages/3d-web-experience-server/.env
+scp ./.env ${vpsuser}@${vpsaddress}:${mmlappdir}/.
 
 ssh $vpsuser@$vpsaddress <<EOF
 bash -l -c "
