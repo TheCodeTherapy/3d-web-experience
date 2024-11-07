@@ -102,7 +102,7 @@
             expandVideo();
           }
         } else {
-          console.log("Stream is offline");
+          // console.log("Stream is offline");
           streamIsLive = false;
           streamOfflineLabel.setAttribute("visible", true);
           if (stream !== null) {
@@ -121,7 +121,7 @@
     if (hasWatchers) {
       watchStream();
     }
-  }, 10000);
+  }, 1000);
 
   function animate(element, attr, start, end, duration, easing, loop = false) {
     const anim = document.createElement("m-attr-anim");
