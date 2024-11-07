@@ -41,14 +41,13 @@ fi
 
 nvm install $(cat .nvmrc)
 npm install -g pm2
-pm2 delete \"mml.mgz.me\"
 
 git pull
 
 nvm use $(cat .nvmrc)
 npm install
-npm install -g pm2
 npm run build
+pm2 delete \"mml.mgz.me\"
 pm2 start npm --name \"mml.mgz.me\" -- run start
 "
 EOF
