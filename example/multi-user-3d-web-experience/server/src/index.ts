@@ -127,6 +127,7 @@ async function checkLiveStatus(): Promise<boolean> {
   }
 }
 
+let lastLiveStatusCheck = 0;
 if (
   process.env.CLOUDFLARE_STREAM_URL &&
   process.env.CLOUDFLARE_AUTH_EMAIL &&
@@ -135,6 +136,11 @@ if (
   process.env.CLOUDFLARE_LIVE_INPUT_ID
 ) {
   app.get("/live-status", async (req, res) => {
+    const now = Date.now();
+    if (now - lastLiveStatusCheck < 10000) {
+      return res.status(429).json({ message: "Too many requests. Try again later." });
+    }
+    lastLiveStatusCheck = now;
     const isLive = await checkLiveStatus();
     if (isLive) {
       res.status(200).json({ live: true });
