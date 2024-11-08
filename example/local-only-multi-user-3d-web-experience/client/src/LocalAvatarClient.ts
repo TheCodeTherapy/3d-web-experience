@@ -138,7 +138,7 @@ export class LocalAvatarClient {
 
     this.composer = new Composer({
       scene: this.scene,
-      camera: this.cameraManager.camera,
+      cameraManager: this.cameraManager,
       spawnSun: true,
     });
     this.composer.useHDRJPG(hdrJpgUrl);
