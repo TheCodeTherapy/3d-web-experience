@@ -178,7 +178,7 @@ export class Networked3dWebExperienceClient {
 
     this.composer = new Composer({
       scene: this.scene,
-      camera: this.cameraManager.camera,
+      cameraManager: this.cameraManager,
       spawnSun: true,
       environmentConfiguration: this.config.environmentConfiguration,
     });

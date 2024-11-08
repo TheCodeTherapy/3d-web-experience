@@ -1,4 +1,5 @@
 import { PerspectiveCamera, Raycaster, Vector3 } from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { CollisionsManager } from "../collisions/CollisionsManager";
 import { remap } from "../helpers/math-helpers";
@@ -13,6 +14,9 @@ const pinchZoomSensitivity = 0.025;
 
 export class CameraManager {
   public readonly camera: PerspectiveCamera;
+  private flyCamera: PerspectiveCamera;
+  private orbitControls: OrbitControls | null = null;
+  private isMainCameraActive: boolean = true;
 
   public initialDistance: number = camValues.initialDistance;
   public minDistance: number = camValues.minDistance;
@@ -44,7 +48,6 @@ export class CameraManager {
   private hadTarget: boolean = false;
 
   private rayCaster: Raycaster;
-
   private eventHandlerCollection: EventHandlerCollection;
 
   private finalTarget: Vector3 = new Vector3();
@@ -67,9 +70,27 @@ export class CameraManager {
     this.theta = initialTheta;
     this.targetTheta = this.theta;
     this.camera = new PerspectiveCamera(this.fov, window.innerWidth / window.innerHeight, 0.1, 400);
+    this.camera.name = "MainCamera";
     this.camera.position.set(0, 1.4, -this.initialDistance);
-    this.rayCaster = new Raycaster();
 
+    this.flyCamera = new PerspectiveCamera(
+      this.initialFOV,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      400,
+    );
+    this.flyCamera.name = "FlyCamera";
+    this.flyCamera.position.set(0, 5, 10);
+
+    this.orbitControls = new OrbitControls(this.flyCamera, this.targetElement);
+    this.orbitControls.enableDamping = true;
+    this.orbitControls.dampingFactor = 0.05;
+    this.orbitControls.enablePan = true;
+    this.orbitControls.enabled = false;
+
+    window.addEventListener("keydown", this.onKeyDown.bind(this));
+
+    this.rayCaster = new Raycaster();
     this.eventHandlerCollection = EventHandlerCollection.create([
       [targetElement, "pointerdown", this.onPointerDown.bind(this)],
       [targetElement, "gesturestart", this.preventDefaultAndStopPropagation.bind(this)],
@@ -91,9 +112,7 @@ export class CameraManager {
   }
 
   private onPointerDown(event: PointerEvent): void {
-    if (event.button === 0 || event.button === 2) {
-      // Left or right mouse button
-
+    if (this.isMainCameraActive && (event.button === 0 || event.button === 2)) {
       const pointerInfo = { x: event.clientX, y: event.clientY };
       this.activePointers.set(event.pointerId, pointerInfo);
       document.body.style.cursor = "none";
@@ -101,11 +120,13 @@ export class CameraManager {
   }
 
   private onPointerUp(event: PointerEvent): void {
-    const existingPointer = this.activePointers.get(event.pointerId);
-    if (existingPointer) {
-      this.activePointers.delete(event.pointerId);
-      if (this.activePointers.size === 0) {
-        document.body.style.cursor = "default";
+    if (this.isMainCameraActive) {
+      const existingPointer = this.activePointers.get(event.pointerId);
+      if (existingPointer) {
+        this.activePointers.delete(event.pointerId);
+        if (this.activePointers.size === 0) {
+          document.body.style.cursor = "default";
+        }
       }
     }
   }
@@ -128,7 +149,7 @@ export class CameraManager {
   }
 
   private onPointerMove(event: PointerEvent): void {
-    if (getTweakpaneActive()) {
+    if (getTweakpaneActive() || !this.isMainCameraActive) {
       return;
     }
 
@@ -136,7 +157,6 @@ export class CameraManager {
     if (existingPointer) {
       const previous = this.getAveragePointerPositionAndSpread();
 
-      // Replace the pointer info and recalculate to determine the delta
       existingPointer.x = event.clientX;
       existingPointer.y = event.clientY;
 
@@ -161,7 +181,7 @@ export class CameraManager {
   }
 
   private onMouseWheel(event: WheelEvent): void {
-    if (getTweakpaneActive()) {
+    if (getTweakpaneActive() || !this.isMainCameraActive) {
       return;
     }
     event.preventDefault();
@@ -179,7 +199,44 @@ export class CameraManager {
   }
 
   private onContextMenu(event: PointerEvent): void {
-    event.preventDefault();
+    if (this.isMainCameraActive) {
+      event.preventDefault();
+    }
+  }
+
+  private onKeyDown(event: KeyboardEvent): void {
+    if (event.key.toLowerCase() === "f10") {
+      this.isMainCameraActive = !this.isMainCameraActive;
+
+      if (this.orbitControls) {
+        this.orbitControls.enabled = !this.isMainCameraActive;
+      }
+
+      if (!this.isMainCameraActive) {
+        this.flyCamera.position.copy(this.camera.position);
+        this.flyCamera.rotation.copy(this.camera.rotation);
+
+        // Determine the target the main camera is looking at
+        const target = new Vector3();
+        this.camera.getWorldDirection(target);
+        target.multiplyScalar(this.targetDistance).add(this.camera.position);
+
+        // Update orbit controls to use this target as the pivot point
+        this.orbitControls?.target.copy(target);
+        this.orbitControls?.update();
+        this.eventHandlerCollection.clear();
+      } else {
+        this.eventHandlerCollection = EventHandlerCollection.create([
+          [this.targetElement, "pointerdown", this.onPointerDown.bind(this)],
+          [this.targetElement, "gesturestart", this.preventDefaultAndStopPropagation.bind(this)],
+          [document, "pointerup", this.onPointerUp.bind(this)],
+          [document, "pointercancel", this.onPointerUp.bind(this)],
+          [document, "pointermove", this.onPointerMove.bind(this)],
+          [this.targetElement, "wheel", this.onMouseWheel.bind(this)],
+          [this.targetElement, "contextmenu", this.onContextMenu.bind(this)],
+        ]);
+      }
+    }
   }
 
   public setTarget(target: Vector3): void {
@@ -237,17 +294,11 @@ export class CameraManager {
     }
   }
 
-  public dispose() {
-    this.eventHandlerCollection.clear();
-    document.body.style.cursor = "";
-  }
-
-  private easeOutExpo(x: number): number {
-    return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
-  }
-
   public updateAspect(aspect: number): void {
     this.camera.aspect = aspect;
+    this.flyCamera.aspect = aspect;
+    this.camera.updateProjectionMatrix();
+    this.flyCamera.updateProjectionMatrix();
   }
 
   public recomputeFoV(immediately: boolean = false): void {
@@ -264,34 +315,61 @@ export class CameraManager {
   }
 
   public update(): void {
-    if (this.isLerping && this.lerpFactor < 1) {
-      this.lerpFactor += 0.01 / this.lerpDuration;
-      this.lerpFactor = Math.min(1, this.lerpFactor);
-      this.target.lerpVectors(this.lerpTarget, this.finalTarget, this.easeOutExpo(this.lerpFactor));
+    if (this.isMainCameraActive) {
+      if (this.isLerping && this.lerpFactor < 1) {
+        this.lerpFactor += 0.01 / this.lerpDuration;
+        this.lerpFactor = Math.min(1, this.lerpFactor);
+        this.target.lerpVectors(
+          this.lerpTarget,
+          this.finalTarget,
+          this.easeOutExpo(this.lerpFactor),
+        );
+      } else {
+        this.adjustCameraPosition();
+      }
+
+      this.distance += (this.targetDistance - this.distance) * this.zoomDamping;
+      this.theta += (this.targetTheta - this.theta) * this.damping;
+      this.phi += (this.targetPhi - this.phi) * this.damping;
+
+      const x = this.target.x + this.distance * Math.sin(this.phi) * Math.cos(this.theta);
+      const y = this.target.y + this.distance * Math.cos(this.phi);
+      const z = this.target.z + this.distance * Math.sin(this.phi) * Math.sin(this.theta);
+
+      this.recomputeFoV();
+      this.fov += (this.targetFOV - this.fov) * this.zoomDamping;
+      this.camera.fov = this.fov;
+      this.camera.updateProjectionMatrix();
+
+      this.camera.position.set(x, y, z);
+      this.camera.lookAt(this.target);
+
+      if (this.isLerping && this.lerpFactor >= 1) {
+        this.isLerping = false;
+      }
     } else {
-      this.adjustCameraPosition();
+      if (this.orbitControls) {
+        this.orbitControls.update();
+      }
     }
+  }
 
-    this.distance += (this.targetDistance - this.distance) * this.zoomDamping;
+  public getActiveCamera(): PerspectiveCamera {
+    return this.isMainCameraActive ? this.camera : this.flyCamera;
+  }
 
-    this.theta += (this.targetTheta - this.theta) * this.damping;
-    this.phi += (this.targetPhi - this.phi) * this.damping;
+  public dispose() {
+    this.eventHandlerCollection.clear();
+    document.body.style.cursor = "";
+    window.removeEventListener("keydown", this.onKeyDown.bind(this));
 
-    const x = this.target.x + this.distance * Math.sin(this.phi) * Math.cos(this.theta);
-    const y = this.target.y + this.distance * Math.cos(this.phi);
-    const z = this.target.z + this.distance * Math.sin(this.phi) * Math.sin(this.theta);
-
-    this.recomputeFoV();
-    this.fov += (this.targetFOV - this.fov) * this.zoomDamping;
-    this.camera.fov = this.fov;
-    this.camera.updateProjectionMatrix();
-
-    this.camera.position.set(x, y, z);
-    this.camera.lookAt(this.target);
-
-    if (this.isLerping && this.lerpFactor >= 1) {
-      this.isLerping = false;
+    if (this.orbitControls) {
+      this.orbitControls.dispose();
     }
+  }
+
+  private easeOutExpo(x: number): number {
+    return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
   }
 
   public hasActiveInput(): boolean {
