@@ -71,6 +71,14 @@
   }
 
   function watchStream() {
+    if (!streamURL.includes("cloudflare")) {
+      // checks for server-side URL replacement
+      return;
+    }
+    if (!streamCheckURL.includes("http")) {
+      // checks for server-side URL replacement
+      return;
+    }
     const now = document.timeline.currentTime;
     if (now - lastStreamRequestTime < minimumRequestIntervalInSeconds * 1000) return;
     

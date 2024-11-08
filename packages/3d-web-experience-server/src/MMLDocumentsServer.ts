@@ -51,7 +51,6 @@ const checkAPIKey = (mmlDocumentContent: string): string => {
           : "https://mml.mgz.me/live-status",
       );
     }
-    //
   }
   return content;
 };
