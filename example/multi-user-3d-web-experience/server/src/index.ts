@@ -116,7 +116,7 @@ async function checkLiveStatus(): Promise<boolean> {
   try {
     const response = await fetch(liveCheckURL, liveCheckOptions);
     const json = await response.json();
-    if (json.result && json.result.status.current.state === "connected") {
+    if ((json as any).result && (json as any).result.status.current.state === "connected") {
       return true;
     } else {
       return false;
