@@ -106,8 +106,8 @@ const app = new Networked3dWebExperienceClient(holder, {
     color: "#ffffff",
     backgroundImageUrl: loadingBackground,
     backgroundBlurAmount: 12,
-    title: "3D Web Experience",
-    subtitle: "Powered by Metaverse Markup Language",
+    title: "mml.mgz.me",
+    subtitle: "The 3D Web Experience",
   },
 });
 
