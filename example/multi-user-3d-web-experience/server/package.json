@@ -30,6 +30,7 @@
     "express-ws": "5.0.2",
     "livekit-server-sdk": "2.6.0",
     "networked-dom-server": "0.18.1",
+    "node-fetch": "^3.3.2",
     "ws": "8.18.0"
   },
   "devDependencies": {
