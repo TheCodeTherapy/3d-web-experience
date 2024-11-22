@@ -19,6 +19,7 @@ import {
   GroundPlane,
   KeyInputManager,
   LoadingScreen,
+  LoadingScreenConfig,
   MMLCompositionScene,
   TimeManager,
   TweakPane,
@@ -83,6 +84,7 @@ export type Networked3dWebExperienceClientConfig = {
   voiceChatAddress?: string;
   updateURLLocation?: boolean;
   onServerBroadcast?: (broadcast: { broadcastType: string; payload: any }) => void;
+  loadingScreen?: LoadingScreenConfig;
 } & UpdatableConfig;
 
 export type UpdatableConfig = {
@@ -293,7 +295,8 @@ export class Networked3dWebExperienceClient {
     });
     this.mmlEditorUI.init();
 
-    this.loadingScreen = new LoadingScreen(this.loadingProgressManager);
+    this.loadingScreen = new LoadingScreen(this.loadingProgressManager, this.config.loadingScreen);
+
     this.element.append(this.loadingScreen.element);
 
     this.loadingProgressManager.addProgressCallback(() => {

@@ -1,11 +1,11 @@
 // @ts-ignore
-import cssModulesPlugin from "esbuild-css-modules-plugin";
+import CssModulesPlugin from "esbuild-css-modules-plugin";
 
 import { handleLibraryBuild } from "../../utils/build-library";
 
 handleLibraryBuild({
   plugins: [
-    cssModulesPlugin({
+    CssModulesPlugin({
       inject: true,
       emitDeclarationFile: true,
     }),

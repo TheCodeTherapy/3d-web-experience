@@ -1,6 +1,7 @@
 import { Networked3dWebExperienceClient } from "@mml-io/3d-web-experience-client";
 
 import hdrJpgUrl from "../../../assets/hdr/puresky_2k.jpg";
+import loadingBackground from "../../../assets/images/loading-bg.jpg";
 import airAnimationFileUrl from "../../../assets/models/anim_air.glb";
 import altFrontFlipFileUrl from "../../../assets/models/anim_alt_frontflip.glb";
 import backFlipFileUrl from "../../../assets/models/anim_backflip.glb";
@@ -99,6 +100,14 @@ const app = new Networked3dWebExperienceClient(holder, {
         thumbnailUrl: "/assets/models/thumbs/cartoon_boy.jpg",
       },
     ],
+  },
+  loadingScreen: {
+    background: "#424242",
+    color: "#ffffff",
+    backgroundImageUrl: loadingBackground,
+    backgroundBlurAmount: 12,
+    title: "3D Web Experience",
+    subtitle: "Powered by Metaverse Markup Language",
   },
 });
 

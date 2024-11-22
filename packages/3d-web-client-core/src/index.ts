@@ -14,6 +14,6 @@ export { TimeManager } from "./time/TimeManager";
 export { CollisionsManager } from "./collisions/CollisionsManager";
 export { Sun } from "./sun/Sun";
 export { GroundPlane } from "./ground-plane/GroundPlane";
-export { LoadingScreen } from "./loading-screen/LoadingScreen";
+export { LoadingScreenConfig, LoadingScreen } from "./loading-screen/LoadingScreen";
 export { ErrorScreen } from "./error-screen/ErrorScreen";
 export { EnvironmentConfiguration } from "./rendering/composer";
