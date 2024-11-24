@@ -1,22 +1,99 @@
 <m-group id="agent-group">
   <m-audio id="agent-audio" y="2" z="-2.7" loop="false"></m-audio>
   <m-group id="float-wrapper">
-
     <m-group id="actions-wrapper">
-  
-      <m-model id="agent-model" src="/assets/playground/brainzo_draco.glb" anim="/assets/playground/brainzo_draco.glb" collide="false" y="1.2" ry="0" sx="0.5" sy="0.5" sz="0.5">
+      <m-model
+        id="agent-model"
+        src="/assets/playground/brainzo_draco.glb"
+        anim="/assets/playground/brainzo_draco.glb"
+        collide="false"
+        y="1.2"
+        ry="0"
+        sx="0.5"
+        sy="0.5"
+        sz="0.5"
+      >
         <m-cylinder radius="1.3" height="5" y="1.5" visible="false"></m-cylinder>
-        <m-video collide="false" id="wait-indicator" src="/assets/playground/wait.webm" x="0" y="1.35" z="1.1" sy="0" emissive="5"></m-video>
-        <m-attr-anim attr="ry" start="-5" end="5" duration="12000" loop="true" ping-pong="true" easing="easeInOutQuint"></m-attr-anim>
+        <m-video
+          collide="false"
+          id="wait-indicator"
+          src="/assets/playground/wait.webm"
+          x="0"
+          y="1.35"
+          z="1.1"
+          sy="0"
+          emissive="5"
+        ></m-video>
+        <m-attr-anim
+          attr="ry"
+          start="-5"
+          end="5"
+          duration="12000"
+          loop="true"
+          ping-pong="true"
+          easing="easeInOutQuint"
+        ></m-attr-anim>
       </m-model>
-      
-      <m-audio id="spin-audio" src="/assets/playground/spin.mp3" loop="false" start-time="-10000" volume="0"></m-audio>
-      <m-audio id="horn-audio" src="/assets/playground/horn.mp3" loop="false" start-time="-10000" volume="0"></m-audio>
-      <m-model id="horn-model" src="/assets/playground/viking_horn.glb" sx="0" sy="0" sz="0" x="-0.8" y="2.5" z="1" rx="-20" ry="220" collide="false"></m-model>
-      <m-model id="thumb-model" src="/assets/playground/thumb.glb" sx="0" sy="0" sz="0" y="1.8" x="-1.5" rx="0" collide="false"></m-model>
+
+      <m-audio
+        id="spin-audio"
+        src="/assets/playground/spin.mp3"
+        loop="false"
+        start-time="-10000"
+        volume="0"
+      ></m-audio>
+      <m-audio
+        id="horn-audio"
+        src="/assets/playground/horn.mp3"
+        loop="false"
+        start-time="-10000"
+        volume="0"
+      ></m-audio>
+      <m-model
+        id="horn-model"
+        src="/assets/playground/viking_horn.glb"
+        sx="0"
+        sy="0"
+        sz="0"
+        x="-0.8"
+        y="2.5"
+        z="1"
+        rx="-20"
+        ry="220"
+        collide="false"
+      ></m-model>
+      <m-model
+        id="thumb-model"
+        src="/assets/playground/thumb.glb"
+        sx="0"
+        sy="0"
+        sz="0"
+        y="1.8"
+        x="-1.5"
+        rx="0"
+        collide="false"
+      ></m-model>
     </m-group>
-    <m-image class="hidden" id="response-image" width="4" x="2.7" y="2.1" z="1" ry="-15" collide="false" emissive="12"></m-image>
-    <m-attr-anim attr="y" start="0.2" end="0.35" duration="17000" loop="true" ping-pong="true" easing="easeInOutQuad"></m-attr-anim>
+    <m-image
+      class="hidden"
+      id="response-image"
+      width="4"
+      x="2.7"
+      y="2.1"
+      z="1"
+      ry="-15"
+      collide="false"
+      emissive="12"
+    ></m-image>
+    <m-attr-anim
+      attr="y"
+      start="0.2"
+      end="0.35"
+      duration="17000"
+      loop="true"
+      ping-pong="true"
+      easing="easeInOutQuad"
+    ></m-attr-anim>
   </m-group>
   <m-chat-probe id="chat" range="10" debug="false"></m-chat-probe>
   <m-position-probe id="position-probe" range="10" debug="false"></m-position-probe>
@@ -39,7 +116,7 @@
   const proximityMap = new Map();
   let latestProximityActivity = document.timeline.currentTime;
 
-  const connectionPrefix = Date.now()-1710000000000;
+  const connectionPrefix = Date.now() - 1710000000000;
   const connectedUsers = new Set();
 
   const audioVolume = 3;
@@ -59,7 +136,6 @@
   let responseInProgress = false;
   let latestMessageTime = document.timeline.currentTime;
 
-
   class TextToCanvasImage {
     canvas = document.createElement("canvas");
     ctx = this.canvas.getContext("2d");
@@ -70,54 +146,54 @@
     textColor = "#ffffff";
 
     constructor(targetImage, text, fontSize = 50, textColor = "#ffffff") {
-        this.image = targetImage;
-        this.fontSize = fontSize;
-        this.lineHeight = parseFloat((this.fontSize * 1.2).toFixed(2));
-        this.textColor = textColor;
+      this.image = targetImage;
+      this.fontSize = fontSize;
+      this.lineHeight = parseFloat((this.fontSize * 1.2).toFixed(2));
+      this.textColor = textColor;
 
-        this.paintText(text);
+      this.paintText(text);
     }
 
     splitTextIntoLines(text) {
-        const words = text.split(" ");
-        const lines = [];
-        let currentLine = "";
+      const words = text.split(" ");
+      const lines = [];
+      let currentLine = "";
 
-        words.forEach((word) => {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            if (testLine.length <= this.maxLineCharacters) {
-                currentLine = testLine;
-            } else {
-                lines.push(currentLine);
-                currentLine = word;
-            }
-        });
+      words.forEach((word) => {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        if (testLine.length <= this.maxLineCharacters) {
+          currentLine = testLine;
+        } else {
+          lines.push(currentLine);
+          currentLine = word;
+        }
+      });
 
-        if (currentLine) lines.push(currentLine);
-        return lines;
+      if (currentLine) lines.push(currentLine);
+      return lines;
     }
 
     paintText(text) {
-        const lines = this.splitTextIntoLines(text);
-        this.canvas.width = this.fontSize * (this.maxLineCharacters + 1) * 0.6;
-        this.canvas.height = this.lineHeight * (lines.length + 1);
+      const lines = this.splitTextIntoLines(text);
+      this.canvas.width = this.fontSize * (this.maxLineCharacters + 1) * 0.6;
+      this.canvas.height = this.lineHeight * (lines.length + 1);
 
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.font = `900 ${this.fontSize}px monospace`;
-        this.ctx.fillStyle = this.textColor;
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.font = `900 ${this.fontSize}px monospace`;
+      this.ctx.fillStyle = this.textColor;
 
-        let yPos = this.lineHeight;
-        lines.forEach(line => {
-            this.ctx.fillText(line, 0, yPos);
-            yPos += this.lineHeight;
-        });
+      let yPos = this.lineHeight;
+      lines.forEach((line) => {
+        this.ctx.fillText(line, 0, yPos);
+        yPos += this.lineHeight;
+      });
 
-        const dataUrl = this.canvas.toDataURL("image/png");
-        this.image.setAttribute("src", dataUrl);
+      const dataUrl = this.canvas.toDataURL("image/png");
+      this.image.setAttribute("src", dataUrl);
     }
 
     updateText(newText) {
-        this.paintText(newText);
+      this.paintText(newText);
     }
   }
 
@@ -140,7 +216,7 @@
       element.setAttribute(attr, end);
       element.removeChild(anim);
     }, duration);
-  };
+  }
 
   function showWaiting() {
     if (responseInProgress === false) {
@@ -243,7 +319,7 @@
       setTimeout(() => {
         responseInProgress = false;
         processResponses();
-      }, audioMarginDuration / 2)
+      }, audioMarginDuration / 2);
     }, duration + audioMarginDuration);
   }
 
@@ -252,7 +328,7 @@
     let i = 0;
     // Look for the first frame sync to determine CBR/VBR
     while (i < uint8Array.length - 1) {
-      if (uint8Array[i] === 0xFF && (uint8Array[i + 1] & 0xE0) === 0xE0) break;
+      if (uint8Array[i] === 0xff && (uint8Array[i + 1] & 0xe0) === 0xe0) break;
       i++;
     }
     if (i >= uint8Array.length - 4) {
@@ -271,12 +347,11 @@
         console.log("VBR MP3 detected.");
       }
       const headerPosition = isXing ? headerOffset : headerOffset + 32; // Xing is immediate; VBRI follows 32 bytes
-      const frames = (
+      const frames =
         (uint8Array[headerPosition + 8] << 24) |
         (uint8Array[headerPosition + 9] << 16) |
         (uint8Array[headerPosition + 10] << 8) |
-        uint8Array[headerPosition + 11]
-      );
+        uint8Array[headerPosition + 11];
       const sampleRate = 44100; // Set or detect sample rate per frame headers
       const durationSeconds = (frames * 1152) / sampleRate; // Frame duration in seconds
 
@@ -292,29 +367,32 @@
 
     // Otherwise, estimate as Constant Bitrate (CBR) if no VBR info is available
     const header = (uint8Array[i + 2] << 8) | uint8Array[i + 3];
-    const bitrateIndex = (header >> 4) & 0x0F;
+    const bitrateIndex = (header >> 4) & 0x0f;
     const sampleRateIndex = (header >> 2) & 0x03;
     if (debug) {
       console.log(`Bitrate index: ${bitrateIndex}, Sample rate index: ${sampleRateIndex}`);
     }
-    const bitrates = [0, 32000, 40000, 48000, 56000, 64000, 80000, 96000, 112000, 128000, 160000, 192000, 224000, 256000, 320000];
+    const bitrates = [
+      0, 32000, 40000, 48000, 56000, 64000, 80000, 96000, 112000, 128000, 160000, 192000, 224000,
+      256000, 320000,
+    ];
     const sampleRates = [44100, 48000, 32000];
     const bitrate = bitrates[bitrateIndex - 1];
     const sampleRate = sampleRates[sampleRateIndex];
-    
+
     if (debug) {
       console.log(`Bitrate: ${bitrate}, Sample rate: ${sampleRate}`);
     }
 
     if (!bitrate || !sampleRate) {
-        console.warn("Invalid bitrate or sample rate.");
-        return 0;
+      console.warn("Invalid bitrate or sample rate.");
+      return 0;
     }
 
     const durationSeconds = Math.ceil((arrayBuffer.byteLength * 8) / bitrate);
     return durationSeconds * 1000; // Convert to milliseconds
   }
-  
+
   function isNumberUnderscoreNumber(str) {
     const pattern = /^\d+_\d+$/;
     return pattern.test(str);
@@ -327,10 +405,10 @@
       Authorization: `Bearer ${apiKey}`,
     };
     const body = {
-      "model": "tts-1",
-      "input": tts,
-      "voice": "fable",
-      "response_format": "mp3"
+      model: "tts-1",
+      input: tts,
+      voice: "fable",
+      response_format: "mp3",
     };
     const response = await fetch(openAIURL, {
       method: "POST",
@@ -352,14 +430,17 @@
     queuedResponses.push({
       dataUrl: dataUrl,
       duration: duration,
-      text: tts
+      text: tts,
     });
     processResponses();
   }
 
   async function createSpeechWithTimeout(tts) {
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout: Speech creation took too long")), completionTimeout)
+      setTimeout(
+        () => reject(new Error("Timeout: Speech creation took too long")),
+        completionTimeout,
+      ),
     );
 
     try {
@@ -464,7 +545,7 @@
             messages: messages.map((message) => ({
               role: "user",
               content: JSON.stringify(message),
-            }))
+            })),
           },
         }),
       });
@@ -475,16 +556,23 @@
     }
 
     const text = await res.text();
-    const lines = text.split("\n").filter(line => line.startsWith("data: ") && line !== "data: [DONE]").map(line => line.substring(6)).map(line => {
-      try {
-        return JSON.parse(line);
-      } catch (e) {
-        console.error("FAIlED TO PARSE LINE", line);
-        return { object: "unknown", data: line };
-      }
-    });
+    const lines = text
+      .split("\n")
+      .filter((line) => line.startsWith("data: ") && line !== "data: [DONE]")
+      .map((line) => line.substring(6))
+      .map((line) => {
+        try {
+          return JSON.parse(line);
+        } catch (e) {
+          console.error("FAIlED TO PARSE LINE", line);
+          return { object: "unknown", data: line };
+        }
+      });
 
-    const completionLine = lines.find(line => line.object === "thread.message" && line.status === "completed" && line !== "data: [DONE]");
+    const completionLine = lines.find(
+      (line) =>
+        line.object === "thread.message" && line.status === "completed" && line !== "data: [DONE]",
+    );
     if (completionLine) {
       if (completionLine.thread_id) {
         threadId = completionLine.thread_id;
@@ -539,10 +627,10 @@ completionText: ${completionText}
 
   function submitMessage(message, userId) {
     const time = Date.now() / 1000;
-    queuedMessages.push({ message, userId, time, nearbyUsers: Array.from(connectedUsers)});
+    queuedMessages.push({ message, userId, time, nearbyUsers: Array.from(connectedUsers) });
     onQueue();
   }
-  
+
   const chat = document.getElementById("chat");
   chat.addEventListener("chat", (event) => {
     latestMessageTime = document.timeline.currentTime;
@@ -553,5 +641,4 @@ completionText: ${completionText}
   setInterval(() => {
     checkIfHasNearbyUsers();
   }, 1000);
-
 </script>

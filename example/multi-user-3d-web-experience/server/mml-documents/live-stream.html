@@ -17,7 +17,7 @@
 
   let lastStreamRequestTime = 0;
   const minimumRequestIntervalInSeconds = 15;
-  
+
   let streamIsLive = false;
   let stream = null;
   let streamCheckInProgress = false;
@@ -81,7 +81,7 @@
     }
     const now = document.timeline.currentTime;
     if (now - lastStreamRequestTime < minimumRequestIntervalInSeconds * 1000) return;
-    
+
     if (streamCheckInProgress) return;
 
     streamCheckInProgress = true;
