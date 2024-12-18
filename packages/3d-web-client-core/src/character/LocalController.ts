@@ -203,19 +203,19 @@ export class LocalController {
   }
 
   private updateAzimuthalAngle(): void {
-    const camToModelDistance = this.config.cameraManager
-      .getActiveCamera()
-      .position.distanceTo(this.config.character.position);
+    const camToModelDistance = this.config.cameraManager.activeCamera.position.distanceTo(
+      this.config.character.position,
+    );
     const isCameraFirstPerson = camToModelDistance < 2;
     if (isCameraFirstPerson) {
       const cameraForward = this.tempVector
         .set(0, 0, 1)
-        .applyQuaternion(this.config.cameraManager.getActiveCamera().quaternion);
+        .applyQuaternion(this.config.cameraManager.activeCamera.quaternion);
       this.azimuthalAngle = Math.atan2(cameraForward.x, cameraForward.z);
     } else {
       this.azimuthalAngle = Math.atan2(
-        this.config.cameraManager.getActiveCamera().position.x - this.config.character.position.x,
-        this.config.cameraManager.getActiveCamera().position.z - this.config.character.position.z,
+        this.config.cameraManager.activeCamera.position.x - this.config.character.position.x,
+        this.config.cameraManager.activeCamera.position.z - this.config.character.position.z,
       );
     }
   }

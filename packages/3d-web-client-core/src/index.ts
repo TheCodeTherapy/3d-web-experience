@@ -5,7 +5,7 @@ export * from "./character/url-position";
 export * from "./helpers/math-helpers";
 export { CharacterModelLoader } from "./character/CharacterModelLoader";
 export { CharacterState, AnimationState } from "./character/CharacterState";
-export { KeyInputManager } from "./input/KeyInputManager";
+export { Key, KeyInputManager } from "./input/KeyInputManager";
 export { VirtualJoystick } from "./input/VirtualJoystick";
 export { MMLCompositionScene } from "./mml/MMLCompositionScene";
 export { TweakPane } from "./tweakpane/TweakPane";

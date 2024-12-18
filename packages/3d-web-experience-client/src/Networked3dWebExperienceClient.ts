@@ -17,6 +17,7 @@ import {
   ErrorScreen,
   getSpawnPositionInsideCircle,
   GroundPlane,
+  Key,
   KeyInputManager,
   LoadingScreen,
   LoadingScreenConfig,
@@ -78,6 +79,7 @@ export type MMLDocumentConfiguration = {
 export type Networked3dWebExperienceClientConfig = {
   userNetworkAddress: string;
   sessionToken: string;
+  allowOrbitalCamera?: boolean;
   chatVisibleByDefault?: boolean;
   userNameToColorOptions?: StringToHslOptions;
   animationConfig: AnimationConfig;
@@ -259,6 +261,13 @@ export class Networked3dWebExperienceClient {
         this.config.onServerBroadcast?.(broadcast);
       },
     });
+
+    if (this.config.allowOrbitalCamera) {
+      this.keyInputManager.createKeyBinding(Key.C, () => {
+        this.cameraManager.toggleFlyCamera();
+        this.composer.fitContainer();
+      });
+    }
 
     this.characterManager = new CharacterManager({
       composer: this.composer,

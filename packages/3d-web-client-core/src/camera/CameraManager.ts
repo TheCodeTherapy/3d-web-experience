@@ -15,7 +15,7 @@ const pinchZoomSensitivity = 0.025;
 export class CameraManager {
   public readonly camera: PerspectiveCamera;
   private flyCamera: PerspectiveCamera;
-  private orbitControls: OrbitControls | null = null;
+  private orbitControls: OrbitControls;
   private isMainCameraActive: boolean = true;
 
   public initialDistance: number = camValues.initialDistance;
@@ -69,18 +69,16 @@ export class CameraManager {
     this.targetPhi = this.phi;
     this.theta = initialTheta;
     this.targetTheta = this.theta;
-    this.camera = new PerspectiveCamera(this.fov, window.innerWidth / window.innerHeight, 0.1, 400);
-    this.camera.name = "MainCamera";
-    this.camera.position.set(0, 1.4, -this.initialDistance);
 
-    this.flyCamera = new PerspectiveCamera(
-      this.initialFOV,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      400,
-    );
+    const aspect = window.innerWidth / window.innerHeight;
+
+    this.camera = new PerspectiveCamera(this.fov, aspect, 0.1, 400);
+    this.camera.position.set(0, 1.4, -this.initialDistance);
+    this.camera.name = "MainCamera";
+    this.flyCamera = new PerspectiveCamera(this.initialFOV, aspect, 0.1, 400);
     this.flyCamera.name = "FlyCamera";
-    this.flyCamera.position.set(0, 5, 10);
+    this.flyCamera.position.copy(this.camera.position);
+    this.flyCamera.name = "FlyCamera";
 
     this.orbitControls = new OrbitControls(this.flyCamera, this.targetElement);
     this.orbitControls.enableDamping = true;
@@ -88,18 +86,25 @@ export class CameraManager {
     this.orbitControls.enablePan = true;
     this.orbitControls.enabled = false;
 
-    window.addEventListener("keydown", this.onKeyDown.bind(this));
-
     this.rayCaster = new Raycaster();
+
+    this.createEventHandlers();
+  }
+
+  private createEventHandlers(): void {
     this.eventHandlerCollection = EventHandlerCollection.create([
-      [targetElement, "pointerdown", this.onPointerDown.bind(this)],
-      [targetElement, "gesturestart", this.preventDefaultAndStopPropagation.bind(this)],
+      [this.targetElement, "pointerdown", this.onPointerDown.bind(this)],
+      [this.targetElement, "gesturestart", this.preventDefaultAndStopPropagation.bind(this)],
+      [this.targetElement, "wheel", this.onMouseWheel.bind(this)],
+      [this.targetElement, "contextmenu", this.onContextMenu.bind(this)],
       [document, "pointerup", this.onPointerUp.bind(this)],
       [document, "pointercancel", this.onPointerUp.bind(this)],
       [document, "pointermove", this.onPointerMove.bind(this)],
-      [targetElement, "wheel", this.onMouseWheel.bind(this)],
-      [targetElement, "contextmenu", this.onContextMenu.bind(this)],
     ]);
+  }
+
+  private disposeEventHandlers(): void {
+    this.eventHandlerCollection.clear();
   }
 
   private preventDefaultAndStopPropagation(evt: PointerEvent): void {
@@ -301,6 +306,16 @@ export class CameraManager {
     this.flyCamera.updateProjectionMatrix();
   }
 
+  public dispose() {
+    this.disposeEventHandlers();
+    this.orbitControls.dispose();
+    document.body.style.cursor = "";
+  }
+
+  private easeOutExpo(x: number): number {
+    return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+  }
+
   public recomputeFoV(immediately: boolean = false): void {
     this.targetFOV = remap(
       this.targetDistance,
@@ -314,62 +329,65 @@ export class CameraManager {
     }
   }
 
-  public update(): void {
-    if (this.isMainCameraActive) {
-      if (this.isLerping && this.lerpFactor < 1) {
-        this.lerpFactor += 0.01 / this.lerpDuration;
-        this.lerpFactor = Math.min(1, this.lerpFactor);
-        this.target.lerpVectors(
-          this.lerpTarget,
-          this.finalTarget,
-          this.easeOutExpo(this.lerpFactor),
-        );
-      } else {
-        this.adjustCameraPosition();
-      }
+  public toggleFlyCamera(): void {
+    this.isMainCameraActive = !this.isMainCameraActive;
+    this.orbitControls.enabled = !this.isMainCameraActive;
 
-      this.distance += (this.targetDistance - this.distance) * this.zoomDamping;
-      this.theta += (this.targetTheta - this.theta) * this.damping;
-      this.phi += (this.targetPhi - this.phi) * this.damping;
-
-      const x = this.target.x + this.distance * Math.sin(this.phi) * Math.cos(this.theta);
-      const y = this.target.y + this.distance * Math.cos(this.phi);
-      const z = this.target.z + this.distance * Math.sin(this.phi) * Math.sin(this.theta);
-
-      this.recomputeFoV();
-      this.fov += (this.targetFOV - this.fov) * this.zoomDamping;
-      this.camera.fov = this.fov;
-      this.camera.updateProjectionMatrix();
-
-      this.camera.position.set(x, y, z);
-      this.camera.lookAt(this.target);
-
-      if (this.isLerping && this.lerpFactor >= 1) {
-        this.isLerping = false;
-      }
+    if (!this.isMainCameraActive) {
+      this.updateAspect(window.innerWidth / window.innerHeight);
+      this.flyCamera.position.copy(this.camera.position);
+      this.flyCamera.rotation.copy(this.camera.rotation);
+      const target = new Vector3();
+      this.camera.getWorldDirection(target);
+      target.multiplyScalar(this.targetDistance).add(this.camera.position);
+      this.orbitControls.target.copy(target);
+      this.orbitControls.update();
+      this.disposeEventHandlers();
     } else {
-      if (this.orbitControls) {
-        this.orbitControls.update();
-      }
+      this.createEventHandlers();
+    }
+  }
+
+  get activeCamera(): PerspectiveCamera {
+    return this.isMainCameraActive ? this.camera : this.flyCamera;
+  }
+
+  public update(): void {
+    if (!this.isMainCameraActive) {
+      this.orbitControls.update();
+      return;
+    }
+    if (this.isLerping && this.lerpFactor < 1) {
+      this.lerpFactor += 0.01 / this.lerpDuration;
+      this.lerpFactor = Math.min(1, this.lerpFactor);
+      this.target.lerpVectors(this.lerpTarget, this.finalTarget, this.easeOutExpo(this.lerpFactor));
+    } else {
+      this.adjustCameraPosition();
+    }
+
+    this.distance += (this.targetDistance - this.distance) * this.zoomDamping;
+    this.theta += (this.targetTheta - this.theta) * this.damping;
+    this.phi += (this.targetPhi - this.phi) * this.damping;
+
+    const x = this.target.x + this.distance * Math.sin(this.phi) * Math.cos(this.theta);
+    const y = this.target.y + this.distance * Math.cos(this.phi);
+    const z = this.target.z + this.distance * Math.sin(this.phi) * Math.sin(this.theta);
+
+    this.recomputeFoV();
+    this.fov += (this.targetFOV - this.fov) * this.zoomDamping;
+    this.camera.fov = this.fov;
+    this.camera.updateProjectionMatrix();
+
+    this.camera.position.set(x, y, z);
+    this.camera.lookAt(this.target);
+
+    if (this.isLerping && this.lerpFactor >= 1) {
+      this.isLerping = false;
     }
   }
 
   public getActiveCamera(): PerspectiveCamera {
     return this.isMainCameraActive ? this.camera : this.flyCamera;
-  }
-
-  public dispose() {
-    this.eventHandlerCollection.clear();
-    document.body.style.cursor = "";
-    window.removeEventListener("keydown", this.onKeyDown.bind(this));
-
-    if (this.orbitControls) {
-      this.orbitControls.dispose();
-    }
-  }
-
-  private easeOutExpo(x: number): number {
-    return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
   }
 
   public hasActiveInput(): boolean {

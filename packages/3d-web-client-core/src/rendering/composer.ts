@@ -154,8 +154,9 @@ export class Composer {
     environmentConfiguration,
   }: ComposerContructorArgs) {
     this.scene = scene;
-    this.postPostScene = new Scene();
     this.cameraManager = cameraManager;
+    this.postPostScene = new Scene();
+
     this.spawnSun = spawnSun;
     this.renderer = new WebGLRenderer({
       powerPreference: "high-performance",
@@ -179,39 +180,35 @@ export class Composer {
       frameBufferType: HalfFloatType,
     });
 
-    this.renderPass = new RenderPass(this.scene, this.cameraManager.getActiveCamera());
+    this.renderPass = new RenderPass(this.scene, this.cameraManager.activeCamera);
 
-    this.normalPass = new NormalPass(this.scene, this.cameraManager.getActiveCamera());
+    this.normalPass = new NormalPass(this.scene, this.cameraManager.activeCamera);
     this.normalPass.enabled = ppssaoValues.enabled;
     this.normalTextureEffect = new TextureEffect({
       blendFunction: BlendFunction.SKIP,
       texture: this.normalPass.texture,
     });
 
-    this.ppssaoEffect = new SSAOEffect(
-      this.cameraManager.getActiveCamera(),
-      this.normalPass.texture,
-      {
-        blendFunction: ppssaoValues.blendFunction,
-        distanceScaling: ppssaoValues.distanceScaling,
-        depthAwareUpsampling: ppssaoValues.depthAwareUpsampling,
-        samples: ppssaoValues.samples,
-        rings: ppssaoValues.rings,
-        luminanceInfluence: ppssaoValues.luminanceInfluence,
-        radius: ppssaoValues.radius,
-        intensity: ppssaoValues.intensity,
-        bias: ppssaoValues.bias,
-        fade: ppssaoValues.fade,
-        resolutionScale: ppssaoValues.resolutionScale,
-        color: new Color().setRGB(ppssaoValues.color.r, ppssaoValues.color.g, ppssaoValues.color.b),
-        worldDistanceThreshold: ppssaoValues.worldDistanceThreshold,
-        worldDistanceFalloff: ppssaoValues.worldDistanceFalloff,
-        worldProximityThreshold: ppssaoValues.worldProximityThreshold,
-        worldProximityFalloff: ppssaoValues.worldProximityFalloff,
-      },
-    );
+    this.ppssaoEffect = new SSAOEffect(this.cameraManager.activeCamera, this.normalPass.texture, {
+      blendFunction: ppssaoValues.blendFunction,
+      distanceScaling: ppssaoValues.distanceScaling,
+      depthAwareUpsampling: ppssaoValues.depthAwareUpsampling,
+      samples: ppssaoValues.samples,
+      rings: ppssaoValues.rings,
+      luminanceInfluence: ppssaoValues.luminanceInfluence,
+      radius: ppssaoValues.radius,
+      intensity: ppssaoValues.intensity,
+      bias: ppssaoValues.bias,
+      fade: ppssaoValues.fade,
+      resolutionScale: ppssaoValues.resolutionScale,
+      color: new Color().setRGB(ppssaoValues.color.r, ppssaoValues.color.g, ppssaoValues.color.b),
+      worldDistanceThreshold: ppssaoValues.worldDistanceThreshold,
+      worldDistanceFalloff: ppssaoValues.worldDistanceFalloff,
+      worldProximityThreshold: ppssaoValues.worldProximityThreshold,
+      worldProximityFalloff: ppssaoValues.worldProximityFalloff,
+    });
     this.ppssaoPass = new EffectPass(
-      this.cameraManager.getActiveCamera(),
+      this.cameraManager.activeCamera,
       this.ppssaoEffect,
       this.normalTextureEffect,
     );
@@ -229,7 +226,7 @@ export class Composer {
 
     this.n8aopass = new N8SSAOPass(
       this.scene,
-      this.cameraManager.getActiveCamera(),
+      this.cameraManager.activeCamera,
       this.width,
       this.height,
     );
@@ -246,8 +243,8 @@ export class Composer {
     this.n8aopass.configuration.denoiseRadius = n8ssaoValues.denoiseRadius;
     this.n8aopass.enabled = n8ssaoValues.enabled;
 
-    this.fxaaPass = new EffectPass(this.cameraManager.getActiveCamera(), this.fxaaEffect);
-    this.bloomPass = new EffectPass(this.cameraManager.getActiveCamera(), this.bloomEffect);
+    this.fxaaPass = new EffectPass(this.cameraManager.activeCamera, this.fxaaEffect);
+    this.bloomPass = new EffectPass(this.cameraManager.activeCamera, this.bloomEffect);
 
     this.toneMappingEffect = new ToneMappingEffect({
       mode: toneMappingValues.mode,
@@ -264,10 +261,7 @@ export class Composer {
       predicationMode: PredicationMode.DEPTH,
     });
 
-    this.toneMappingPass = new EffectPass(
-      this.cameraManager.getActiveCamera(),
-      this.toneMappingEffect,
-    );
+    this.toneMappingPass = new EffectPass(this.cameraManager.activeCamera, this.toneMappingEffect);
     this.toneMappingPass.enabled =
       rendererValues.toneMapping === 5 || rendererValues.toneMapping === 0 ? true : false;
 
@@ -287,7 +281,7 @@ export class Composer {
     this.denoiseEffect.uniforms.amount.value = denoiseValues.amount;
     this.denoiseEffect.uniforms.alpha.value = 1.0;
 
-    this.smaaPass = new EffectPass(this.cameraManager.getActiveCamera(), this.smaaEffect);
+    this.smaaPass = new EffectPass(this.cameraManager.activeCamera, this.smaaEffect);
 
     this.effectComposer.addPass(this.renderPass);
     if (ppssaoValues.enabled) {
@@ -388,8 +382,8 @@ export class Composer {
     }
     this.width = parentElement.clientWidth;
     this.height = parentElement.clientHeight;
-    this.cameraManager.getActiveCamera().aspect = this.width / this.height;
-    this.cameraManager.getActiveCamera().updateProjectionMatrix();
+    this.cameraManager.activeCamera.aspect = this.width / this.height;
+    this.cameraManager.activeCamera.updateProjectionMatrix();
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.resolution.set(
       this.width * window.devicePixelRatio,
@@ -422,11 +416,12 @@ export class Composer {
   public render(timeManager: TimeManager): void {
     this.renderPass.mainCamera = this.cameraManager.getActiveCamera();
     this.renderer.info.reset();
+    this.renderPass.mainCamera = this.cameraManager.activeCamera;
     this.normalPass.texture.needsUpdate = true;
     this.gaussGrainEffect.uniforms.time.value = timeManager.time;
     this.effectComposer.render();
     this.renderer.clearDepth();
-    this.renderer.render(this.postPostScene, this.cameraManager.getActiveCamera());
+    this.renderer.render(this.postPostScene, this.cameraManager.activeCamera);
   }
 
   public updateSkyboxRotation() {

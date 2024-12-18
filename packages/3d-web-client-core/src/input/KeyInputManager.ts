@@ -1,19 +1,24 @@
 import { EventHandlerCollection } from "./EventHandlerCollection";
 import { VirtualJoystick } from "./VirtualJoystick";
 
-enum Key {
+export enum Key {
   W = "w",
   A = "a",
   S = "s",
   D = "d",
   SHIFT = "shift",
   SPACE = " ",
+  C = "c",
 }
+
+type KeyCallback = () => void;
+type BindingsType = Map<Key, KeyCallback>;
 
 export class KeyInputManager {
   private keys = new Map<string, boolean>();
   private eventHandlerCollection = new EventHandlerCollection();
   private isFullScreen = false;
+  private bindings: BindingsType = new Map();
 
   constructor(private shouldCaptureKeyPress: () => boolean = () => true) {
     this.eventHandlerCollection.add(document, "keydown", this.onKeyDown.bind(this));
@@ -49,10 +54,17 @@ export class KeyInputManager {
       }
     }
     this.keys.set(event.key.toLowerCase(), false);
+    if (this.bindings.has(event.key.toLowerCase() as Key)) {
+      this.bindings.get(event.key.toLowerCase() as Key)!();
+    }
   }
 
   public isKeyPressed(key: string): boolean {
     return this.keys.get(key) || false;
+  }
+
+  public createKeyBinding(key: Key, callback: () => void): void {
+    this.bindings.set(key, callback);
   }
 
   public isMovementKeyPressed(): boolean {
@@ -99,5 +111,6 @@ export class KeyInputManager {
 
   public dispose() {
     this.eventHandlerCollection.clear();
+    this.bindings.clear();
   }
 }
