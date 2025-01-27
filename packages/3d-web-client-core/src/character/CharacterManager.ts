@@ -1,4 +1,4 @@
-import { PositionAndRotation } from "mml-web";
+import { PositionAndRotation } from "@mml-io/mml-web";
 import { Euler, Group, Quaternion, Vector3 } from "three";
 
 import { CameraManager } from "../camera/CameraManager";

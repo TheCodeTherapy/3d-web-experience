@@ -1,4 +1,4 @@
-import { LoadingProgressManager } from "mml-web";
+import { LoadingProgressManager } from "@mml-io/mml-web";
 
 export type LoadingScreenConfig = {
   background?: string;

@@ -12,8 +12,8 @@ import {
   MMLCompositionScene,
   TimeManager,
 } from "@mml-io/3d-web-client-core";
+import { MMLWebRunnerClient } from "@mml-io/mml-web-runner";
 import { EditableNetworkedDOM, NetworkedDOM } from "@mml-io/networked-dom-document";
-import { MMLWebRunnerClient } from "mml-web-runner";
 import { AudioListener, Euler, Scene, Vector3 } from "three";
 
 import hdrJpgUrl from "../../../assets/hdr/puresky_2k.jpg";

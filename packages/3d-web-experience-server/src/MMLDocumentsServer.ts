@@ -2,9 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import url from "node:url";
 
+import { EditableNetworkedDOM, LocalObservableDOMFactory } from "@mml-io/networked-dom-server";
 import chokidar, { FSWatcher } from "chokidar";
 import dotenv from "dotenv";
-import { EditableNetworkedDOM, LocalObservableDOMFactory } from "networked-dom-server";
 import WebSocket from "ws";
 
 dotenv.config();

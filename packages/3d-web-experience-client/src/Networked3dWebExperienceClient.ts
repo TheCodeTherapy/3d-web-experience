@@ -54,7 +54,7 @@ import {
   registerCustomElementsToWindow,
   setGlobalDocumentTimeManager,
   setGlobalMMLScene,
-} from "mml-web";
+} from "@mml-io/mml-web";
 import { AudioListener, Euler, Scene, Vector3 } from "three";
 
 export type MMLDocumentConfiguration = {

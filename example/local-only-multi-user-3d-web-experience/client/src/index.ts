@@ -1,9 +1,13 @@
-import { IframeWrapper, MMLScene, registerCustomElementsToWindow } from "mml-web";
+import { IframeWrapper, MMLScene, registerCustomElementsToWindow } from "@mml-io/mml-web";
 import {
   EditableNetworkedDOM,
   IframeObservableDOMFactory,
   MMLWebRunnerClient,
-} from "mml-web-runner";
+} from "@mml-io/mml-web-runner";
+import {
+  StandaloneThreeJSAdapter,
+  StandaloneThreeJSAdapterControlsType,
+} from "@mml-io/mml-web-threejs-standalone";
 import { Euler, Vector3 } from "three";
 
 import exampleMMLDocumentHTML from "./example-mml.html";
@@ -79,9 +83,19 @@ window.addEventListener("DOMContentLoaded", async () => {
   networkedDOMDocument.load(textArea.value);
 
   // Create an MMLScene to show the MML document and append it to the fourth quadrant
-  const mmlScene = new MMLScene();
+  const sceneElement = document.createElement("div");
+  sceneElement.style.width = "100%";
+  sceneElement.style.height = "100%";
+  const mmlScene = new MMLScene(sceneElement);
   quadrant4.append(mmlScene.element);
-  // Create a client that will synchronize the MMLScene with the local NetworkedDOM
-  const flyCameraClient = new MMLWebRunnerClient(iframeWindow, iframeBody, mmlScene);
-  flyCameraClient.connect(networkedDOMDocument);
+
+  StandaloneThreeJSAdapter.create(sceneElement, {
+    controlsType: StandaloneThreeJSAdapterControlsType.DragFly,
+  }).then((graphicsAdapter) => {
+    mmlScene.init(graphicsAdapter);
+
+    // Create a client that will synchronize the MMLScene with the local NetworkedDOM
+    const flyCameraClient = new MMLWebRunnerClient(iframeWindow, iframeBody, mmlScene);
+    flyCameraClient.connect(networkedDOMDocument);
+  });
 });

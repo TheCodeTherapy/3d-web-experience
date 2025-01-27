@@ -1,8 +1,4 @@
-import {
-  getRelativePositionAndRotationRelativeToObject,
-  MElement,
-  MMLCollisionTrigger,
-} from "mml-web";
+import { MElement, MMLCollisionTrigger } from "@mml-io/mml-web";
 import {
   Box3,
   BufferGeometry,
@@ -24,6 +20,8 @@ import {
 import { VertexNormalsHelper } from "three/examples/jsm/helpers/VertexNormalsHelper.js";
 import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { MeshBVH, MeshBVHHelper } from "three-mesh-bvh";
+
+import { getRelativePositionAndRotationRelativeToObject } from "./getRelativePositionAndRotationRelativeToObject";
 
 export type CollisionMeshState = {
   matrix: Matrix4;
@@ -49,9 +47,9 @@ export class CollisionsManager {
   private tempSegment2 = new Line3();
 
   public collisionMeshState: Map<Group, CollisionMeshState> = new Map();
-  private collisionTrigger: MMLCollisionTrigger;
+  private collisionTrigger: MMLCollisionTrigger<Group>;
   private previouslyCollidingElements: null | Map<
-    Object3D,
+    Group,
     { position: { x: number; y: number; z: number } }
   >;
 
@@ -284,7 +282,7 @@ export class CollisionsManager {
 
   public applyColliders(tempSegment: Line3, radius: number) {
     const collidedElements = new Map<
-      Object3D,
+      Group,
       {
         position: { x: number; y: number; z: number };
       }

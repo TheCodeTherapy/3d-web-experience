@@ -1,6 +1,6 @@
 {
   "name": "@mml-io/3d-web-text-chat",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "publishConfig": {
     "access": "public"
   },
