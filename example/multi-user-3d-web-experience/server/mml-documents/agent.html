@@ -2,16 +2,25 @@
   <m-audio id="agent-audio" y="2" z="-2.7" loop="false"></m-audio>
   <m-group id="float-wrapper">
     <m-group id="actions-wrapper">
+      <m-light
+        type="spotlight"
+        intensity="50"
+        angle="60"
+        debug="false"
+        z="0"
+        y="1.9"
+        rx="0"
+        cast-shadows="false"
+      ></m-light>
       <m-model
         id="agent-model"
-        src="/assets/playground/brainzo_draco.glb"
-        anim="/assets/playground/brainzo_draco.glb"
+        src="/assets/playground/brain_in_a_jar.glb"
         collide="false"
-        y="1.2"
+        y="1.5"
         ry="0"
-        sx="0.5"
-        sy="0.5"
-        sz="0.5"
+        sx="0.75"
+        sy="0.75"
+        sz="0.75"
       >
         <m-cylinder radius="1.3" height="5" y="1.5" visible="false"></m-cylinder>
         <m-video
@@ -127,6 +136,12 @@
   const thumbsUpRotation = 0;
   const thumbsDownRotation = 180;
   const thumbsNeutralRotation = 90;
+
+  const agentSmall = 0.8;
+  const agentBig = 1;
+  agentModel.setAttribute("sx", agentSmall);
+  agentModel.setAttribute("sy", agentSmall);
+  agentModel.setAttribute("sz", agentSmall);
 
   let threadId;
   let latestPromise = null;
@@ -283,13 +298,13 @@
   }
 
   function growWhileSpeaking(duration) {
-    animate(agentModel, "sx", 0.5, 0.6, 2000, "easeOutBack");
-    animate(agentModel, "sy", 0.5, 0.6, 2000, "easeOutBack");
-    animate(agentModel, "sz", 0.5, 0.6, 2000, "easeOutBack");
+    animate(agentModel, "sx", agentSmall, agentBig, 2000, "easeOutBack");
+    animate(agentModel, "sy", agentSmall, agentBig, 2000, "easeOutBack");
+    animate(agentModel, "sz", agentSmall, agentBig, 2000, "easeOutBack");
     setTimeout(() => {
-      animate(agentModel, "sx", 0.6, 0.5, 2000, "easeInOutQuint");
-      animate(agentModel, "sy", 0.6, 0.5, 2000, "easeInOutQuint");
-      animate(agentModel, "sz", 0.6, 0.5, 2000, "easeInOutQuint");
+      animate(agentModel, "sx", agentBig, agentSmall, 2000, "easeInOutQuint");
+      animate(agentModel, "sy", agentBig, agentSmall, 2000, "easeInOutQuint");
+      animate(agentModel, "sz", agentBig, agentSmall, 2000, "easeInOutQuint");
     }, duration);
   }
 
