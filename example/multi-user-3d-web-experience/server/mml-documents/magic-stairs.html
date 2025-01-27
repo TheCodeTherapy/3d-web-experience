@@ -32,7 +32,7 @@
           y: y * (-stepAngle / stepHeight) * (180 / Math.PI),
           z: 0,
         },
-        color: `hsl(${(y / numSteps) * 360 * Math.PI * 2}, 75%, 72%)`,
+        color: `hsl(${Math.floor((y / numSteps) * 360 * Math.PI * 2)}, 75%, 72%)`,
       };
       stepDataArray.push(stepData);
     }
