@@ -43,7 +43,6 @@ import {
   WebsocketStatus,
 } from "@mml-io/3d-web-user-networking";
 import { VoiceChatManager, VoiceChatLiveKitManager } from "@mml-io/3d-web-voice-chat";
-import { Filter } from "bad-words";
 import {
   IMMLScene,
   LoadingProgressManager,
@@ -51,6 +50,7 @@ import {
   setGlobalDocumentTimeManager,
   setGlobalMMLScene,
 } from "@mml-io/mml-web";
+import { Filter } from "bad-words";
 import { AudioListener, Euler, Scene, Vector3 } from "three";
 
 export type MMLDocumentConfiguration = {
