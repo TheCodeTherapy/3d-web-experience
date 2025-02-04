@@ -57,30 +57,39 @@ export class CharacterModel {
     await this.loadMainMesh();
     if (this.mesh) {
       await this.setAnimationFromFile(
-        this.config.animationConfig.idleAnimationFileUrl,
+        this.config.animationConfig.idleAnimation.fileUrl,
         AnimationState.idle,
-        true,
+        this.config.animationConfig.idleAnimation.loop,
+        this.config.animationConfig.idleAnimation.playbackSpeed,
+        this.config.animationConfig.idleAnimation.discardNonRotationTransform,
       );
       await this.setAnimationFromFile(
-        this.config.animationConfig.jogAnimationFileUrl,
+        this.config.animationConfig.jogAnimation.fileUrl,
         AnimationState.walking,
-        true,
+        this.config.animationConfig.jogAnimation.loop,
+        this.config.animationConfig.jogAnimation.playbackSpeed,
+        this.config.animationConfig.jogAnimation.discardNonRotationTransform,
       );
       await this.setAnimationFromFile(
-        this.config.animationConfig.sprintAnimationFileUrl,
+        this.config.animationConfig.sprintAnimation.fileUrl,
         AnimationState.running,
-        true,
+        this.config.animationConfig.sprintAnimation.loop,
+        this.config.animationConfig.sprintAnimation.playbackSpeed,
+        this.config.animationConfig.sprintAnimation.discardNonRotationTransform,
       );
       await this.setAnimationFromFile(
-        this.config.animationConfig.airAnimationFileUrl,
+        this.config.animationConfig.airAnimation.fileUrl,
         AnimationState.air,
-        true,
+        this.config.animationConfig.airAnimation.loop,
+        this.config.animationConfig.airAnimation.playbackSpeed,
+        this.config.animationConfig.airAnimation.discardNonRotationTransform,
       );
       await this.setAnimationFromFile(
-        this.config.animationConfig.doubleJumpAnimationFileUrl,
+        this.config.animationConfig.doubleJumpAnimation.fileUrl,
         AnimationState.doubleJump,
-        false,
-        1.45,
+        this.config.animationConfig.doubleJumpAnimation.loop,
+        this.config.animationConfig.doubleJumpAnimation.playbackSpeed,
+        this.config.animationConfig.doubleJumpAnimation.discardNonRotationTransform,
       );
       this.applyCustomMaterials();
     }
@@ -232,6 +241,7 @@ export class CharacterModel {
     skeletalMesh: Object3D | null,
     animationClip: AnimationClip,
     keepRootBonePositionAnimation: boolean,
+    discardNonRotationTransform: boolean,
   ): AnimationClip {
     const availableBones = new Set<string>();
     if (skeletalMesh) {
@@ -247,8 +257,15 @@ export class CharacterModel {
       if (keepRootBonePositionAnimation && trackName === "root" && trackProperty === "position") {
         return true;
       }
-      const shouldAnimate =
-        availableBones.has(trackName) && trackProperty !== "position" && trackProperty !== "scale";
+      let shouldAnimate;
+      if (discardNonRotationTransform) {
+        shouldAnimate =
+          availableBones.has(trackName) &&
+          trackProperty !== "position" &&
+          trackProperty !== "scale";
+      } else {
+        shouldAnimate = availableBones.has(trackName);
+      }
       return shouldAnimate;
     });
     return animationClip;
@@ -264,7 +281,12 @@ export class CharacterModel {
     // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve, reject) => {
       const animation = await this.config.characterModelLoader.load(animationFileUrl, "animation");
-      const cleanAnimation = this.cleanAnimationClips(this.mesh, animation as AnimationClip, true);
+      const cleanAnimation = this.cleanAnimationClips(
+        this.mesh,
+        animation as AnimationClip,
+        true,
+        discardNonRotationTransform,
+      );
       if (typeof animation !== "undefined" && cleanAnimation instanceof AnimationClip) {
         this.animations[animationType] = this.animationMixer!.clipAction(cleanAnimation);
         this.animations[animationType].stop();

@@ -1,3 +1,4 @@
+import { AnimationConfig, AnimationSettings } from "@mml-io/3d-web-client-core";
 import { Networked3dWebExperienceClient } from "@mml-io/3d-web-experience-client";
 
 import hdrJpgUrl from "../../../assets/hdr/puresky_2k.jpg";
@@ -25,31 +26,47 @@ const doubleJumpAnimationFileUrl = useBackFlip
     ? altFrontFlipFileUrl
     : frontFlipFileUrl;
 
-const idleAnimationSettings = {
+const idleAnimationSettings: AnimationSettings = {
   fileUrl: idleAnimationFileUrl,
   loop: true,
+  discardNonRotationTransform: false,
+  playbackSpeed: 1.0,
 };
 
-const jogAnimationSettings = {
+const jogAnimationSettings: AnimationSettings = {
   fileUrl: jogAnimationFileUrl,
   loop: true,
+  discardNonRotationTransform: false,
+  playbackSpeed: 1.0,
 };
 
-const sprintAnimationSettings = {
+const sprintAnimationSettings: AnimationSettings = {
   fileUrl: sprintAnimationFileUrl,
   loop: true,
+  discardNonRotationTransform: false,
+  playbackSpeed: 1.0,
 };
 
-const airAnimationSettings = {
+const airAnimationSettings: AnimationSettings = {
   fileUrl: airAnimationFileUrl,
   loop: true,
+  discardNonRotationTransform: true,
+  playbackSpeed: 1.0,
 };
 
-const doubleJumpAnimationSettings = {
+const doubleJumpAnimationSettings: AnimationSettings = {
   fileUrl: doubleJumpAnimationFileUrl,
   loop: false,
   discardNonRotationTransform: true,
   playbackSpeed: 1.42,
+};
+
+const animationConfig: AnimationConfig = {
+  idleAnimation: idleAnimationSettings,
+  jogAnimation: jogAnimationSettings,
+  sprintAnimation: sprintAnimationSettings,
+  airAnimation: airAnimationSettings,
+  doubleJumpAnimation: doubleJumpAnimationSettings,
 };
 
 const holder = Networked3dWebExperienceClient.createFullscreenHolder();
@@ -58,13 +75,7 @@ const app = new Networked3dWebExperienceClient(holder, {
   userNetworkAddress,
   chatNetworkAddress,
   voiceChatAddress: voiceNetworkAddress,
-  animationConfig: {
-    idleAnimation: idleAnimationSettings,
-    jogAnimation: jogAnimationSettings,
-    sprintAnimation: sprintAnimationSettings,
-    airAnimation: airAnimationSettings,
-    doubleJumpAnimation: doubleJumpAnimationSettings,
-  },
+  animationConfig,
   mmlDocuments: { example: { url: `${protocol}//${host}/mml-documents/playground.html` } },
   environmentConfiguration: {
     skybox: {
