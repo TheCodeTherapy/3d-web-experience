@@ -8,6 +8,18 @@
   user-select: none;
 }
 
+.input {
+  font-family: 'Helvetica', 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+  font-size: 15px;
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  margin-right: 8px;
+  color: #ffffff;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
 .closeButton {
   background-color: rgba(0, 0, 0, 0.8);
   font-family: "arial";
@@ -18,8 +30,7 @@
   height: 44px;
   position: fixed;
   top: 12px;
-  left: 12px;
-  box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.8);
+  right: 12px;
   border: 1px solid rgba(255, 255, 255, 0.21);
   -webkit-user-select: none;
   -ms-user-select: none;
@@ -34,8 +45,7 @@
   height: 42px;
   position: fixed;
   top: 12px;
-  left: 12px;
-  box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.8);
+  right: 12px;
   border: 1px solid rgba(255, 255, 255, 0.21);
   -webkit-user-select: none;
   -ms-user-select: none;
@@ -61,31 +71,45 @@
   width: 30%;
   min-width: 290px;
   max-width: 720px;
-  padding: 8px;
+  max-height: calc(100vh - 22px);
   background: #000000b3;
   border-radius: 8px;
-  border: 1px solid rgba(255,255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   font-family: "Helvetica", "Lucida Sans", "Lucida Sans Regular", "Lucida Grande",
     "Lucida Sans Unicode", Geneva, Verdana, sans-serif;
   z-index: 103;
   user-select: none;
-  padding-bottom: 20px;
-  transition: all 0.6s cubic-bezier(0.76, 0, 0.24, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.hidden {
-  top: -630px !important;
+.avatarSelectionContainer::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 10px;
 }
 
-.visible {
-  top: 11px !important;
+.avatarSelectionContainer::-webkit-scrollbar-thumb {
+  margin: 4px;
+  border-radius: 5px;
+  background-color: #ffffff90;
+  box-shadow: 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.avatarSelectionSection {
+  padding: 10px;
 }
 
 .avatarSelectionUi {
-  padding-right: 4px;
   overflow-y: scroll;
   overflow-x: hidden;
-  max-height: 630px;
+  max-height: 320px;
+  padding: 10px;
+  display: flex;
+  gap: 4%;
+  flex-wrap: wrap;
+  text-overflow: ellipsis;
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.4);
 }
 
 .avatarSelectionUi::-webkit-scrollbar {
@@ -101,16 +125,9 @@
 }
 
 .avatarSelectionUiHeader {
-  color: #ffffff;
+  color: white;
   text-align: center;
   position: relative;
-}
-
-.avatarSelectionUiHeader h2 {
-  font-size: 17px;
-  line-height: 21px;
-  margin-top: 7px;
-  margin-bottom: 7px;
 }
 
 .avatarSelectionUiCloseButton {
@@ -119,18 +136,9 @@
   top: 20px;
 }
 
-.avatarSelectionUiContent {
-  padding: 10px;
-  margin-top: 7px;
-  display: flex;
-  gap: 4%;
-  flex-wrap: wrap;
-  text-overflow: ellipsis;
-}
-
 .avatarSelectionUiAvatar {
   flex: 0 0 22%;
-  color: #ffffff;
+  color: white;
   text-align: center;
   cursor: pointer;
   max-width: 22%;
@@ -138,6 +146,19 @@
 
 .avatarSelectionUiAvatarImgContainer {
   position: relative;
+}
+
+.avatarSelectionNoImage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  aspect-ratio: 1;
+  width: 100%;
+  filter: invert(60%);
+}
+
+.avatarSelectionNoImage img {
+  width: 50%;
 }
 
 .avatarSelectionUiAvatar p {
@@ -150,7 +171,8 @@
 
 .tooltipText {
   position: absolute;
-  transform: translate(-50%, -25%);
+  transform: translate(-50%, -100%);
+  pointer-events: none;
   z-index: 2;
   color: white;
   font-size: 12px;
@@ -162,23 +184,15 @@
   visibility: hidden;
 }
 
-.avatarSelectionUiAvatar p:hover + .tooltipText {
+.avatarSelectionUiAvatar p:hover+.tooltipText {
   opacity: 1;
   visibility: visible;
   transition-delay: 1s;
 }
 
-.avatarSelectionUiAvatarImgContainer img,
-.avatarSelectionUiAvatarImgContainer div {
+.avatarSelectionUiAvatarImgContainer .avatarSelectionUiAvatarImage {
   aspect-ratio: 1;
   width: 100%;
-}
-
-.avatarSelectionUiAvatarImgContainer > div {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border: 1px solid #ffffff;
 }
 
 .selectedPill {
@@ -202,14 +216,9 @@
 
 .customAvatarSection {
   justify-content: center;
-  margin-top: 20px;
+  padding: 10px;
   color: white;
   position: relative;
-}
-
-.customAvatarSection h2 {
-  text-align: center;
-  font-size: 20px;
 }
 
 .customAvatarSection label {
@@ -218,8 +227,48 @@
 }
 
 .customAvatarSection input[type="radio"] {
-  transform: scale(1.3);
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  /* this is needed for iOS. Otherwise the background just becomes black. */
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  height: 1.5em;
+  width: 1.5em;
+  display: inline-block;
+  border-radius: 100%;
+  vertical-align: text-bottom;
+  position: relative;
   margin-right: 4px;
+
+  &[disabled],
+  &[aria-disabled=true] {
+    opacity: .4;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    margin: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    top: 0;
+    height: 0;
+    width: 0;
+  }
+
+  &:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+  }
+
+  &:checked::before {
+    border: 5px solid transparent;
+    border-radius: 100%;
+    outline-offset: -6px;
+    background: white;
+  }
 }
 
 .customAvatarInputSection {
@@ -227,26 +276,11 @@
   display: flex;
 }
 
-.customAvatarInput {
-  font-family: "Helvetica", "Lucida Sans", "Lucida Sans Regular", "Lucida Grande",
-    "Lucida Sans Unicode", Geneva, Verdana, sans-serif;
-  font-size: 15px;
-  flex: 1;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  margin-right: 8px;
-  color: #000000;
-  display: inline-block;
-  width: 40%;
-  background-color: #ffffff;
-}
-
-.customAvatarInputSection button {
+.setButton {
   width: 60px;
   border-radius: 4px;
   border: 0;
-  color: #ffffff;
+  color: white;
   background-color: #ffffff90;
   box-sizing: border-box;
   cursor: pointer;
@@ -254,12 +288,16 @@
   display: block;
 }
 
-.customAvatarInputSection button[disabled] {
+.setButton[disabled] {
   background-color: #ffffff50;
 }
 
 .sectionHeading {
-  font-size: 19px;
+  font-size: 16px;
+  padding: 5px;
+  padding-bottom: 10px;
+  font-weight: bold;
+  color: white;
 }
 
 .customAvatarSection .selectedPill {
@@ -269,4 +307,15 @@
 
 .customAvatarSection hr {
   width: 80%;
+}
+
+.displayNameSection {
+  justify-content: center;
+  color: white;
+  position: relative;
+  padding: 10px;
+}
+
+.displayNameInputSection {
+  display: flex;
 }

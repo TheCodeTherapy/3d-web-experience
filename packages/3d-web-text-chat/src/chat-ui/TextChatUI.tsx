@@ -51,6 +51,11 @@ export class TextChatUI {
     this.root = createRoot(this.wrapper);
   }
 
+  setClientName(clientname: string) {
+    this.config.clientname = clientname;
+    this.init();
+  }
+
   dispose() {
     this.root.unmount();
     this.wrapper.remove();

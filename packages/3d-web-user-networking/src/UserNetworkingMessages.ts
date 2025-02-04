@@ -13,21 +13,22 @@ export type UserNetworkingIdentityMessage = {
   id: number;
 };
 
-export type CharacterDescription = {
-  meshFileUrl?: string;
-  mmlCharacterUrl?: string;
-  mmlCharacterString?: string;
-} & (
+export type CharacterDescription =
   | {
       meshFileUrl: string;
+      mmlCharacterString?: null;
+      mmlCharacterUrl?: null;
     }
   | {
-      mmlCharacterUrl: string;
-    }
-  | {
+      meshFileUrl?: null;
       mmlCharacterString: string;
+      mmlCharacterUrl?: null;
     }
-);
+  | {
+      meshFileUrl?: null;
+      mmlCharacterString?: null;
+      mmlCharacterUrl: string;
+    };
 
 export type UserNetworkingProfileMessage = {
   type: typeof USER_NETWORKING_USER_PROFILE_MESSAGE_TYPE;

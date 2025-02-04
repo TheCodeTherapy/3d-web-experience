@@ -5,7 +5,7 @@
   left: -1px;
   direction: rtl;
   max-height: inherit;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   scrollbar-color: transparent transparent;
 }
 

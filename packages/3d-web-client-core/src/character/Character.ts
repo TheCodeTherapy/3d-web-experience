@@ -24,21 +24,22 @@ export type AnimationConfig = {
   doubleJumpAnimation: AnimationSettings;
 };
 
-export type CharacterDescription = {
-  meshFileUrl?: string;
-  mmlCharacterUrl?: string;
-  mmlCharacterString?: string;
-} & (
+export type CharacterDescription =
   | {
       meshFileUrl: string;
+      mmlCharacterString?: null;
+      mmlCharacterUrl?: null;
     }
   | {
-      mmlCharacterUrl: string;
-    }
-  | {
+      meshFileUrl?: null;
       mmlCharacterString: string;
+      mmlCharacterUrl?: null;
     }
-);
+  | {
+      meshFileUrl?: null;
+      mmlCharacterString?: null;
+      mmlCharacterUrl: string;
+    };
 
 export type CharacterConfig = {
   username: string;
@@ -52,33 +53,75 @@ export type CharacterConfig = {
   isLocal: boolean;
 };
 
+function characterHeightToTooltipHeightOffset(characterHeight: number): number {
+  return characterHeight - 0.4 + 0.1;
+}
+
+function characterDescriptionMatches(a: CharacterDescription, b: CharacterDescription): boolean {
+  return (
+    a.meshFileUrl === b.meshFileUrl &&
+    a.mmlCharacterString === b.mmlCharacterString &&
+    a.mmlCharacterUrl === b.mmlCharacterUrl
+  );
+}
+
 export class Character extends Group {
   private model: CharacterModel | null = null;
   public color: Color = new Color();
   public tooltip: CharacterTooltip;
   public speakingIndicator: CharacterSpeakingIndicator | null = null;
 
+  public chatTooltips: CharacterTooltip[] = [];
+
   constructor(private config: CharacterConfig) {
     super();
-    this.tooltip = new CharacterTooltip();
-    this.tooltip.setText(this.config.username, this.config.isLocal);
+    this.tooltip = new CharacterTooltip(
+      this.config.isLocal
+        ? {
+            secondsToFadeOut: 10,
+          }
+        : {},
+    );
+    this.tooltip.setText(this.config.username);
     this.add(this.tooltip);
     this.load().then(() => {
       this.config.modelLoadedCallback();
+      this.setTooltipHeights();
     });
   }
 
   updateCharacter(username: string, characterDescription: CharacterDescription) {
-    this.config.username = username;
-    this.config.characterDescription = characterDescription;
-    this.load();
-    this.tooltip.setText(username, this.config.isLocal);
+    if (!characterDescriptionMatches(this.config.characterDescription, characterDescription)) {
+      this.config.characterDescription = characterDescription;
+      this.load().then(() => {
+        this.setTooltipHeights();
+      });
+    }
+    if (this.config.username !== username) {
+      this.config.username = username;
+      this.tooltip.setText(username);
+      // Force the tooltip to show if the character's name changes
+      this.tooltip.show();
+    }
+  }
+
+  private setTooltipHeights() {
+    if (this.model && this.model.characterHeight) {
+      let height = characterHeightToTooltipHeightOffset(this.model.characterHeight);
+      this.tooltip.setHeightOffset(height);
+      height += this.tooltip.scale.y;
+
+      for (const chatTooltip of this.chatTooltips) {
+        chatTooltip.setHeightOffset(height);
+        height += chatTooltip.scale.y;
+      }
+    }
   }
 
   private async load(): Promise<void> {
     const previousModel = this.model;
     if (previousModel && previousModel.mesh) {
-      this.remove(previousModel.mesh!);
+      this.remove(previousModel.mesh);
     }
     this.model = new CharacterModel({
       characterDescription: this.config.characterDescription,
@@ -89,7 +132,9 @@ export class Character extends Group {
       isLocal: this.config.isLocal,
     });
     await this.model.init();
-    this.add(this.model.mesh!);
+    if (this.model.mesh) {
+      this.add(this.model.mesh);
+    }
     if (this.speakingIndicator === null) {
       this.speakingIndicator = new CharacterSpeakingIndicator(this.config.composer.postPostScene);
     }
@@ -102,7 +147,7 @@ export class Character extends Group {
   public update(time: number, deltaTime: number) {
     if (!this.model) return;
     if (this.tooltip) {
-      this.tooltip.update(this.config.cameraManager.camera);
+      this.tooltip.update();
     }
     if (this.speakingIndicator) {
       this.speakingIndicator.setTime(time);
@@ -118,5 +163,25 @@ export class Character extends Group {
 
   getCurrentAnimation(): AnimationState {
     return this.model?.currentAnimation || AnimationState.idle;
+  }
+
+  addChatBubble(message: string) {
+    const tooltip = new CharacterTooltip({
+      maxWidth: 1000,
+      secondsToFadeOut: 10,
+      color: new Color(0.125, 0.125, 0.125),
+    });
+    this.add(tooltip);
+    this.chatTooltips.push(tooltip);
+    tooltip.setText(message, () => {
+      this.chatTooltips = this.chatTooltips.filter((t) => t !== tooltip);
+      this.remove(tooltip);
+      this.setTooltipHeights();
+    });
+    if (this.config.isLocal) {
+      // Show the character's name if they're local and they emit a chat bubble
+      this.tooltip.show();
+    }
+    this.setTooltipHeights();
   }
 }

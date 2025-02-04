@@ -45,6 +45,7 @@ export class AvatarRenderer {
   public cameraTargetDistance: number = 0;
 
   private cleanupNonRotationAnimTracks: boolean = true;
+  private removeRootBonePositionAnimation: boolean = true;
 
   constructor(
     private hdrURL: string,
@@ -130,7 +131,11 @@ export class AvatarRenderer {
     );
   }
 
-  private cleanAnimationClips(skeletalMesh: Object3D, animationClip: AnimationClip): AnimationClip {
+  private cleanAnimationClips(
+    skeletalMesh: Object3D,
+    animationClip: AnimationClip,
+    removeRootBonePositionAnimation: boolean,
+  ): AnimationClip {
     const availableBones = new Set<string>();
     skeletalMesh.traverse((child) => {
       const asBone = child as Bone;
@@ -140,6 +145,13 @@ export class AvatarRenderer {
     });
     animationClip.tracks = animationClip.tracks.filter((track) => {
       const [trackName, trackProperty] = track.name.split(".");
+      if (
+        !removeRootBonePositionAnimation &&
+        trackName === "root" &&
+        trackProperty === "position"
+      ) {
+        return true;
+      }
       const shouldAnimate =
         availableBones.has(trackName) && trackProperty !== "position" && trackProperty !== "scale";
       return shouldAnimate;
@@ -154,7 +166,11 @@ export class AvatarRenderer {
     }
     if (this.animationAsset && this.animationAsset.animations) {
       const animationClip = this.cleanupNonRotationAnimTracks
-        ? this.cleanAnimationClips(this.animationAsset.group, this.animationAsset.animations[0])
+        ? this.cleanAnimationClips(
+            this.animationAsset.group,
+            this.animationAsset.animations[0],
+            this.removeRootBonePositionAnimation,
+          )
         : this.animationAsset.animations[0];
 
       const animationAction = this.mixer.clipAction(animationClip);

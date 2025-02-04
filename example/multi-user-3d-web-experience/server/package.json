@@ -1,7 +1,7 @@
 {
   "name": "@example/multi-user-3d-web-experience-server",
   "private": true,
-  "version": "0.20.0",
+  "version": "0.21.1",
   "engines": {
     "node": "20.x"
   },
@@ -19,11 +19,11 @@
   "dependencies": {
     "@dolbyio/dolbyio-rest-apis-client": "4.1.0",
     "canvas": "2.11.2",
-    "@example/multi-user-3d-web-experience-client": "^0.20.0",
-    "@mml-io/3d-web-experience-server": "^0.20.0",
-    "@mml-io/3d-web-text-chat": "^0.20.0",
-    "@mml-io/3d-web-user-networking": "^0.20.0",
-    "@mml-io/networked-dom-server": "0.19.0",
+    "@example/multi-user-3d-web-experience-client": "^0.21.1",
+    "@mml-io/3d-web-experience-server": "^0.21.1",
+    "@mml-io/3d-web-text-chat": "^0.21.1",
+    "@mml-io/3d-web-user-networking": "^0.21.1",
+    "@mml-io/networked-dom-server": "0.19.1",
     "chokidar": "^3.6.0",
     "cors": "^2.8.5",
     "dotenv": "16.4.5",

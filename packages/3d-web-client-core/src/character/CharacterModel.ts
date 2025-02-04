@@ -9,11 +9,13 @@ import {
   AnimationClip,
   AnimationMixer,
   Bone,
+  Box3,
   LoopRepeat,
   Mesh,
   MeshStandardMaterial,
   Object3D,
   SkinnedMesh,
+  Vector3,
 } from "three";
 
 import { CameraManager } from "../camera/CameraManager";
@@ -37,6 +39,7 @@ export class CharacterModel {
 
   public mesh: Object3D | null = null;
   public headBone: Bone | null = null;
+  public characterHeight: number | null = null;
 
   private materials: Map<string, CharacterMaterial> = new Map();
 
@@ -52,50 +55,50 @@ export class CharacterModel {
 
   public async init(): Promise<void> {
     await this.loadMainMesh();
-    await this.setAnimationFromFile(
-      this.config.animationConfig.idleAnimation.fileUrl,
-      AnimationState.idle,
-      !!this.config.animationConfig.idleAnimation.loop,
-      this.config.animationConfig.idleAnimation.playbackSpeed || 1.0,
-      !!this.config.animationConfig.idleAnimation.discardNonRotationTransform,
-    );
-    await this.setAnimationFromFile(
-      this.config.animationConfig.jogAnimation.fileUrl,
-      AnimationState.walking,
-      !!this.config.animationConfig.jogAnimation.loop,
-      this.config.animationConfig.jogAnimation.playbackSpeed || 1.0,
-      !!this.config.animationConfig.jogAnimation.discardNonRotationTransform,
-    );
-    await this.setAnimationFromFile(
-      this.config.animationConfig.sprintAnimation.fileUrl,
-      AnimationState.running,
-      !!this.config.animationConfig.sprintAnimation.loop,
-      this.config.animationConfig.sprintAnimation.playbackSpeed || 1.0,
-      !!this.config.animationConfig.sprintAnimation.discardNonRotationTransform,
-    );
-    await this.setAnimationFromFile(
-      this.config.animationConfig.airAnimation.fileUrl,
-      AnimationState.air,
-      !!this.config.animationConfig.airAnimation.loop,
-      this.config.animationConfig.airAnimation.playbackSpeed || 1.0,
-      !!this.config.animationConfig.airAnimation.discardNonRotationTransform,
-    );
-    await this.setAnimationFromFile(
-      this.config.animationConfig.doubleJumpAnimation.fileUrl,
-      AnimationState.doubleJump,
-      !!this.config.animationConfig.doubleJumpAnimation.loop,
-      this.config.animationConfig.doubleJumpAnimation.playbackSpeed || 1.0,
-      !!this.config.animationConfig.doubleJumpAnimation.discardNonRotationTransform,
-    );
-    this.applyCustomMaterials();
+    if (this.mesh) {
+      await this.setAnimationFromFile(
+        this.config.animationConfig.idleAnimationFileUrl,
+        AnimationState.idle,
+        true,
+      );
+      await this.setAnimationFromFile(
+        this.config.animationConfig.jogAnimationFileUrl,
+        AnimationState.walking,
+        true,
+      );
+      await this.setAnimationFromFile(
+        this.config.animationConfig.sprintAnimationFileUrl,
+        AnimationState.running,
+        true,
+      );
+      await this.setAnimationFromFile(
+        this.config.animationConfig.airAnimationFileUrl,
+        AnimationState.air,
+        true,
+      );
+      await this.setAnimationFromFile(
+        this.config.animationConfig.doubleJumpAnimationFileUrl,
+        AnimationState.doubleJump,
+        false,
+        1.45,
+      );
+      this.applyCustomMaterials();
+    }
   }
 
   private applyCustomMaterials(): void {
     if (!this.mesh) return;
+    const boundingBox = new Box3();
+    this.mesh.updateWorldMatrix(true, true);
+    boundingBox.expandByObject(this.mesh);
+    this.characterHeight = boundingBox.max.y - boundingBox.min.y;
+
     this.mesh.traverse((child: Object3D) => {
       if ((child as Bone).isBone) {
         if (child.name === "head") {
+          const worldPosition = new Vector3();
           this.headBone = child as Bone;
+          this.headBone.getWorldPosition(worldPosition);
         }
       }
       if ((child as Mesh).isMesh || (child as SkinnedMesh).isSkinnedMesh) {
@@ -214,37 +217,38 @@ export class CharacterModel {
   }
 
   private async loadMainMesh(): Promise<void> {
-    const mainMesh = await this.loadCharacterFromDescription();
-    if (typeof mainMesh !== "undefined") {
+    let mainMesh: Object3D | null = null;
+    try {
+      mainMesh = await this.loadCharacterFromDescription();
+    } catch (error) {
+      console.error("Failed to load character from description", error);
+    }
+    if (mainMesh) {
       this.setMainMesh(mainMesh as Object3D);
-    } else {
-      throw new Error("ERROR: No Character Model was loaded");
     }
   }
 
   private cleanAnimationClips(
-    skeletalMesh: Object3D,
+    skeletalMesh: Object3D | null,
     animationClip: AnimationClip,
-    cleanupTransform: boolean = true,
+    keepRootBonePositionAnimation: boolean,
   ): AnimationClip {
     const availableBones = new Set<string>();
-    skeletalMesh.traverse((child) => {
-      const asBone = child as Bone;
-      if (asBone.isBone) {
-        availableBones.add(child.name);
-      }
-    });
+    if (skeletalMesh) {
+      skeletalMesh.traverse((child) => {
+        const asBone = child as Bone;
+        if (asBone.isBone) {
+          availableBones.add(child.name);
+        }
+      });
+    }
     animationClip.tracks = animationClip.tracks.filter((track) => {
       const [trackName, trackProperty] = track.name.split(".");
-      let shouldAnimate: boolean = false;
-      if (cleanupTransform) {
-        shouldAnimate =
-          availableBones.has(trackName) &&
-          trackProperty !== "position" &&
-          trackProperty !== "scale";
-      } else {
-        shouldAnimate = availableBones.has(trackName);
+      if (keepRootBonePositionAnimation && trackName === "root" && trackProperty === "position") {
+        return true;
       }
+      const shouldAnimate =
+        availableBones.has(trackName) && trackProperty !== "position" && trackProperty !== "scale";
       return shouldAnimate;
     });
     return animationClip;
@@ -260,15 +264,7 @@ export class CharacterModel {
     // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve, reject) => {
       const animation = await this.config.characterModelLoader.load(animationFileUrl, "animation");
-      const isDoubleJump =
-        animationFileUrl.includes("backflip") || animationFileUrl.includes("frontflip");
-      const cleanAnimation = isDoubleJump
-        ? this.cleanAnimationClips(this.mesh!, animation as AnimationClip)
-        : this.cleanAnimationClips(
-            this.mesh!,
-            animation as AnimationClip,
-            discardNonRotationTransform,
-          );
+      const cleanAnimation = this.cleanAnimationClips(this.mesh, animation as AnimationClip, true);
       if (typeof animation !== "undefined" && cleanAnimation instanceof AnimationClip) {
         this.animations[animationType] = this.animationMixer!.clipAction(cleanAnimation);
         this.animations[animationType].stop();

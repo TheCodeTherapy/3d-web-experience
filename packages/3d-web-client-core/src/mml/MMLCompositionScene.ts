@@ -99,7 +99,6 @@ export class MMLCompositionScene {
       hasGraphicsAdapter(): boolean {
         return true;
       },
-      getRootContainer: () => this.group,
       addCollider: (object: Object3D, mElement: MElement<ThreeJSGraphicsAdapter>) => {
         this.config.collisionsManager.addMeshesGroup(object as Group, mElement);
       },

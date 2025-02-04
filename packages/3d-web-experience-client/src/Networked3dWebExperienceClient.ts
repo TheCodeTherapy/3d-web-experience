@@ -1,8 +1,4 @@
-import {
-  AvatarSelectionUI,
-  AvatarType,
-  AvatarConfiguration,
-} from "@mml-io/3d-web-avatar-selection-ui";
+import { AvatarConfiguration, AvatarSelectionUI } from "@mml-io/3d-web-avatar-selection-ui";
 import {
   AnimationConfig,
   CameraManager,
@@ -94,6 +90,7 @@ export type UpdatableConfig = {
   mmlDocuments?: { [key: string]: MMLDocumentConfiguration };
   environmentConfiguration?: EnvironmentConfiguration;
   avatarConfiguration?: AvatarConfiguration;
+  allowCustomDisplayName?: boolean;
   enableTweakPane?: boolean;
 };
 
@@ -264,8 +261,11 @@ export class Networked3dWebExperienceClient {
 
     if (this.config.allowOrbitalCamera) {
       this.keyInputManager.createKeyBinding(Key.C, () => {
-        this.cameraManager.toggleFlyCamera();
-        this.composer.fitContainer();
+        if (document.activeElement === document.body) {
+          // No input is selected - accept the key press
+          this.cameraManager.toggleFlyCamera();
+          this.composer.fitContainer();
+        }
       });
     }
 
@@ -350,8 +350,11 @@ export class Networked3dWebExperienceClient {
       this.setGroundPlaneEnabled(config.environmentConfiguration.groundPlane ?? true);
     }
 
-    if (config.avatarConfiguration && this.avatarSelectionUI) {
-      this.avatarSelectionUI?.updateAvatarConfig(config.avatarConfiguration);
+    if (this.avatarSelectionUI) {
+      if (config.avatarConfiguration) {
+        this.avatarSelectionUI.updateAvatarConfig(config.avatarConfiguration);
+      }
+      this.avatarSelectionUI.updateAllowCustomDisplayName(config.allowCustomDisplayName || false);
     }
 
     if (config.enableTweakPane !== undefined) {
@@ -413,58 +416,26 @@ export class Networked3dWebExperienceClient {
 
     this.userProfiles.set(id, userData);
 
+    if (this.textChatUI && id === this.clientId) {
+      this.textChatUI.setClientName(userData.username);
+    }
+
     this.characterManager.respawnIfPresent(id);
   }
 
-  private updateUserAvatar(avatar: AvatarType) {
-    if (this.clientId === null) {
-      throw new Error("Client ID not set");
-    }
-    const user = this.userProfiles.get(this.clientId);
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    const newUser = {
-      ...user,
-      characterDescription: {
-        meshFileUrl: avatar.meshFileUrl ?? undefined,
-        mmlCharacterUrl: avatar.mmlCharacterUrl ?? undefined,
-        mmlCharacterString: avatar.mmlCharacterString ?? undefined,
-      },
-    } as UserData;
-
-    this.userProfiles.set(this.clientId, newUser);
-    this.updateUserProfile(this.clientId, newUser);
-  }
-
-  private sendChatMessageToServer(message: string): void {
-    const filteredMessage = this.filter.clean(message);
-    this.mmlCompositionScene.onChatMessage(filteredMessage);
-    if (this.clientId === null || this.networkChat === null) return;
-    this.networkChat.sendChatMessage(message);
-  }
-
-  private sendIdentityUpdateToServer(avatar: AvatarType) {
+  private sendIdentityUpdateToServer(
+    displayName: string,
+    characterDescription: CharacterDescription,
+  ) {
     if (!this.clientId) {
       throw new Error("Client ID not set");
-    }
-
-    const userProfile = this.userProfiles.get(this.clientId);
-
-    if (!userProfile) {
-      throw new Error("User profile not found");
     }
 
     this.networkClient.sendMessage({
       type: USER_NETWORKING_USER_UPDATE_MESSAGE_TYPE,
       userIdentity: {
-        username: userProfile.username,
-        characterDescription: {
-          mmlCharacterString: avatar.mmlCharacterString,
-          mmlCharacterUrl: avatar.mmlCharacterUrl,
-          meshFileUrl: avatar.meshFileUrl,
-        } as CharacterDescription,
+        username: displayName,
+        characterDescription: characterDescription,
       },
     });
   }
@@ -512,7 +483,13 @@ export class Networked3dWebExperienceClient {
         const textChatUISettings: TextChatUIProps = {
           holderElement: this.element,
           clientname: user.username,
-          sendMessageToServerMethod: this.sendChatMessageToServer.bind(this),
+          sendMessageToServerMethod: (message: string) => {
+            this.characterManager.addSelfChatBubble(message);
+
+            this.mmlCompositionScene.onChatMessage(message);
+            if (this.clientId === null || this.networkChat === null) return;
+            this.networkChat.sendChatMessage(message);
+          },
           visibleByDefault: this.config.chatVisibleByDefault,
           stringToHslOptions: this.config.userNameToColorOptions,
         };
@@ -536,6 +513,7 @@ export class Networked3dWebExperienceClient {
           if (chatNetworkingUpdate !== null && this.textChatUI !== null) {
             const username = this.userProfiles.get(clientId)?.username || "Unknown";
             this.textChatUI.addTextMessage(username, chatNetworkingUpdate.text);
+            this.characterManager.addChatBubble(clientId, chatNetworkingUpdate.text);
           }
         },
         onServerError: (error: { message: string; errorType: ChatNetworkingServerErrorType }) => {
@@ -547,12 +525,22 @@ export class Networked3dWebExperienceClient {
   }
 
   private mountAvatarSelectionUI() {
+    if (this.clientId === null) {
+      throw new Error("Client ID not set");
+    }
+    const ownIdentity = this.userProfiles.get(this.clientId);
+    if (!ownIdentity) {
+      throw new Error("Own identity not found");
+    }
     this.avatarSelectionUI = new AvatarSelectionUI({
       holderElement: this.element,
       visibleByDefault: false,
-      sendMessageToServerMethod: this.sendIdentityUpdateToServer.bind(this),
+      displayName: ownIdentity.username,
+      characterDescription: ownIdentity.characterDescription,
+      sendIdentityUpdateToServer: this.sendIdentityUpdateToServer.bind(this),
       availableAvatars: this.config.avatarConfiguration?.availableAvatars ?? [],
       allowCustomAvatars: this.config.avatarConfiguration?.allowCustomAvatars,
+      allowCustomDisplayName: this.config.allowCustomDisplayName || false,
     });
     this.avatarSelectionUI.init();
   }

@@ -210,6 +210,7 @@ export class CollisionsManager {
     );
 
     let collisionPosition: Vector3 | null = null;
+    let currentCollisionDistance: number = -1;
     meshState.meshBVH.shapecast({
       intersectsBounds: (meshBox) => {
         // Determine if this portion of the mesh overlaps with the capsule bounding box and is therefore worth checking
@@ -241,8 +242,12 @@ export class CollisionsManager {
         if (realDistance < capsuleRadius) {
           if (!collisionPosition) {
             collisionPosition = new Vector3()
-              .copy(closestPointOnSegment)
+              .copy(closestPointOnTriangle)
               .applyMatrix4(meshState.matrix);
+            currentCollisionDistance = realDistance;
+          } else if (realDistance < currentCollisionDistance) {
+            collisionPosition.copy(closestPointOnTriangle).applyMatrix4(meshState.matrix);
+            currentCollisionDistance = realDistance;
           }
           // Calculate the ratio between the real distance and the mesh-space distance
           const ratio = realDistance / modelReferenceDistance;

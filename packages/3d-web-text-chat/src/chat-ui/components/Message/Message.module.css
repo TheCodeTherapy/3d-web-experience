@@ -4,11 +4,11 @@
   overflow-x: hidden;
   background-color: rgba(0, 0, 0, 0.7);
   border-radius: 9px;
-  box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.7);
   direction: ltr;
   margin: 12px auto 12px 2px;
   width: fit-content;
   margin-right: auto;
+  word-break: break-word;
 }
 
 .userName {

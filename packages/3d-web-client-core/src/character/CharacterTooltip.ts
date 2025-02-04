@@ -1,4 +1,4 @@
-import { Camera, Color, FrontSide, Mesh, MeshStandardMaterial, PlaneGeometry } from "three";
+import { Color, FrontSide, LinearFilter, Sprite, SpriteMaterial } from "three";
 
 import { THREECanvasTextTexture } from "./CanvasText";
 
@@ -12,64 +12,66 @@ const fontScale = 5;
 const defaultLabelColor = new Color(0x000000);
 const defaultFontColor = new Color(0xffffff);
 const defaultLabelAlignment = LabelAlignment.center;
-const defaultLabelFontSize = 8;
-const defaultLabelPadding = 8;
-const defaultLabelWidth = 0.25;
-const defaultLabelHeight = 0.1;
-const defaultLabelCastShadows = true;
-
-const tooltipGeometry = new PlaneGeometry(1, 1, 1, 1);
+const defaultLabelFontSize = 10;
+const defaultLabelPadding = 10;
+const defaultVisibleOpacity = 0.85;
+const defaultHeightOffset = 1.4;
+const defaultSecondsToFadeOut = null;
 
 export type CharacterTooltipConfig = {
   alignment: LabelAlignment;
-  width: number;
-  height: number;
   fontSize: number;
   padding: number;
   color: Color;
   fontColor: Color;
-  castShadows: boolean;
+  visibleOpacity: number;
+  maxWidth?: number;
+  secondsToFadeOut: number | null;
 };
 
-export class CharacterTooltip extends Mesh {
-  private tooltipMaterial: MeshStandardMaterial;
-  private visibleOpacity: number = 0.85;
+export class CharacterTooltip extends Sprite {
   private targetOpacity: number = 0;
   private fadingSpeed: number = 0.02;
-  private secondsToFadeOut: number = 10;
   private config: CharacterTooltipConfig;
+  private content: string | null = null;
+  private hideTimeout: NodeJS.Timeout | null = null;
 
   constructor(configArg?: Partial<CharacterTooltipConfig>) {
-    super(tooltipGeometry);
+    super();
     this.config = {
       alignment: defaultLabelAlignment,
-      width: defaultLabelWidth,
-      height: defaultLabelHeight,
       fontSize: defaultLabelFontSize,
       padding: defaultLabelPadding,
       color: defaultLabelColor,
       fontColor: defaultFontColor,
-      castShadows: defaultLabelCastShadows,
+      visibleOpacity: defaultVisibleOpacity,
+      secondsToFadeOut: defaultSecondsToFadeOut,
       ...configArg,
     };
 
-    this.tooltipMaterial = new MeshStandardMaterial({
+    this.material = new SpriteMaterial({
       map: null,
-      transparent: false,
-      opacity: 0,
+      transparent: true,
+      opacity: this.config.visibleOpacity,
       side: FrontSide,
     });
-    this.material = this.tooltipMaterial;
+
     this.position.set(0, 1.6, 0);
     this.visible = false;
   }
 
+  public setHeightOffset(height: number) {
+    this.position.y = height + this.scale.y / 2;
+  }
+
   private redrawText(content: string) {
-    if (!this.tooltipMaterial) {
+    if (content === this.content) {
+      // No need to redraw if the content is the same
       return;
     }
-    if (this.tooltipMaterial.map) {
-      this.tooltipMaterial.map.dispose();
+    this.content = content;
+    if (this.material.map) {
+      this.material.map.dispose();
     }
     const { texture, width, height } = THREECanvasTextTexture(content, {
       bold: true,
@@ -88,68 +90,71 @@ export class CharacterTooltip extends Mesh {
         a: 1.0,
       },
       alignment: this.config.alignment,
+      dimensions:
+        this.config.maxWidth !== undefined
+          ? {
+              maxWidth: this.config.maxWidth,
+            }
+          : undefined,
     });
 
-    this.tooltipMaterial.map = texture;
-
-    this.tooltipMaterial.emissiveMap = texture;
-    this.tooltipMaterial.emissive = new Color(0xffffff);
-    this.tooltipMaterial.emissiveIntensity = 3;
-
-    this.tooltipMaterial.needsUpdate = true;
+    this.material.map = texture;
+    this.material.map.magFilter = LinearFilter;
+    this.material.map.minFilter = LinearFilter;
+    this.material.needsUpdate = true;
 
     this.scale.x = width / (100 * fontScale);
     this.scale.y = height / (100 * fontScale);
-    this.position.y = 1.9;
   }
 
-  setText(text: string, temporary: boolean = false) {
+  setText(text: string, onRemove?: () => void) {
     const sanitizedText = text.replace(/(\r\n|\n|\r)/gm, "");
-    this.redrawText(sanitizedText);
     this.visible = true;
-    this.targetOpacity = this.visibleOpacity;
-    if (temporary) {
-      setTimeout(() => {
-        this.hide();
-      }, this.secondsToFadeOut * 1000);
+    this.targetOpacity = this.config.visibleOpacity;
+    if (this.hideTimeout) {
+      clearTimeout(this.hideTimeout);
+      this.hideTimeout = null;
     }
+    if (this.config.secondsToFadeOut !== null) {
+      this.hideTimeout = setTimeout(() => {
+        this.hideTimeout = null;
+        this.hide();
+        if (onRemove) {
+          onRemove();
+        }
+      }, this.config.secondsToFadeOut * 1000);
+    }
+    this.redrawText(sanitizedText);
   }
 
   hide() {
     this.targetOpacity = 0;
   }
 
-  snapAsymptotics(opacity: number) {
-    if (opacity <= 0.02) {
-      this.tooltipMaterial.opacity = 0;
-    }
-    if (opacity >= 0.98) {
-      this.tooltipMaterial.opacity = 1;
-    }
+  show() {
+    this.setText(this.content || "");
   }
 
-  update(camera: Camera) {
-    this.lookAt(camera.position);
-    const opacity = this.tooltipMaterial.opacity;
+  update() {
+    const opacity = this.material.opacity;
     if (opacity < this.targetOpacity) {
-      this.tooltipMaterial.opacity = Math.min(
-        this.tooltipMaterial.opacity + this.fadingSpeed,
+      this.material.opacity = Math.min(
+        this.material.opacity + this.fadingSpeed,
         this.targetOpacity,
       );
     } else if (opacity > this.targetOpacity) {
-      this.tooltipMaterial.opacity = Math.max(
-        this.tooltipMaterial.opacity - this.fadingSpeed,
+      this.material.opacity = Math.max(
+        this.material.opacity - this.fadingSpeed,
         this.targetOpacity,
       );
-      this.snapAsymptotics(opacity);
-      if (opacity >= 1 && this.tooltipMaterial.transparent) {
-        this.tooltipMaterial.transparent = false;
-        this.tooltipMaterial.needsUpdate = true;
-      } else if (opacity > 0 && opacity < 1 && !this.tooltipMaterial.transparent) {
-        this.tooltipMaterial.transparent = true;
-        this.tooltipMaterial.needsUpdate = true;
+      if (opacity >= 1 && this.material.transparent) {
+        this.material.transparent = false;
+        this.material.needsUpdate = true;
+      } else if (opacity > 0 && opacity < 1 && !this.material.transparent) {
+        this.material.transparent = true;
+        this.material.needsUpdate = true;
       }
-      if (this.tooltipMaterial.opacity <= 0) {
+      if (this.material.opacity <= 0) {
         this.visible = false;
       }
     }

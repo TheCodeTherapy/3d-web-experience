@@ -49,6 +49,7 @@ export class CharacterManager {
   private speakingCharacters: Map<number, boolean> = new Map();
 
   public readonly group: Group;
+  private lastUpdateSentTime: number = 0;
 
   constructor(private config: CharacterManagerConfig) {
     this.group = new Group();
@@ -164,6 +165,16 @@ export class CharacterManager {
     this.speakingCharacters.set(id, value);
   }
 
+  public addSelfChatBubble(message: string) {
+    if (this.localCharacter) {
+      this.localCharacter.addChatBubble(message);
+    }
+  }
+
+  public addChatBubble(id: number, message: string) {
+    this.remoteCharacters.get(id)?.addChatBubble(message);
+  }
+
   public respawnIfPresent(id: number) {
     const characterInfo = this.config.characterResolve(id);
 
@@ -190,7 +201,11 @@ export class CharacterManager {
       }
 
       this.localController.update();
-      if (this.config.timeManager.frame % 2 === 0) {
+      const currentTime = new Date().getTime();
+      const timeSinceLastUpdate = currentTime - this.lastUpdateSentTime;
+      if (timeSinceLastUpdate > 30) {
+        // Limit updates to per 30ms
+        this.lastUpdateSentTime = currentTime;
         this.config.sendUpdate(this.localController.networkState);
       }
 

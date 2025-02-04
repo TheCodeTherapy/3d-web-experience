@@ -8,14 +8,13 @@ import { AvatarSelectionUIComponent } from "./components/AvatarPanel/AvatarSecti
 
 const ForwardedAvatarSelectionUIComponent = forwardRef(AvatarSelectionUIComponent);
 
-export type CustomAvatar = AvatarType & {
-  isCustomAvatar?: boolean;
-};
-
 export type AvatarSelectionUIProps = {
   holderElement: HTMLElement;
   visibleByDefault?: boolean;
-  sendMessageToServerMethod: (avatar: CustomAvatar) => void;
+  displayName: string;
+  characterDescription: AvatarType;
+  allowCustomDisplayName: boolean;
+  sendIdentityUpdateToServer: (displayName: string, characterDescription: AvatarType) => void;
 } & AvatarConfiguration;
 
 export class AvatarSelectionUI {
@@ -29,8 +28,14 @@ export class AvatarSelectionUI {
     this.root = createRoot(this.wrapper);
   }
 
-  private onUpdateUserAvatar = (avatar: CustomAvatar) => {
-    this.config.sendMessageToServerMethod(avatar);
+  private onUpdateUserAvatar = (avatar: AvatarType) => {
+    this.config.characterDescription = avatar;
+    this.config.sendIdentityUpdateToServer(this.config.displayName, avatar);
+  };
+
+  private onUpdateDisplayName = (displayName: string) => {
+    this.config.displayName = displayName;
+    this.config.sendIdentityUpdateToServer(displayName, this.config.characterDescription);
   };
 
   public updateAvatarConfig(avatarConfig: AvatarConfiguration) {
@@ -41,15 +46,27 @@ export class AvatarSelectionUI {
     this.init();
   }
 
+  public updateAllowCustomDisplayName(allowCustomDisplayName: boolean) {
+    this.config = {
+      ...this.config,
+      allowCustomDisplayName,
+    };
+    this.init();
+  }
+
   init() {
     flushSync(() =>
       this.root.render(
         <ForwardedAvatarSelectionUIComponent
           ref={this.appRef}
           onUpdateUserAvatar={this.onUpdateUserAvatar}
+          onUpdateDisplayName={this.onUpdateDisplayName}
           visibleByDefault={this.config.visibleByDefault}
+          displayName={this.config.displayName}
+          characterDescription={this.config.characterDescription}
           availableAvatars={this.config.availableAvatars}
-          allowCustomAvatars={this.config.allowCustomAvatars}
+          allowCustomAvatars={this.config.allowCustomAvatars || false}
+          allowCustomDisplayName={this.config.allowCustomDisplayName || false}
         />,
       ),
     );
