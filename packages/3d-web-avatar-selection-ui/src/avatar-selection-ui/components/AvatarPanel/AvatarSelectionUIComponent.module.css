@@ -30,7 +30,7 @@
   height: 44px;
   position: fixed;
   top: 12px;
-  right: 12px;
+  left: 12px;
   border: 1px solid rgba(255, 255, 255, 0.21);
   -webkit-user-select: none;
   -ms-user-select: none;
@@ -45,7 +45,7 @@
   height: 42px;
   position: fixed;
   top: 12px;
-  right: 12px;
+  left: 12px;
   border: 1px solid rgba(255, 255, 255, 0.21);
   -webkit-user-select: none;
   -ms-user-select: none;
@@ -81,6 +81,15 @@
   user-select: none;
   overflow-y: auto;
   overflow-x: hidden;
+  transition: all 0.6s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+.hidden {
+  top: -630px !important;
+}
+
+.visible {
+  top: 11px !important;
 }
 
 .avatarSelectionContainer::-webkit-scrollbar {
