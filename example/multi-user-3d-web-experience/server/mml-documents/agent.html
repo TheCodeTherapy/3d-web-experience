@@ -1,48 +1,115 @@
-<m-group id="agent-group">
+<m-group id="agent-group" y="-1.3" sx="1.5" sy="1.5" sz="1.5">
   <m-audio id="agent-audio" y="2" z="-2.7" loop="false"></m-audio>
   <m-group id="float-wrapper">
     <m-group id="actions-wrapper">
-      <m-light
-        type="spotlight"
-        intensity="50"
-        angle="60"
-        debug="false"
-        z="0"
-        y="1.9"
-        rx="0"
-        cast-shadows="false"
-      ></m-light>
-      <m-model
-        id="agent-model"
-        src="/assets/playground/brain_in_a_jar.glb"
-        collide="false"
-        y="1.5"
-        ry="0"
-        sx="0.75"
-        sy="0.75"
-        sz="0.75"
-      >
-        <m-cylinder radius="1.3" height="5" y="1.5" visible="false"></m-cylinder>
-        <m-video
-          collide="false"
-          id="wait-indicator"
-          src="/assets/playground/wait.webm"
-          x="0"
-          y="1.35"
-          z="1.1"
-          sy="0"
-          emissive="5"
-        ></m-video>
-        <m-attr-anim
-          attr="ry"
-          start="-5"
-          end="5"
-          duration="12000"
-          loop="true"
-          ping-pong="true"
-          easing="easeInOutQuint"
-        ></m-attr-anim>
-      </m-model>
+      <m-group id="agent-model">
+        <m-model src="/assets/playground/brain_jar.glb" collide="false" y="1.5" ry="0">
+          <m-light
+            type="spotlight"
+            intensity="20"
+            cone-angle="90"
+            cone-angle-falloff="120"
+            z="0"
+            y="2"
+            rx="0"
+            debug="false"
+            cast-shadows="false"
+            color="#ffaaaa"
+          ></m-light>
+          <m-light
+            type="spotlight"
+            intensity="10"
+            cone-angle="90"
+            cone-angle-falloff="120"
+            z="0"
+            y="-0.5"
+            rx="180"
+            debug="false"
+            cast-shadows="false"
+            color="#ff7777"
+          ></m-light>
+          <m-model src="/assets/playground/brain_lowpoly.glb" collide="false">
+            <m-attr-anim
+              attr="y"
+              start="0"
+              end="0.12"
+              duration="9000"
+              loop="true"
+              ping-pong="true"
+              ping-pong-delay="300"
+              easing="easeInOutQuad"
+            ></m-attr-anim>
+            <m-attr-anim
+              attr="rz"
+              start="1"
+              end="-1"
+              duration="9000"
+              loop="true"
+              ping-pong="true"
+              ping-pong-delay="300"
+              easing="easeInOutQuad"
+            ></m-attr-anim>
+            <m-attr-anim
+              attr="rx"
+              start="3"
+              end="-3"
+              duration="12000"
+              loop="true"
+              ping-pong="true"
+              ping-pong-delay="300"
+              easing="easeInOutQuad"
+            ></m-attr-anim>
+          </m-model>
+          <m-model src="/assets/playground/brain_lowpoly_eyes.glb">
+            <m-attr-anim
+              attr="y"
+              start="-0.03"
+              end="0.09"
+              duration="9000"
+              loop="true"
+              ping-pong="true"
+              ping-pong-delay="300"
+              easing="easeInOutQuad"
+            ></m-attr-anim>
+            <m-attr-anim
+              attr="sz"
+              start="0.9"
+              end="1.02"
+              duration="11000"
+              loop="true"
+              ping-pong="true"
+              ping-pong-delay="400"
+              easing="easeInOutBack"
+            ></m-attr-anim>
+          </m-model>
+          <m-cylinder
+            radius="0.75"
+            height="1.5"
+            y="0.75"
+            visible="false"
+            collide="true"
+          ></m-cylinder>
+          <m-video
+            collide="false"
+            id="wait-indicator"
+            src="/assets/playground/wait.webm"
+            x="0"
+            y="2.15"
+            z="0"
+            sy="0"
+            emissive="5"
+          ></m-video>
+          <m-attr-anim
+            attr="ry"
+            start="-5"
+            end="5"
+            duration="12000"
+            loop="true"
+            ping-pong="true"
+            easing="easeInOutQuint"
+          ></m-attr-anim>
+        </m-model>
+      </m-group>
 
       <m-audio
         id="spin-audio"
@@ -65,7 +132,7 @@
         sy="0"
         sz="0"
         x="-0.8"
-        y="2.5"
+        y="1.7"
         z="1"
         rx="-20"
         ry="220"
@@ -215,6 +282,46 @@
   const imageElement = document.getElementById("response-image");
   const text = "Hi, I'm Squig! Chat with me through the text chat box on the UI.";
   const textToCanvas = new TextToCanvasImage(imageElement, text, 40, "#00ff00");
+
+  const randomFloatBetween = (a, b) => {
+    return Math.random() * (b - a) + a;
+  };
+
+  const createParticles = (parentElement, maxParticles, radius) => {
+    const particles = new Map();
+    const goldenRatio = (1 + Math.sqrt(5)) / 2;
+    const angleIncrement = Math.PI * 2 * goldenRatio;
+    for (let i = 0; i < maxParticles; i++) {
+      const t = i / maxParticles;
+      const inc = Math.acos(1 - 2 * t);
+      const azimuth = angleIncrement * i;
+      const x = radius * Math.sin(inc) * Math.cos(azimuth);
+      const z = radius * Math.sin(inc) * Math.sin(azimuth);
+      const image = document.createElement("m-image");
+      image.setAttribute("src", "/assets/playground/particle.png");
+      image.setAttribute("emissive", 200);
+      image.setAttribute("x", x);
+      image.setAttribute("y", -Math.random() * 4);
+      image.setAttribute("z", z);
+      image.setAttribute("rx", randomFloatBetween(-45, 45));
+      image.setAttribute("ry", randomFloatBetween(-180, 180));
+      image.setAttribute("rz", randomFloatBetween(-45, 45));
+      image.setAttribute("width", randomFloatBetween(0.005, 0.01));
+      image.setAttribute("height", 0.005);
+      image.setAttribute("collide", false);
+      image.setAttribute("cast-shadows", false);
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", "y");
+      anim.setAttribute("start", 1.2);
+      anim.setAttribute("end", 2.35);
+      anim.setAttribute("duration", 7000 + Math.random() * 7000);
+      anim.setAttribute("start-time", document.timeline.currentTime - Math.random() * 2000);
+      image.appendChild(anim);
+      particles.set(i, image);
+      parentElement.appendChild(image);
+    }
+  };
+  createParticles(actionsWrapper, 42, 0.55);
 
   function animate(element, attr, start, end, duration, easing) {
     const anim = document.createElement("m-attr-anim");
