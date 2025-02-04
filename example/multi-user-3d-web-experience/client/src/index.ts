@@ -112,6 +112,8 @@ const app = new Networked3dWebExperienceClient(holder, {
       },
     ],
   },
+  allowCustomDisplayName: true,
+  enableTweakPane: true,
   allowOrbitalCamera: true,
   loadingScreen: {
     background: "#424242",
