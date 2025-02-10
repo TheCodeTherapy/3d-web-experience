@@ -14,7 +14,7 @@ import {
   UserNetworkingServer,
 } from "@mml-io/3d-web-user-networking";
 import cors from "cors";
-import express from "express";
+import express, { Request, Response } from "express";
 import enableWs from "express-ws";
 import WebSocket from "ws";
 
@@ -201,7 +201,7 @@ export class Networked3dWebExperienceServer {
     }
 
     // Endpoint to list all tracked MML documents
-    app.get("/mml-documents-list", (req, res) => {
+    app.get("/mml-documents-list", (_req, res) => {
       if (this.mmlDocumentsServer) {
         const documentList = this.mmlDocumentsServer.getDocumentList();
         const filteredDocumentList = documentList.filter(
@@ -215,7 +215,7 @@ export class Networked3dWebExperienceServer {
     });
 
     // Get the list of documents that have a ".copy.html" version
-    app.get("/mml-documents-copies", (req, res) => {
+    app.get("/mml-documents-copies", (_req, res) => {
       if (this.mmlDocumentsServer) {
         const documentList = this.mmlDocumentsServer.getDocumentList();
         const documentsWithCopies = documentList
@@ -235,7 +235,7 @@ export class Networked3dWebExperienceServer {
     });
 
     // Restore the original document from its ".copy.html" version
-    app.post("/mml-documents/:documentName/restore", (req, res) => {
+    app.post("/mml-documents/:documentName/restore", (req: Request, res: Response): void => {
       const documentName = req.params.documentName;
       const documentCopyName = documentName.split(".")[0] + ".copy.html";
 
@@ -249,7 +249,8 @@ export class Networked3dWebExperienceServer {
       );
 
       if (!fs.existsSync(documentCopyPath)) {
-        return res.status(404).json({ message: "No backup copy found for this document." });
+        res.status(404).json({ message: "No backup copy found for this document." });
+        return;
       }
 
       // Copy the backup back to the original
@@ -296,43 +297,48 @@ export class Networked3dWebExperienceServer {
       });
     });
 
-    app.post("/mml-documents/:documentName", express.json(), (req, res) => {
-      const documentName = req.params.documentName;
-      const documentCopyName = documentName.split(".")[0] + ".copy.html";
+    app.post(
+      "/mml-documents/:documentName",
+      express.json(),
+      (req: Request, res: Response): void => {
+        const documentName = req.params.documentName;
+        const documentCopyName = documentName.split(".")[0] + ".copy.html";
 
-      const documentPath = path.join(
-        this.config.mmlServing?.documentsDirectoryRoot || "",
-        documentName,
-      );
-      const documentCopyPath = path.join(
-        this.config.mmlServing?.documentsDirectoryRoot || "",
-        documentCopyName,
-      );
+        const documentPath = path.join(
+          this.config.mmlServing?.documentsDirectoryRoot || "",
+          documentName,
+        );
+        const documentCopyPath = path.join(
+          this.config.mmlServing?.documentsDirectoryRoot || "",
+          documentCopyName,
+        );
 
-      const newContent = req.body.content;
+        const newContent = req.body.content;
 
-      if (!newContent) {
-        return res.status(400).json({ message: "No content provided to update the document." });
-      }
-
-      if (!fs.existsSync(documentCopyPath)) {
-        fs.copyFileSync(documentPath, documentCopyPath);
-      }
-
-      fs.writeFile(documentPath, newContent, "utf8", (err) => {
-        if (err) {
-          console.error(`Error writing to document ${documentName}:`, err);
-          return res.status(500).json({ message: "Unable to write the document." });
+        if (!newContent) {
+          res.status(400).json({ message: "No content provided to update the document." });
+          return;
         }
 
-        // Reload the document into the server's in-memory cache
-        const documentState = this.mmlDocumentsServer?.documents.get(documentName);
-        if (documentState) {
-          documentState.document.load(newContent);
+        if (!fs.existsSync(documentCopyPath)) {
+          fs.copyFileSync(documentPath, documentCopyPath);
         }
 
-        res.status(200).json({ message: "Document updated successfully." });
-      });
-    });
+        fs.writeFile(documentPath, newContent, "utf8", (err) => {
+          if (err) {
+            console.error(`Error writing to document ${documentName}:`, err);
+            return res.status(500).json({ message: "Unable to write the document." });
+          }
+
+          // Reload the document into the server's in-memory cache
+          const documentState = this.mmlDocumentsServer?.documents.get(documentName);
+          if (documentState) {
+            documentState.document.load(newContent);
+          }
+
+          res.status(200).json({ message: "Document updated successfully." });
+        });
+      },
+    );
   }
 }

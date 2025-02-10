@@ -6,7 +6,7 @@ import { Networked3dWebExperienceServer } from "@mml-io/3d-web-experience-server
 import type { CharacterDescription } from "@mml-io/3d-web-user-networking";
 import cors from "cors";
 import dotenv from "dotenv";
-import express from "express";
+import express, { Request, Response } from "express";
 import enableWs from "express-ws";
 import fetch from "node-fetch";
 
@@ -135,17 +135,20 @@ if (
   process.env.CLOUDFLARE_ACCOUNT_ID &&
   process.env.CLOUDFLARE_LIVE_INPUT_ID
 ) {
-  app.get("/live-status", async (req, res) => {
+  app.get("/live-status", async (_req: Request, res: Response) => {
     const now = Date.now();
     if (now - lastLiveStatusCheck < 10000) {
-      return res.status(429).json({ message: "Too many requests. Try again later." });
+      res.status(429).json({ message: "Too many requests. Try again later." });
+      return;
     }
     lastLiveStatusCheck = now;
     const isLive = await checkLiveStatus();
     if (isLive) {
       res.status(200).json({ live: true });
+      return;
     } else {
       res.status(404).json({ live: false });
+      return;
     }
   });
 }
