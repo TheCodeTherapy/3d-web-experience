@@ -1,6 +1,6 @@
 {
   "name": "@mml-io/3d-web-client-editor",
-  "version": "0.21.0",
+  "version": "0.21.3",
   "publishConfig": {
     "access": "public"
   },
