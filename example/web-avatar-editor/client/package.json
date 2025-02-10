@@ -1,7 +1,7 @@
 {
   "name": "@example/web-avatar-editor-client",
   "private": true,
-  "version": "0.21.1",
+  "version": "0.21.3",
   "files": [
     "/build"
   ],
@@ -14,16 +14,16 @@
     "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
   },
   "dependencies": {
-    "@mml-io/3d-web-avatar": "^0.21.1",
-    "@mml-io/3d-web-standalone-avatar-editor": "^0.21.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "@mml-io/3d-web-avatar": "^0.21.3",
+    "@mml-io/3d-web-standalone-avatar-editor": "^0.21.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "three": "0.163.0"
   },
   "devDependencies": {
-    "@types/node": "^20.14.10",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
+    "@types/node": "^22.13.1",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
     "@types/three": "0.163.0"
   }
 }

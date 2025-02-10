@@ -21,5 +21,6 @@ runs:
       with:
         path: |
           node_modules
+          **/node_modules
           ~/.cache
         key: ${{ runner.os }}-npm-v3-${{ hashFiles('package-lock.json') }}

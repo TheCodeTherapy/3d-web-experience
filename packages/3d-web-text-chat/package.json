@@ -1,6 +1,6 @@
 {
   "name": "@mml-io/3d-web-text-chat",
-  "version": "0.21.1",
+  "version": "0.21.3",
   "publishConfig": {
     "access": "public"
   },
@@ -19,19 +19,19 @@
   },
   "dependencies": {
     "bad-words": "^4.0.0",
-    "express": "4.19.2",
+    "express": "4.21.2",
     "express-ws": "5.0.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/express-ws": "^3.0.4",
-    "@types/node": "^20.14.10",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@types/ws": "^8.5.10",
-    "esbuild-css-modules-plugin": "3.1.2"
+    "@types/express": "^5.0.0",
+    "@types/express-ws": "^3.0.5",
+    "@types/node": "^22.13.1",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@types/ws": "^8.5.14",
+    "esbuild-css-modules-plugin": "3.1.4"
   }
 }

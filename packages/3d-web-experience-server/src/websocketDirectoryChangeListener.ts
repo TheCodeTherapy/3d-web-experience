@@ -1,4 +1,4 @@
-import chokidar from "chokidar";
+import { watch } from "chokidar";
 import enableWs from "express-ws";
 import WebSocket from "ws";
 
@@ -10,7 +10,7 @@ export function websocketDirectoryChangeListener(
   },
 ) {
   const listeningClients = new Set<WebSocket>();
-  chokidar.watch(options.directory).on("all", () => {
+  watch(options.directory).on("all", () => {
     for (const client of listeningClients) {
       client.send("change");
     }

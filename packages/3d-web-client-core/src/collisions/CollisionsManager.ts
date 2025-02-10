@@ -6,6 +6,7 @@ import {
   DoubleSide,
   Euler,
   Group,
+  InstancedMesh,
   Line3,
   LineBasicMaterial,
   Matrix4,
@@ -93,26 +94,44 @@ export class CollisionsManager {
     group.traverse((child: Object3D) => {
       const asMesh = child as Mesh;
       if (asMesh.isMesh) {
-        const clonedGeometry = asMesh.geometry.clone();
-        if (child !== group) {
+        const asInstancedMesh = asMesh as InstancedMesh;
+        if (asInstancedMesh.isInstancedMesh) {
+          for (let i = 0; i < asInstancedMesh.count; i++) {
+            const clonedGeometry = asInstancedMesh.geometry.clone();
+            for (const key in clonedGeometry.attributes) {
+              if (key !== "position") {
+                clonedGeometry.deleteAttribute(key);
+              }
+            }
+            clonedGeometry.applyMatrix4(
+              this.tempMatrix2.fromArray(asInstancedMesh.instanceMatrix.array, i * 16),
+            );
+            if (clonedGeometry.index) {
+              geometries.push(clonedGeometry.toNonIndexed());
+            } else {
+              geometries.push(clonedGeometry);
+            }
+          }
+        } else {
+          const clonedGeometry = asMesh.geometry.clone();
           asMesh.updateWorldMatrix(true, false);
+          for (const key in clonedGeometry.attributes) {
+            if (key !== "position") {
+              clonedGeometry.deleteAttribute(key);
+            }
+          }
           clonedGeometry.applyMatrix4(
             this.tempMatrix2.multiplyMatrices(invertedRootMatrix, asMesh.matrixWorld),
           );
-        }
-
-        for (const key in clonedGeometry.attributes) {
-          if (key !== "position") {
-            clonedGeometry.deleteAttribute(key);
+          if (clonedGeometry.index) {
+            geometries.push(clonedGeometry.toNonIndexed());
+          } else {
+            geometries.push(clonedGeometry);
           }
-        }
-        if (clonedGeometry.index) {
-          geometries.push(clonedGeometry.toNonIndexed());
-        } else {
-          geometries.push(clonedGeometry);
         }
       }
     });
+
     const newBufferGeometry = BufferGeometryUtils.mergeGeometries(geometries, false);
     newBufferGeometry.computeVertexNormals();
     const meshBVH = new MeshBVH(newBufferGeometry);

@@ -20,7 +20,13 @@ export const rebuildOnDependencyChangesPlugin = {
           } catch (e) {
             return;
           }
+          if (!resolved.includes("/")) {
+            // This could be a built-in package
+            return;
+          }
           return {
+            external: true,
+            path: resolved,
             watchFiles: [resolved],
           };
         }

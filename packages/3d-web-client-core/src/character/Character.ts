@@ -172,7 +172,7 @@ export class Character extends Group {
       color: new Color(0.125, 0.125, 0.125),
     });
     this.add(tooltip);
-    this.chatTooltips.push(tooltip);
+    this.chatTooltips.unshift(tooltip);
     tooltip.setText(message, () => {
       this.chatTooltips = this.chatTooltips.filter((t) => t !== tooltip);
       this.remove(tooltip);

@@ -3,8 +3,9 @@ import path from "node:path";
 import url from "node:url";
 
 import { EditableNetworkedDOM, LocalObservableDOMFactory } from "@mml-io/networked-dom-server";
-import chokidar, { FSWatcher } from "chokidar";
+import { watch, FSWatcher } from "chokidar";
 import dotenv from "dotenv";
+import micromatch from "micromatch";
 import WebSocket from "ws";
 
 dotenv.config();
@@ -100,12 +101,21 @@ export class MMLDocumentsServer {
   }
 
   private watch() {
-    this.watcher = chokidar.watch(this.watchPattern, {
-      ignored: /^\./,
+    this.watcher = watch(this.directory, {
+      ignoreInitial: false,
+      ignored: (checkPath, stats) => {
+        if (!stats || !stats.isFile()) {
+          return false;
+        }
+        return !micromatch.isMatch(checkPath, this.watchPattern);
+      },
       persistent: true,
     });
     this.watcher
-      .on("add", (fullPath) => {
+      .on("add", (fullPath, stats) => {
+        if (!stats || !stats.isFile()) {
+          return;
+        }
         const relativePath = path.relative(this.directory, fullPath);
         console.log(`MML Document '${relativePath}' has been added`);
         const contents = checkDevEnv(checkAPIKey(getMmlDocumentContent(fullPath)));

@@ -1,6 +1,6 @@
 {
   "name": "@mml-io/3d-web-experience-client",
-  "version": "0.21.1",
+  "version": "0.21.3",
   "publishConfig": {
     "access": "public"
   },
@@ -19,17 +19,17 @@
   },
   "dependencies": {
     "bad-words": "^4.0.0",
-    "@mml-io/3d-web-client-editor": "^0.21.0",
-    "@mml-io/3d-web-avatar-selection-ui": "^0.21.1",
-    "@mml-io/3d-web-client-core": "^0.21.1",
-    "@mml-io/3d-web-text-chat": "^0.21.1",
-    "@mml-io/3d-web-user-networking": "^0.21.1",
-    "@mml-io/3d-web-voice-chat": "^0.21.1",
-    "@mml-io/mml-web": "0.19.1",
+    "@mml-io/3d-web-client-editor": "^0.21.3",
+    "@mml-io/3d-web-avatar-selection-ui": "^0.21.3",
+    "@mml-io/3d-web-client-core": "^0.21.3",
+    "@mml-io/3d-web-text-chat": "^0.21.3",
+    "@mml-io/3d-web-user-networking": "^0.21.3",
+    "@mml-io/3d-web-voice-chat": "^0.21.3",
+    "@mml-io/mml-web": "0.19.3",
     "three": "0.163.0"
   },
   "devDependencies": {
-    "@types/node": "^20.14.10",
+    "@types/node": "^22.13.1",
     "@types/three": "0.163.0"
   }
 }

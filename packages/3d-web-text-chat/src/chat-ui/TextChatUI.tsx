@@ -36,7 +36,7 @@ export type TextChatUIProps = {
 
 export class TextChatUI {
   private root: Root;
-  private appRef: React.RefObject<ChatUIInstance> = createRef<ChatUIInstance>();
+  private appRef = createRef<ChatUIInstance>();
 
   public addTextMessage(username: string, message: string) {
     if (this.appRef.current) {

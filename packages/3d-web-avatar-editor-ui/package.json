@@ -1,6 +1,6 @@
 {
   "name": "@mml-io/3d-web-avatar-editor-ui",
-  "version": "0.21.1",
+  "version": "0.21.3",
   "publishConfig": {
     "access": "public"
   },
@@ -20,14 +20,14 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "dependencies": {
-    "@mml-io/3d-web-avatar": "^0.21.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "@mml-io/3d-web-avatar": "^0.21.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@types/node": "^20.14.10",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "esbuild-css-modules-plugin": "3.1.2"
+    "@types/node": "^22.13.1",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "esbuild-css-modules-plugin": "3.1.4"
   }
 }

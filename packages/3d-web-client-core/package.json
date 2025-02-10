@@ -1,6 +1,6 @@
 {
   "name": "@mml-io/3d-web-client-core",
-  "version": "0.21.1",
+  "version": "0.21.3",
   "publishConfig": {
     "access": "public"
   },
@@ -18,16 +18,16 @@
     "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
   },
   "dependencies": {
-    "@mml-io/3d-web-avatar": "^0.21.1",
-    "@mml-io/mml-web": "0.19.1",
-    "@mml-io/mml-web-threejs": "0.19.1",
-    "@mml-io/model-loader": "0.19.1",
-    "@monogrid/gainmap-js": "^3.0.5",
-    "@tweakpane/core": "2.0.4",
+    "@mml-io/3d-web-avatar": "^0.21.3",
+    "@mml-io/mml-web": "0.19.3",
+    "@mml-io/mml-web-threejs": "0.19.3",
+    "@mml-io/model-loader": "0.19.3",
+    "@monogrid/gainmap-js": "^3.1.0",
+    "@tweakpane/core": "2.0.5",
     "@tweakpane/plugin-essentials": "0.2.1",
-    "postprocessing": "6.35.6",
-    "three-mesh-bvh": "0.7.6",
-    "tweakpane": "4.0.4"
+    "postprocessing": "6.36.7",
+    "three-mesh-bvh": "0.9.0",
+    "tweakpane": "4.0.5"
   },
   "peerDependencies": {
     "three": ">= 0.163.0"
