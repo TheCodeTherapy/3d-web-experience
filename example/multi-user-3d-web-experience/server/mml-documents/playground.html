@@ -1,4 +1,5 @@
 <m-group id="content-group">
+  <m-position-probe id="position-probe"></m-position-probe>
   <m-group id="wind-group"></m-group>
   <m-group id="altars-group"></m-group>
 </m-group>
@@ -7,6 +8,53 @@
   const contentGroup = document.getElementById("content-group");
   const windGroup = document.getElementById("wind-group");
   const altarsGroup = document.getElementById("altars-group");
+  const positionProbe = document.getElementById("position-probe");
+
+  const debug = false;
+
+  const playersInRange = new Map();
+
+  positionProbe.setAttribute("range", 55);
+  positionProbe.setAttribute("debug", false);
+  positionProbe.setAttribute("interval", 100);
+
+  positionProbe.addEventListener("positionenter", (e) => {
+    const { connectionId, elementRelative, documentRelative } = e.detail;
+    const { position, rotation } = documentRelative;
+    if (!playersInRange.has(connectionId)) {
+      playersInRange.set(connectionId, {
+        x: position.x,
+        y: position.y,
+        z: position.z,
+        rx: rotation.x,
+        ry: rotation.y,
+        rz: rotation.z,
+      });
+    }
+  });
+  positionProbe.addEventListener("positionmove", (e) => {
+    const { connectionId, elementRelative, documentRelative } = e.detail;
+    const { position, rotation } = documentRelative;
+    playersInRange.set(connectionId, {
+      x: position.x,
+      y: position.y,
+      z: position.z,
+      rx: rotation.x,
+      ry: rotation.y,
+      rz: rotation.z,
+    });
+  });
+  positionProbe.addEventListener("positionleave", (e) => {
+    const { connectionId } = e.detail;
+    if (playersInRange.has(connectionId)) {
+      playersInRange.delete(connectionId);
+    }
+  });
+  window.addEventListener("disconnected", (e) => {
+    if (playersInRange.has(e.detail.connectionId)) {
+      playersInRange.delete(e.detail.connectionId);
+    }
+  });
 
   class Respawner {
     constructor(parentElement, originYPosition, targetYPosition, immediate = false) {
@@ -331,7 +379,7 @@
       const windX = Math.cos(angle) * (radius + windOffset);
       const windY = 7;
       const windZ = Math.sin(angle) * (radius + windOffset);
-      const windVolume = i % 2 === 0 ? 1 : 1.5;
+      const windVolume = i % 2 === 0 ? 1.5 : 2;
       const windDebug = false;
       const windSrc = "/assets/playground/wind.mp3";
       createWindSFX(windSrc, windX, windY, windZ, windVolume, now, windDebug);
@@ -456,9 +504,20 @@
   }
 
   placeAltars(altarsGroup, 42, 13);
-  // placeWind(42, 6);
+  placeWind(42, 6);
 
   new Respawner(contentGroup, -50, 0, true);
+
+  if (debug) {
+    setInterval(() => {
+      if (playersInRange.size === 0) {
+        return;
+      }
+      playersInRange.forEach((p, id) => {
+        console.log(`Player ${id} is at ${p.x}, ${p.y}, ${p.z}`);
+      });
+    }, 200);
+  }
 
   addDocuments();
 </script>
