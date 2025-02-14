@@ -15,67 +15,6 @@
 
   const particlaImageURL = "/assets/playground/particle.png";
 
-  class TextToCanvasImage {
-    canvas = document.createElement("canvas");
-    ctx = this.canvas.getContext("2d");
-    maxLineCharacters = 42;
-
-    fontSize = 50;
-    lineHeight = this.fontSize * 1.2;
-    textColor = "#ffffff";
-
-    constructor(targetImage, text, fontSize = 50, textColor = "#ffffff") {
-      this.image = targetImage;
-      this.fontSize = fontSize;
-      this.lineHeight = parseFloat((this.fontSize * 1.2).toFixed(2));
-      this.textColor = textColor;
-
-      this.paintText(text);
-    }
-
-    splitTextIntoLines(text) {
-      const words = text.split(" ");
-      const lines = [];
-      let currentLine = "";
-
-      words.forEach((word) => {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        if (testLine.length <= this.maxLineCharacters) {
-          currentLine = testLine;
-        } else {
-          lines.push(currentLine);
-          currentLine = word;
-        }
-      });
-
-      if (currentLine) lines.push(currentLine);
-      return lines;
-    }
-
-    paintText(text) {
-      const lines = this.splitTextIntoLines(text);
-      this.canvas.width = this.fontSize * (this.maxLineCharacters + 1) * 0.6;
-      this.canvas.height = this.lineHeight * (lines.length + 1);
-
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      this.ctx.font = `900 ${this.fontSize}px monospace`;
-      this.ctx.fillStyle = this.textColor;
-
-      let yPos = this.lineHeight;
-      lines.forEach((line) => {
-        this.ctx.fillText(line, 0, yPos);
-        yPos += this.lineHeight;
-      });
-
-      const dataUrl = this.canvas.toDataURL("image/png");
-      this.image.setAttribute("src", dataUrl);
-    }
-
-    updateText(newText) {
-      this.paintText(newText);
-    }
-  }
-
   class Agent {
     audioVolume = 3;
     audioMarginDuration = 2000;
@@ -573,7 +512,7 @@
         setTimeout(() => {
           this.responseInProgress = false;
           this.processResponses();
-        }, this.audioMarginDuration / 2);
+        }, this.audioMarginDuration);
       }, duration);
     }
 
