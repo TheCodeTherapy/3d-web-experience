@@ -23,6 +23,7 @@
     "@mml-io/3d-web-user-networking": "^0.21.3",
     "@mml-io/3d-web-voice-chat": "^0.21.3",
     "@mml-io/networked-dom-server": "0.19.3",
+    "canvas": "2.11.2",
     "chokidar": "^4.0.3",
     "cors": "^2.8.5",
     "dotenv": "16.4.5",
