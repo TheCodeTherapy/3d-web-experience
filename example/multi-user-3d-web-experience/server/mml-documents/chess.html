@@ -1,0 +1,152 @@
+<m-group id="wrapper">
+  <m-model src="/assets/playground/chess_board.glb" sx="5" sy="5" sz="5"></m-model>
+</m-group>
+<script>
+  class ChessGame {
+    group = document.createElement("m-group");
+    piecesGroup = document.createElement("m-group");
+
+    // Chessboard configuration ==============================================
+    boardSize = 8;
+    squareSize = 1;
+    halfBoardSize = this.boardSize / 2;
+    halfSquareSize = this.squareSize / 2;
+    centerOffset = this.halfBoardSize - this.halfSquareSize;
+
+    // Rendering configuration ===============================================
+    yOffset = 0.35;
+    modelScale = 0.2;
+    capturedScale = this.modelScale / 2;
+    capturedOffsetX = 5;
+    capturedOffsetZ = 5;
+
+    // States and data =======================================================
+    piecesMap = new Map(); // Tracks models for pieces by their positions
+    pieceCounter = new Map(); // Tracks the number of pieces created for each type
+    capturedPieces = { white: [], black: [] }; // Tracks captured pieces by color
+    // [
+    //   ["r",  "n",  "b",  "q",  "k",  "b",  "n",  "r"],
+    //   ["p",  "p",  "p",  "p",  "p",  "p",  "p",  "p"],
+    //   [null, null, null, null, null, null, null, null],
+    //   [null, null, null, null, null, null, null, null],
+    //   [null, null, null, null, null, null, null, null],
+    //   [null, null, null, null, null, null, null, null],
+    //   ["P",  "P",  "P",  "P",  "P",  "P",  "P",  "P"],
+    //   ["R",  "N",  "B",  "Q",  "K",  "B",  "N",  "R"],
+    // ];
+    newGameFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+    currentFEN = this.newGameFen;
+    boardState = this.getStateFromFEN(this.currentFEN);
+
+    // Models ================================================================
+    pieceModels = {
+      P: "/assets/playground/chess_white_pawn.glb",
+      R: "/assets/playground/chess_white_rook.glb",
+      N: "/assets/playground/chess_white_knight.glb",
+      B: "/assets/playground/chess_white_bishop.glb",
+      Q: "/assets/playground/chess_white_queen.glb",
+      K: "/assets/playground/chess_white_king.glb",
+      p: "/assets/playground/chess_black_pawn.glb",
+      r: "/assets/playground/chess_black_rook.glb",
+      n: "/assets/playground/chess_black_knight.glb",
+      b: "/assets/playground/chess_black_bishop.glb",
+      q: "/assets/playground/chess_black_queen.glb",
+      k: "/assets/playground/chess_black_king.glb",
+    };
+
+    constructor(parentElement) {
+      this.parentElement = parentElement;
+
+      this.group.setAttribute("id", "chess-group");
+      this.piecesGroup.setAttribute("id", "pieces-group");
+      this.group.appendChild(this.piecesGroup);
+
+      this.parentElement.appendChild(this.group);
+      this.parentElement.appendChild(this.piecesGroup);
+
+      this.setBoardFromState(this.boardState);
+    }
+
+    scale(element, scale) {
+      element.setAttribute("sx", scale);
+      element.setAttribute("sy", scale);
+      element.setAttribute("sz", scale);
+    }
+
+    translate(element, x, y, z) {
+      element.setAttribute("x", x);
+      element.setAttribute("y", y);
+      element.setAttribute("z", z);
+    }
+
+    rotate(element, ry) {
+      element.setAttribute("ry", ry);
+    }
+
+    createModel(src, modelScale, modelPosition, rotation = 0) {
+      const model = document.createElement("m-model");
+      model.setAttribute("src", src);
+      this.scale(model, modelScale);
+      this.translate(model, modelPosition.x, modelPosition.y, modelPosition.z);
+      this.rotate(model, rotation);
+      return model;
+    }
+
+    getStateFromFEN(fen) {
+      const rows = fen.split(" ")[0].split("/");
+      const newState = rows.map((row) => {
+        const expandedRow = [];
+        for (const char of row) {
+          if (isNaN(char)) {
+            expandedRow.push(char);
+          } else {
+            for (let i = 0; i < parseInt(char); i++) {
+              expandedRow.push(null);
+            }
+          }
+        }
+        return expandedRow;
+      });
+      return JSON.parse(JSON.stringify(newState));
+    }
+
+    setBoardFromState(boardState) {
+      this.piecesMap.forEach((model) => this.piecesGroup.removeChild(model));
+      this.piecesMap.clear();
+      this.pieceCounter.clear();
+      for (let row = 0; row < this.boardSize; row++) {
+        for (let col = 0; col < this.boardSize; col++) {
+          const piece = boardState[row][col];
+          if (piece) {
+            if (!this.pieceCounter.has(piece)) {
+              this.pieceCounter.set(piece, 0);
+            }
+            const pieceId = `${piece}${this.pieceCounter.get(piece)}`;
+            this.pieceCounter.set(piece, this.pieceCounter.get(piece) + 1);
+
+            const isWhite = piece === piece.toUpperCase();
+            const rotation = isWhite ? 0 : 180;
+            const position = {
+              x: (col - this.centerOffset) * this.squareSize,
+              y: this.yOffset,
+              z: (row - this.centerOffset) * this.squareSize,
+            };
+
+            const model = this.createModel(
+              this.pieceModels[piece],
+              this.modelScale,
+              position,
+              rotation,
+            );
+            model.setAttribute("id", pieceId);
+            this.piecesGroup.appendChild(model);
+            this.piecesMap.set(`${row}${col}`, model);
+          }
+        }
+      }
+    }
+  }
+
+  const wrapper = document.getElementById("wrapper");
+  const chessGame = new ChessGame(wrapper);
+</script>
