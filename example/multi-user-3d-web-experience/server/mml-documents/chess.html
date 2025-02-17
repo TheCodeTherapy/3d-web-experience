@@ -2551,7 +2551,9 @@
     reset() {
       this.resetBoardFromInitialFen();
       this.promptButton.turnOn();
-      this.stateText.updateText("♟️ MML CHESS");
+      if (this.stateText) {
+        this.stateText.updateText("♟️ MML CHESS");
+      }
       this.stateLabel.setAttribute("content", "♟️ MML CHESS");
       this.busy = false;
     }
@@ -2629,19 +2631,19 @@
 
       this.parentElement.appendChild(this.stateLabelGroup);
 
-      this.stateImage = document.createElement("m-image");
-      this.stateImage.setAttribute("id", "state-image");
-      this.stateImage.setAttribute("width", 13);
-      this.stateImage.setAttribute("x", 3);
-      this.stateImage.setAttribute("collide", false);
-      this.stateImage.setAttribute("emissive", 5);
-      this.stateImage.setAttribute("content", "");
+      // this.stateImage = document.createElement("m-image");
+      // this.stateImage.setAttribute("id", "state-image");
+      // this.stateImage.setAttribute("width", 13);
+      // this.stateImage.setAttribute("x", 3);
+      // this.stateImage.setAttribute("collide", false);
+      // this.stateImage.setAttribute("emissive", 5);
+      // this.stateImage.setAttribute("content", "");
       // this.stateLabelGroup.appendChild(this.stateImage);
 
-      this.stateText = this.generateTextImage(this.stateImage, "♟️ MML CHESS", {
-        textColor: "#00ff00",
-        maxLineCharacters: 90,
-      });
+      // this.stateText = this.generateTextImage(this.stateImage, "♟️ MML CHESS", {
+      //   textColor: "#00ff00",
+      //   maxLineCharacters: 90,
+      // });
     }
 
     generateTextImage(targetImage, text, options) {
@@ -2795,22 +2797,25 @@
           const x = (col - this.centerOffset) * this.squareSize;
           const y = this.yOffset;
           const z = (row - this.centerOffset) * this.squareSize;
-          const possibleSquare = this.createPlane(
-            chessCellId,
-            this.possibleImageURL,
-            x,
-            y + 0.03,
-            z,
-          );
-          this.piecesGroup.appendChild(possibleSquare);
-          const captureSquare = this.createPlane(
-            `capture-${chessCellId}`,
-            this.captureImageURL,
-            x,
-            y + 0.01,
-            z,
-          );
-          this.piecesGroup.appendChild(captureSquare);
+
+          // const possibleSquare = this.createPlane(
+          //   chessCellId,
+          //   this.possibleImageURL,
+          //   x,
+          //   y + 0.03,
+          //   z,
+          // );
+          // this.piecesGroup.appendChild(possibleSquare);
+
+          // const captureSquare = this.createPlane(
+          //   `capture-${chessCellId}`,
+          //   this.captureImageURL,
+          //   x,
+          //   y + 0.01,
+          //   z,
+          // );
+          // this.piecesGroup.appendChild(captureSquare);
+
           const piece = boardState[row][col];
           if (piece) {
             const isWhite = piece === piece.toUpperCase();
@@ -2830,13 +2835,19 @@
       if (this.busy === false) {
         this.busy = true;
       }
-      if (this.stateLabel && this.stateText) {
+      if (this.stateText) {
         if (description.length > 0) {
-          this.stateLabel.setAttribute("content", description);
           this.stateText.updateText(description);
         } else {
-          this.stateLabel.setAttribute("content", `from: ${from} to: ${to}`);
           this.stateText.updateText(`from: ${from} to: ${to}`);
+        }
+      }
+
+      if (this.stateLabel) {
+        if (description.length > 0) {
+          this.stateLabel.setAttribute("content", description);
+        } else {
+          this.stateLabel.setAttribute("content", `from: ${from} to: ${to}`);
         }
       }
       const fromRow = 8 - parseInt(from[1]);
@@ -2960,13 +2971,19 @@
 
       if (["1-0", "0-1", "1/2-1/2"].includes(moveNotation)) {
         if (moveNotation === "1-0") {
-          renderer.stateText.updateText("♟️ WHITE WINS");
+          if (renderer.stateText) {
+            renderer.stateText.updateText("♟️ WHITE WINS");
+          }
           renderer.stateLabel.setAttribute("content", "♟️ WHITE WINS");
         } else if (moveNotation === "0-1") {
-          renderer.stateText.updateText("♟️ BLACK WINS");
+          if (renderer.stateText) {
+            renderer.stateText.updateText("♟️ BLACK WINS");
+          }
           renderer.stateLabel.setAttribute("content", "♟️ BLACK WINS");
         } else {
-          renderer.stateText.updateText("♟️ DRAW");
+          if (renderer.stateText) {
+            renderer.stateText.updateText("♟️ DRAW");
+          }
           renderer.stateLabel.setAttribute("content", "♟️ DRAW");
         }
         moveDescription = `🏁 Game Over`;
