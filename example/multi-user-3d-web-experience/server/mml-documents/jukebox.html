@@ -94,6 +94,15 @@
     jukebox.setAttribute("collide", false);
     jukebox.setAttribute("visible", true);
     jukebox.setAttribute("cast-shadows", true);
+
+    const light = document.createElement("m-light");
+    light.setAttribute("y", 2.55);
+    light.setAttribute("x", -0.1);
+    light.setAttribute("color", "#ffddaa");
+    light.setAttribute("intensity", 5);
+    light.setAttribute("distance", 2);
+    light.setAttribute("debug", false);
+    jukebox.appendChild(light);
     return jukebox;
   }
 
