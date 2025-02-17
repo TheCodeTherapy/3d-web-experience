@@ -1,8 +1,14 @@
 <m-group id="wrapper">
-  <m-cube id="floor" y="20000" width="10000" height="0.1" depth="10000" color="#121217"></m-cube>
   <m-group id="teleporter"></m-group>
   <m-frame y="20000" src="wss:///mml-documents/chess.html"></m-frame>
   <m-model src="/assets/playground/chess_black_rook.glb" z="-4"></m-model>
+  <m-model src="/assets/playground/chess_room.glb" y="19999.841"></m-model>
+  <m-model
+    src="/assets/playground/chess_room_floor.glb"
+    y="19999.95"
+    cast-shadows="false"
+  ></m-model>
+  <m-frame src="wss:///mml-documents/jukebox.html" y="20000" z="-11.75" ry="-90"></m-frame>
 </m-group>
 <script>
   const teleporterGroup = document.getElementById("teleporter");
@@ -190,6 +196,6 @@
     createParticles(teleporterStart, 12, 1);
   }
 
-  createTeleporter(teleporterGroup, 0, -0.05, 0, 0, 20000.05, 20);
-  createTeleporter(teleporterGroup, 0, 20000.05, -20, 0, 5.35, -4);
+  createTeleporter(teleporterGroup, 0, -0.05, 0, 18, 20000.05, 0);
+  createTeleporter(teleporterGroup, -18, 20000.05, 0, 0, 5.35, -4);
 </script>
