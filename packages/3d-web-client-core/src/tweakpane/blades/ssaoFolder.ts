@@ -43,7 +43,7 @@ export const n8ssaoValues = {
   halfRes: true,
   aoRadius: 5,
   distanceFalloff: 3.0,
-  intensity: 1.5,
+  intensity: 2.1,
   color: { r: 0, g: 0, b: 0 },
   aoSamples: 16,
   denoiseSamples: 4,

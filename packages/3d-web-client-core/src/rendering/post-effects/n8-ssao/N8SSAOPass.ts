@@ -568,7 +568,7 @@ class N8SSAOPass extends Pass {
     // temporary fix until postprocessing v7 gets released with proper depth buffer management
     effectCompositerUniforms.fogExp.value = false;
     effectCompositerUniforms.fogNear.value = 0.0;
-    effectCompositerUniforms.fogFar.value = 2000.0;
+    effectCompositerUniforms.fogFar.value = 500000.0;
 
     renderer.setRenderTarget(this.outputTargetInternal);
     this.effectCompositerQuad.render(renderer);
