@@ -8,10 +8,51 @@
     y="19999.95"
     cast-shadows="false"
   ></m-model>
-  <m-frame src="wss:///mml-documents/jukebox.html" y="20000" z="-11.75" ry="-90"></m-frame>
+  <m-frame
+    id="jukebox-frame"
+    src="wss:///mml-documents/jukebox.html"
+    y="20000"
+    z="-11.75"
+    ry="-90"
+  ></m-frame>
+  <m-position-probe
+    y="20000"
+    id="loading-probe"
+    debug="false"
+    range="300"
+    interval="500"
+  ></m-position-probe>
 </m-group>
 <script>
   const teleporterGroup = document.getElementById("teleporter");
+
+  const loadingProbe = document.getElementById("loading-probe");
+
+  const jukeboxFrame = document.getElementById("jukebox-frame");
+  jukeboxFrame.setAttribute("visible-to", -1);
+
+  const usersInLoadRange = new Set();
+
+  loadingProbe.addEventListener("positionenter", (e) => {
+    if (!usersInLoadRange.has(e.detail.connectionId)) {
+      usersInLoadRange.add(e.detail.connectionId);
+    }
+  });
+  loadingProbe.addEventListener("positionmove", (e) => {
+    if (!usersInLoadRange.has(e.detail.connectionId)) {
+      usersInLoadRange.add(e.detail.connectionId);
+    }
+  });
+  loadingProbe.addEventListener("positionleave", (e) => {
+    if (usersInLoadRange.has(e.detail.connectionId)) {
+      usersInLoadRange.delete(e.detail.connectionId);
+    }
+  });
+  window.addEventListener("disconnected", (e) => {
+    if (usersInLoadRange.has(e.detail.connectionId)) {
+      usersInLoadRange.delete(e.detail.connectionId);
+    }
+  });
 
   function createTeleporter(parentElement, startX, startY, startZ, endX, endY, endZ) {
     const transporterYOffset = -0.047;
@@ -198,4 +239,15 @@
 
   createTeleporter(teleporterGroup, 0, -0.05, 0, 18, 20000.05, 0);
   createTeleporter(teleporterGroup, -18, 20000.05, 0, 0, 5.35, -4);
+
+  setInterval(() => {
+    if (usersInLoadRange.size > 0) {
+      const allUsersCSV = Array.from(usersInLoadRange).sort().join(",");
+      const visibleTo = jukeboxFrame.getAttribute("visible-to");
+      if (visibleTo !== allUsersCSV) jukeboxFrame.setAttribute("visible-to", allUsersCSV);
+    } else {
+      const visibleTo = jukeboxFrame.getAttribute("visible-to");
+      if (visibleTo !== -1) jukeboxFrame.setAttribute("visible-to", -1);
+    }
+  }, 500);
 </script>

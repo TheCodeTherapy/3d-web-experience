@@ -2398,15 +2398,15 @@
 
       this.light = document.createElement("m-light");
       this.light.setAttribute("id", "chess-light");
-      this.light.setAttribute("color", "#ffdd99");
+      this.light.setAttribute("color", "#ffbbbb");
       this.light.setAttribute("x", 0);
-      this.light.setAttribute("y", 20);
+      this.light.setAttribute("y", 8);
       this.light.setAttribute("z", 0);
       this.light.setAttribute("cast-shadows", false);
-      this.light.setAttribute("intensity", 5000);
+      this.light.setAttribute("intensity", 500);
       this.light.setAttribute("type", "spotlight");
-      this.light.setAttribute("angle", 45);
-      this.light.setAttribute("distance", 30);
+      this.light.setAttribute("angle", 60);
+      this.light.setAttribute("distance", 15);
       this.light.setAttribute("debug", false);
       this.parentElement.appendChild(this.light);
 
@@ -2970,8 +2970,30 @@
     }
   }
 
+  class Chess2DRenderer {
+    constructor(parentElement) {
+      this.parentElement = parentElement;
+      this.createBoard();
+    }
+
+    createBoard() {
+      this.board = document.createElement("m-image");
+      this.board.setAttribute("src", "/assets/playground/chess_2d_board.jpg");
+      this.board.setAttribute("width", 8);
+      this.board.setAttribute("height", 8);
+      this.board.setAttribute("x", 0);
+      this.board.setAttribute("y", 9.85);
+      this.board.setAttribute("z", -7.997);
+      this.board.setAttribute("emissive", 0.3);
+
+      this.board.setAttribute("collide", true);
+      this.parentElement.appendChild(this.board);
+    }
+  }
+
   const wrapper = document.getElementById("wrapper");
   const renderer = new ChessGameRenderer(wrapper);
+  const renderer2D = new Chess2DRenderer(wrapper);
   const engine = createChessEngine();
 
   function simulateMatch(chessEngineInstance, chessRendererInstance, moves, delay, debug = false) {
