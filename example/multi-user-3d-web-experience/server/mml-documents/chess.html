@@ -1,7 +1,7 @@
 <!-- MML Chess by Marco Gomez (@TheCodeTherapy) 2025 -->
 <!-- https://github.com/thecodetherapy -->
 
-<m-group id="wrapper">
+<m-group id="wrapper" ry="180">
   <m-model src="/assets/playground/chess_board_b.glb" sx="5" sy="5" sz="5"></m-model>
 </m-group>
 <script>
@@ -2398,14 +2398,14 @@
 
       this.light = document.createElement("m-light");
       this.light.setAttribute("id", "chess-light");
-      this.light.setAttribute("color", "#77aaff");
+      this.light.setAttribute("color", "#ffdd99");
       this.light.setAttribute("x", 0);
       this.light.setAttribute("y", 20);
       this.light.setAttribute("z", 0);
-      this.light.setAttribute("cast-shadow", false);
-      this.light.setAttribute("intensity", 4000);
+      this.light.setAttribute("cast-shadows", false);
+      this.light.setAttribute("intensity", 5000);
       this.light.setAttribute("type", "spotlight");
-      this.light.setAttribute("angle", 90);
+      this.light.setAttribute("angle", 45);
       this.light.setAttribute("distance", 30);
       this.light.setAttribute("debug", false);
       this.parentElement.appendChild(this.light);
@@ -2461,13 +2461,17 @@
       this.createSounds();
       this.createStateVisualizer();
 
-      this.promptButton = new InteractionButton(3, 0, 5.5, 180, this.parentElement);
+      this.promptButton = new InteractionButton(3.5, 0, 6, 135, this.parentElement);
       this.prompt = document.createElement("m-prompt");
       this.promptEventListener = null;
       this.prompt.appendChild(this.promptButton.group);
       this.parentElement.appendChild(this.prompt);
 
       this.setBoardFromFEN(this.currentFEN);
+    }
+
+    randomFloatBetween(a, b) {
+      return Math.random() * (b - a) + a;
     }
 
     createSounds() {
@@ -2505,12 +2509,15 @@
     }
 
     playMoveAudio() {
-      this.moveAudio.setAttribute("volume", 3);
-      this.moveAudio.setAttribute("start-time", document.timeline.currentTime);
-      this.moveAudio.setAttribute("pause-time", document.timeline.currentTime + 200);
-      setTimeout(() => {
-        this.moveAudio.setAttribute("volume", 0);
-      }, 200);
+      setTimeout(
+        () => {
+          this.moveAudio.setAttribute("volume", this.randomFloatBetween(2, 4));
+          this.moveAudio.setAttribute("start-time", document.timeline.currentTime);
+          this.moveAudio.setAttribute("pause-time", document.timeline.currentTime + 200);
+          setTimeout(() => this.moveAudio.setAttribute("volume", 0), 200);
+        },
+        this.randomFloatBetween(0, 50),
+      );
     }
 
     playCaptureAudio() {
@@ -2600,33 +2607,33 @@
     createStateVisualizer() {
       this.stateLabelGroup = document.createElement("m-group");
       this.stateLabelGroup.setAttribute("x", 5);
-      this.stateLabelGroup.setAttribute("y", 2.5);
+      this.stateLabelGroup.setAttribute("y", 2.75);
       this.stateLabelGroup.setAttribute("z", 0);
       this.stateLabelGroup.setAttribute("ry", -90);
 
       this.stateLabelBackground = document.createElement("m-cube");
       this.stateLabelBackground.setAttribute("id", "state-label-background");
-
-      this.stateLabelBackground.setAttribute("width", 10);
-      this.stateLabelBackground.setAttribute("height", 0.7);
+      this.stateLabelBackground.setAttribute("width", 9.45);
+      this.stateLabelBackground.setAttribute("height", 0.4);
       this.stateLabelBackground.setAttribute("depth", 0.05);
       this.stateLabelBackground.setAttribute("color", "#000000");
       this.stateLabelBackground.setAttribute("opacity", 1);
+      this.stateLabelBackground.setAttribute("collide", true);
       this.stateLabelGroup.appendChild(this.stateLabelBackground);
 
       this.stateLabel = document.createElement("m-label");
       this.stateLabel.setAttribute("id", "state-label");
       this.stateLabel.setAttribute("width", 9.5);
-      this.stateLabel.setAttribute("z", 0.07);
+      this.stateLabel.setAttribute("z", 0.026);
       this.stateLabel.setAttribute("height", 0.45);
-      this.stateLabel.setAttribute("collide", false);
-      this.stateLabel.setAttribute("emissive", 5);
+      this.stateLabel.setAttribute("emissive", 4);
       this.stateLabel.setAttribute("content", "♟️ MML CHESS");
-      this.stateLabel.setAttribute("color", "rgba(0, 0, 7, 0.5)");
+      this.stateLabel.setAttribute("color", "rgba(1, 0, 3, 0.45)");
       this.stateLabel.setAttribute("font-color", "#4477ff");
       this.stateLabel.setAttribute("padding", 7);
-      // this.stateLabel.setAttribute("alignment", "center");
+      this.stateLabel.setAttribute("collide", true);
       this.stateLabel.setAttribute("font-size", 30);
+      // this.stateLabel.setAttribute("alignment", "center");
       this.stateLabelGroup.appendChild(this.stateLabel);
 
       this.parentElement.appendChild(this.stateLabelGroup);
@@ -2706,44 +2713,21 @@
       element.setAttribute("sz", scale);
     }
 
-    translate(element, x, y, z) {
+    translate(element, x, y, z, moveY = false, isCapture = false) {
       element.setAttribute("x", x);
-      element.setAttribute("y", y);
+      if (moveY) {
+        const yOffset = this.randomFloatBetween(0.3, 0.5);
+        const timeRatio = this.randomFloatBetween(0.4, 0.5);
+        element.setAttribute("y", y + yOffset);
+        setTimeout(() => element.setAttribute("y", y), this.movementDuration * timeRatio);
+      } else {
+        element.setAttribute("y", y);
+      }
+      if (isCapture) {
+        element.setAttribute("rz", this.randomFloatBetween(-35, -45));
+        setTimeout(() => element.setAttribute("rz", 0), this.movementDuration * 0.5);
+      }
       element.setAttribute("z", z);
-    }
-
-    createModel(piece, x, y, z, rotation, scale = this.modelScale) {
-      const model = document.createElement("m-model");
-
-      const isWhite = piece === piece.toUpperCase();
-      const side = isWhite ? "w" : "b";
-      const file = String.fromCharCode(97 + x / this.squareSize + this.centerOffset); // a-h
-      const rank = 8 - (z / this.squareSize + this.centerOffset); // 1-8
-      const pieceId = `${piece}${side}-${file}${rank}`;
-
-      model.setAttribute("src", this.pieceModels[piece]);
-      model.setAttribute("id", pieceId);
-      model.setAttribute("x", 0);
-      model.setAttribute("y", 0);
-      model.setAttribute("z", 0);
-      model.setAttribute("rx", 0);
-      model.setAttribute("ry", rotation);
-      model.setAttribute("rz", 0);
-      model.setAttribute("sx", this.modelScale * 1.1);
-      model.setAttribute("sy", this.modelScale * 1.1);
-      model.setAttribute("sz", this.modelScale * 1.1);
-      model.setAttribute("cast-shadows", true);
-
-      const lerp = document.createElement("m-attr-lerp");
-      lerp.setAttribute("attr", "all");
-      lerp.setAttribute("duration", this.movementDuration);
-      lerp.setAttribute("easing", "easeInOutQuint");
-      model.appendChild(lerp);
-
-      this.translate(model, x, y, z);
-      this.scale(model, scale);
-
-      return model;
     }
 
     getStateFromFEN(fen) {
@@ -2763,20 +2747,78 @@
       });
     }
 
+    createModel(piece, pieceId, x, y, z, rotation, scale = this.modelScale) {
+      const model = document.createElement("m-model");
+
+      model.setAttribute("src", this.pieceModels[piece]);
+      model.setAttribute("id", pieceId);
+      model.setAttribute("x", 0);
+      model.setAttribute("y", 0);
+      model.setAttribute("z", 0);
+      model.setAttribute("rx", 0);
+      model.setAttribute("ry", rotation);
+      model.setAttribute("rz", 0);
+      model.setAttribute("sx", this.modelScale * 1.1);
+      model.setAttribute("sy", this.modelScale * 1.1);
+      model.setAttribute("sz", this.modelScale * 1.1);
+      model.setAttribute("cast-shadows", true);
+
+      const lerp = document.createElement("m-attr-lerp");
+      lerp.setAttribute("attr", "x,z,sx,sy,sz");
+      lerp.setAttribute("duration", this.movementDuration);
+      lerp.setAttribute("easing", "easeInOutQuint");
+      model.appendChild(lerp);
+
+      const yLerp = document.createElement("m-attr-lerp");
+      yLerp.setAttribute("attr", "y");
+      yLerp.setAttribute("duration", this.movementDuration);
+      yLerp.setAttribute("easing", "easeInOutCubic");
+      model.appendChild(yLerp);
+
+      const rzLerp = document.createElement("m-attr-lerp");
+      rzLerp.setAttribute("attr", "rz");
+      rzLerp.setAttribute("duration", this.movementDuration);
+      rzLerp.setAttribute("easing", "easeInOutBack");
+      model.appendChild(rzLerp);
+
+      this.translate(model, x, y, z);
+      this.scale(model, scale);
+
+      return model;
+    }
+
+    getModelPositionOnBoard(model) {
+      const x = parseFloat(model.getAttribute("x"));
+      const z = parseFloat(model.getAttribute("z"));
+      const file = String.fromCharCode(97 + x / this.squareSize + this.centerOffset); // a-h
+      const rank = 8 - (z / this.squareSize + this.centerOffset); // 1-8
+      const position = `${file}${rank}`;
+      return position;
+    }
+
     createPlane(id, image, x, y, z) {
       const plane = document.createElement("m-image");
       plane.setAttribute("src", image);
       plane.setAttribute("id", id);
-      plane.setAttribute("width", 1);
-      plane.setAttribute("height", 1);
+      plane.setAttribute("width", 1.1);
+      plane.setAttribute("height", 1.1);
       plane.setAttribute("rx", -90);
       plane.setAttribute("x", x);
       plane.setAttribute("y", y);
       plane.setAttribute("z", z);
       plane.setAttribute("rotation", "-90 0 0");
-      plane.setAttribute("emissive", 10);
-      plane.setAttribute("visible", false);
+      plane.setAttribute("collide", false);
+      plane.setAttribute("cast-shadows", false);
+      plane.setAttribute("emissive", 2);
+      plane.setAttribute("visible-to", -1);
       plane.addEventListener("click", (e) => {
+        this.piecesMap.forEach((model, i) => {
+          const modelPos = this.getModelPositionOnBoard(model);
+          const modelId = model.getAttribute("id");
+          if (id === modelPos) {
+            console.log(modelId);
+          }
+        });
         console.log(`${e.detail.connectionId} clicked on ${id}`);
       });
       return plane;
@@ -2791,37 +2833,32 @@
 
       for (let row = 0; row < this.boardSize; row++) {
         for (let col = 0; col < this.boardSize; col++) {
-          const chessRow = 8 - row;
-          const chessCol = String.fromCharCode(97 + col);
-          const chessCellId = `${chessCol}${chessRow}`;
+          const piece = boardState[row][col];
+
           const x = (col - this.centerOffset) * this.squareSize;
           const y = this.yOffset;
           const z = (row - this.centerOffset) * this.squareSize;
 
-          // const possibleSquare = this.createPlane(
-          //   chessCellId,
-          //   this.possibleImageURL,
-          //   x,
-          //   y + 0.03,
-          //   z,
-          // );
-          // this.piecesGroup.appendChild(possibleSquare);
+          const file = String.fromCharCode(97 + x / this.squareSize + this.centerOffset); // a-h
+          const rank = 8 - (z / this.squareSize + this.centerOffset); // 1-8
+          const chessCellId = `${file}${rank}`;
 
-          // const captureSquare = this.createPlane(
-          //   `capture-${chessCellId}`,
-          //   this.captureImageURL,
-          //   x,
-          //   y + 0.01,
-          //   z,
-          // );
-          // this.piecesGroup.appendChild(captureSquare);
+          const possibleSquare = this.createPlane(
+            chessCellId,
+            this.possibleImageURL,
+            x,
+            y + 0.007,
+            z,
+          );
+          this.piecesGroup.appendChild(possibleSquare);
 
-          const piece = boardState[row][col];
           if (piece) {
             const isWhite = piece === piece.toUpperCase();
+            const side = isWhite ? "w" : "b";
             const rotation = isWhite ? 0 : 180;
+            const pieceId = `${piece}${side}-${file}${rank}`;
 
-            const model = this.createModel(piece, x, this.yOffset, z, rotation);
+            const model = this.createModel(piece, pieceId, x, this.yOffset, z, rotation);
 
             this.piecesGroup.appendChild(model);
             this.piecesMap.set(`${row}${col}`, model);
@@ -2831,7 +2868,7 @@
       }
     }
 
-    applyMove(from, to, description = "") {
+    applyMove(from, to, description = "", isCapture = false) {
       if (this.busy === false) {
         this.busy = true;
       }
@@ -2866,6 +2903,8 @@
         (toCol - this.centerOffset) * this.squareSize,
         this.yOffset,
         (toRow - this.centerOffset) * this.squareSize,
+        true,
+        isCapture,
       );
 
       this.piecesMap.delete(`${fromRow}${fromCol}`);
@@ -3004,7 +3043,7 @@
         return;
       }
       const isWhiteTurn = move.color === "w";
-      moveDescription = isWhiteTurn ? `🔲 ${moveDescription}` : `🔳 ${moveDescription}`;
+      moveDescription = isWhiteTurn ? ` ⚪ ${moveDescription}` : ` ⚫ ${moveDescription}`;
       const piece = isWhiteTurn ? move.piece.toUpperCase() : move.piece.toLowerCase();
       const fromSquare = move.from;
       const toSquare = move.to;
@@ -3049,8 +3088,8 @@
         moveDescription = `${moveDescription} 🏰 Castled ${side} from ${rookFrom} to ${rookTo}`;
         // Apply move to renderer
         setTimeout(() => {
-          chessRendererInstance.applyMove(rookFrom, rookTo, moveDescription);
-        }, renderer.movementDuration * renderer.afterMoveRatio);
+          chessRendererInstance.applyMove(rookFrom, rookTo, moveDescription, false);
+        }, renderer.movementDuration * 0.5);
       }
 
       if (isCheck) {
@@ -3062,7 +3101,7 @@
       }
 
       // Apply move to renderer
-      chessRendererInstance.applyMove(fromSquare, toSquare, moveDescription);
+      chessRendererInstance.applyMove(fromSquare, toSquare, moveDescription, isCapture);
 
       // Handle pawn promotion
       if (move.promotion) {
