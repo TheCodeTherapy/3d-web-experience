@@ -231,8 +231,8 @@
     selectionMenuGroup.setAttribute("id", "music-selection-menu");
     selectionMenuGroup.setAttribute("ry", "90");
     selectionMenuGroup.setAttribute("x", "0.2");
-    selectionMenuGroup.setAttribute("y", "1.2");
-    selectionMenuGroup.setAttribute("z", "-1.85");
+    selectionMenuGroup.setAttribute("y", "1.5");
+    selectionMenuGroup.setAttribute("z", "1.95");
     selectionMenuGroup.setAttribute("sx", 0);
     selectionMenuGroup.setAttribute("sy", 1);
     selectionMenuGroup.setAttribute("sz", 1);
@@ -254,7 +254,7 @@
 
     if (songsMap.size > 0) {
       const height = 0.2;
-      const spacing = 0.0035;
+      const spacing = 0.025;
       const totalItems = songsMap.size;
 
       const middleIndex = totalItems / 4;
@@ -268,16 +268,16 @@
 
         const label = document.createElement("m-label");
         label.setAttribute("content", name);
-        label.setAttribute("x", column === 0 ? "-0.43" : "0.43");
+        label.setAttribute("x", column === 0 ? -0.515 : 0.515);
         label.setAttribute("y", y);
         label.setAttribute("z", 0);
         label.setAttribute("sx", 0.5);
         label.setAttribute("sy", 0.5);
-        label.setAttribute("width", 1.7);
+        label.setAttribute("width", 2);
         label.setAttribute("height", height);
-        label.setAttribute("font-size", 12);
+        label.setAttribute("font-size", 13);
         label.setAttribute("padding", 3);
-        label.setAttribute("color", "rgba(0, 0, 0, 0.998)");
+        label.setAttribute("color", "rgba(0, 0, 0, 0.9)");
         label.setAttribute("font-color", "#33ff88");
         label.setAttribute("emissive", 3);
         label.setAttribute("cast-shadows", false);
@@ -347,6 +347,12 @@
           const name = url.split("/").pop().split(".")[0].replace(/^\d+_/g, "").replace(/_/g, " ");
           songsMap.set(name, { url, duration });
         }
+        const sortedSongsMap = new Map([...songsMap.entries()].sort());
+        songsMap.clear();
+        for (const [key, value] of sortedSongsMap) {
+          songsMap.set(key, value);
+        }
+        sortedSongsMap.clear();
         createMusicSelectionMenu();
       }
     } catch (error) {
