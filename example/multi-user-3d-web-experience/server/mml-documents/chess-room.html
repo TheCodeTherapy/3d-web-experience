@@ -11,10 +11,23 @@
   <m-frame
     id="jukebox-frame"
     src="wss:///mml-documents/jukebox.html"
-    y="20000"
-    z="-11.75"
+    y="19999.9"
+    x="-4"
+    z="-15.35"
     ry="-90"
   ></m-frame>
+  <m-light
+    color="#ff7744"
+    intensity="21"
+    y="20000"
+    x="-4"
+    z="-12.25"
+    rx="110"
+    distance="4"
+    angle="40"
+    cast-shadows="false"
+    debug="true"
+  ></m-light>
   <m-position-probe
     y="20000"
     id="loading-probe"
@@ -24,12 +37,17 @@
   ></m-position-probe>
 </m-group>
 <script>
+  const timeToToggleJukebox = 2000;
   const teleporterGroup = document.getElementById("teleporter");
-
   const loadingProbe = document.getElementById("loading-probe");
-
   const jukeboxFrame = document.getElementById("jukebox-frame");
   jukeboxFrame.setAttribute("visible-to", -1);
+
+  const lerp = document.createElement("m-attr-lerp");
+  lerp.setAttribute("attr", "y");
+  lerp.setAttribute("duration", 2000);
+  lerp.setAttribute("easing", "easeInOutExpo");
+  jukeboxFrame.appendChild(lerp);
 
   const usersInLoadRange = new Set();
 
@@ -237,17 +255,21 @@
     createParticles(teleporterStart, 12, 1);
   }
 
-  createTeleporter(teleporterGroup, 0, -0.05, 0, 18, 20000.05, 0);
+  createTeleporter(teleporterGroup, 0, -0.05, 0, 26, 20001.83, 0);
   createTeleporter(teleporterGroup, -18, 20000.05, 0, 0, 5.35, -4);
 
   setInterval(() => {
     if (usersInLoadRange.size > 0) {
-      const allUsersCSV = Array.from(usersInLoadRange).sort().join(",");
-      const visibleTo = jukeboxFrame.getAttribute("visible-to");
-      if (visibleTo !== allUsersCSV) jukeboxFrame.setAttribute("visible-to", allUsersCSV);
+      setTimeout(() => {
+        const allUsersCSV = Array.from(usersInLoadRange).sort().join(",");
+        const visibleTo = jukeboxFrame.getAttribute("visible-to");
+        if (visibleTo !== allUsersCSV) jukeboxFrame.setAttribute("visible-to", allUsersCSV);
+      }, timeToToggleJukebox);
     } else {
-      const visibleTo = jukeboxFrame.getAttribute("visible-to");
-      if (visibleTo !== -1) jukeboxFrame.setAttribute("visible-to", -1);
+      setTimeout(() => {
+        const visibleTo = jukeboxFrame.getAttribute("visible-to");
+        if (visibleTo !== "-1") jukeboxFrame.setAttribute("visible-to", -1);
+      }, timeToToggleJukebox);
     }
   }, 500);
 </script>
