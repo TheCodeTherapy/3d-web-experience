@@ -1,9 +1,7 @@
 <!-- MML Chess by Marco Gomez (@TheCodeTherapy) 2025 -->
 <!-- https://github.com/thecodetherapy -->
 
-<m-group id="wrapper" ry="180">
-  <m-model src="/assets/playground/chess_board_b.glb" sx="5" sy="5" sz="5"></m-model>
-</m-group>
+<m-group id="wrapper"></m-group>
 <script>
   function createChessEngine(fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
     const WHITE = "w";
@@ -2023,85 +2021,6 @@
     return new Chess(fen);
   }
 
-  function validateMoves(chessEngineInstance, moves, debug = false) {
-    let invalidMoves = [];
-
-    for (let i = 0; i < moves.length; i++) {
-      const currentMove = moves[i];
-
-      // **Ignore game results (e.g., "0-1", "1-0", "1/2-1/2")**
-      if (["1-0", "0-1", "1/2-1/2"].includes(currentMove)) {
-        if (debug === true) {
-          console.log(`Skipping game result: ${currentMove}`);
-          console.log(`Result: ${currentMove}`);
-        }
-        break;
-      }
-
-      if (debug === true) {
-        console.log(`move ${i}: ${currentMove}`);
-        console.log(`\n${chessEngineInstance.ascii()}\n`);
-      }
-
-      if (chessEngineInstance.isGameOver()) {
-        if (debug === true) {
-          console.log(`Game is over at move ${i}. Skipping remaining moves.`);
-        }
-        break;
-      }
-
-      const moveObject = chessEngineInstance.move(currentMove);
-      if (!moveObject) {
-        console.error(`❌ Invalid move at index ${i}: ${currentMove}`);
-        invalidMoves.push(currentMove);
-        break;
-      }
-    }
-
-    if (invalidMoves.length === 0) {
-      if (debug === true) {
-        console.log("✅ All moves validated! The match is legal.");
-      }
-      return true;
-    } else {
-      if (debug === true) {
-        console.log("❌ Some moves were invalid:", invalidMoves);
-      }
-      return false;
-    }
-  }
-
-  function cleanPGN(pgn) {
-    const movesOnly = pgn
-      .replace(/\[.*?\]\n?/g, "") // remove all headers
-      .trim() // remove leading and trailing whitespace
-      .replace(/\{.*?\}/g, "") // remove clock
-      .replace(/\d+\.+/g, "") // remove move numbers
-      .trim(); // remove leading and trailing whitespace
-    const movesArray = movesOnly.trim().split(/\s+/);
-    return movesArray;
-  }
-
-  function getChessGame(username, year, month, callback) {
-    var xhr = new XMLHttpRequest();
-    var url = `https://api.chess.com/pub/player/${username}/games/${year}/${month}`;
-
-    xhr.open("GET", url, true);
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4 && xhr.status === 200) {
-        var response = JSON.parse(xhr.responseText);
-        if (response.games && response.games.length > 0) {
-          const match = response.games[0];
-          const cleanMatch = cleanPGN(match.pgn);
-          callback(cleanMatch);
-        } else {
-          callback("No games found for this period.");
-        }
-      }
-    };
-    xhr.send();
-  }
-
   class InteractionButton {
     baseModelURL = "/assets/playground/interaction_button_base.glb";
     playButtonOnModelURL = "/assets/playground/interaction_play_button_on.glb";
@@ -2384,90 +2303,168 @@
       initialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     ) {
       this.parentElement = parentElement;
-      this.initialFEN = initialFEN;
-      this.currentFEN = initialFEN;
-      this.busy = false;
 
-      // Create groups
-      this.group = document.createElement("m-group");
-      this.group.setAttribute("id", "chess-group");
-      this.piecesGroup = document.createElement("m-group");
-      this.piecesGroup.setAttribute("id", "pieces-group");
-      this.parentElement.appendChild(this.group);
-      this.parentElement.appendChild(this.piecesGroup);
-
-      this.light = document.createElement("m-light");
-      this.light.setAttribute("id", "chess-light");
-      this.light.setAttribute("color", "#ffbbbb");
-      this.light.setAttribute("x", 0);
-      this.light.setAttribute("y", 8);
-      this.light.setAttribute("z", 0);
-      this.light.setAttribute("cast-shadows", false);
-      this.light.setAttribute("intensity", 500);
-      this.light.setAttribute("type", "spotlight");
-      this.light.setAttribute("angle", 60);
-      this.light.setAttribute("distance", 15);
-      this.light.setAttribute("debug", false);
-      this.parentElement.appendChild(this.light);
-
+      // chess game settings =================================================
       this.boardSize = 8;
       this.squareSize = 1;
       this.halfBoardSize = this.boardSize / 2;
       this.halfSquareSize = this.squareSize / 2;
       this.centerOffset = this.halfBoardSize - this.halfSquareSize;
-      this.yOffset = 0.35;
 
-      this.modelScale = 0.2;
+      this.board2DYOffset = 0.003;
+      this.board3DYOffset = 0.35;
+
+      this.piece3DScale = 0.2;
       this.capturedScale = 0.1;
 
-      this.capturedOffsetX = 4.45;
-      this.capturedOffsetZ = 4.45;
+      this.captured3DOffsetX = 4.45;
+      this.captured3DOffsetZ = 4.45;
 
       this.movementDuration = 500;
       this.afterMoveRatio = 0.3334;
 
-      this.allPieces = [];
-      this.extraPieces = [];
+      this.inverse = false;
+      // =====================================================================
 
-      this.piecesMap = new Map();
+      // states and book keeping =============================================
+      this.initialFEN = initialFEN;
+      this.currentFEN = initialFEN;
+
+      this.busy = false;
+      this.all2DPieces = [];
+      this.extra2DPieces = [];
+      this.all3DPieces = [];
+      this.extra3DPieces = [];
+
+      this.pieces2DMap = new Map();
+      this.pieces3DMap = new Map();
       this.possibleMovesMap = new Map();
       this.possibleCapturesMap = new Map();
 
-      this.capturedPiecesMap = { white: [], black: [] };
+      this.capturedPieces2DMap = { white: [], black: [] };
+      this.capturedPieces3DMap = { white: [], black: [] };
+      // =====================================================================
 
+      // Create groups =======================================================
+      this.group = document.createElement("m-group");
+      this.group.setAttribute("id", "chess-group");
+
+      this.board3D = this.create3DBoard();
+      this.group.appendChild(this.board3D);
+
+      this.board2DWrapper = document.createElement("m-group");
+      this.board2DWrapper.setAttribute("id", "2D-board-wrapper");
+      this.board2DWrapper.setAttribute("x", 0);
+      this.board2DWrapper.setAttribute("y", 9.34);
+      this.board2DWrapper.setAttribute("z", 7.997);
+      this.board2DWrapper.setAttribute("rx", -90);
+
+      this.pieces2DGroup = document.createElement("m-group");
+      this.pieces2DGroup.setAttribute("id", "pieces-2D-group");
+      this.pieces2DGroup.appendChild(this.create2DBoard(8, 8, 0.3, 1.0));
+      this.board2DWrapper.appendChild(this.pieces2DGroup);
+      this.group.appendChild(this.board2DWrapper);
+
+      this.pieces3DGroup = document.createElement("m-group");
+      this.pieces3DGroup.setAttribute("id", "pieces-3D-group");
+      this.group.appendChild(this.pieces3DGroup);
+
+      this.parentElement.appendChild(this.group);
+      // =====================================================================
+
+      // chess game assets ===================================================
       this.possibleImageURL = "/assets/playground/chess_possible.png";
       this.captureImageURL = "/assets/playground/chess_capture.png";
 
-      this.pieceModels = {
-        P: "/assets/playground/chess_white_pawn.glb",
-        R: "/assets/playground/chess_white_rook.glb",
-        N: "/assets/playground/chess_white_knight.glb",
-        B: "/assets/playground/chess_white_bishop.glb",
-        Q: "/assets/playground/chess_white_queen.glb",
-        K: "/assets/playground/chess_white_king.glb",
-        p: "/assets/playground/chess_black_pawn.glb",
-        r: "/assets/playground/chess_black_rook.glb",
-        n: "/assets/playground/chess_black_knight.glb",
-        b: "/assets/playground/chess_black_bishop.glb",
-        q: "/assets/playground/chess_black_queen.glb",
-        k: "/assets/playground/chess_black_king.glb",
-      };
+      this.pieces3DModels = new Map([
+        ["P", "/assets/playground/chess_white_pawn.glb"],
+        ["R", "/assets/playground/chess_white_rook.glb"],
+        ["N", "/assets/playground/chess_white_knight.glb"],
+        ["B", "/assets/playground/chess_white_bishop.glb"],
+        ["Q", "/assets/playground/chess_white_queen.glb"],
+        ["K", "/assets/playground/chess_white_king.glb"],
+        ["p", "/assets/playground/chess_black_pawn.glb"],
+        ["r", "/assets/playground/chess_black_rook.glb"],
+        ["n", "/assets/playground/chess_black_knight.glb"],
+        ["b", "/assets/playground/chess_black_bishop.glb"],
+        ["q", "/assets/playground/chess_black_queen.glb"],
+        ["k", "/assets/playground/chess_black_king.glb"],
+      ]);
+
+      this.pieces2DImages = new Map([
+        ["P", "/assets/playground/chess_white_pawn.png"],
+        ["R", "/assets/playground/chess_white_rook.png"],
+        ["N", "/assets/playground/chess_white_knight.png"],
+        ["B", "/assets/playground/chess_white_bishop.png"],
+        ["Q", "/assets/playground/chess_white_queen.png"],
+        ["K", "/assets/playground/chess_white_king.png"],
+        ["p", "/assets/playground/chess_black_pawn.png"],
+        ["r", "/assets/playground/chess_black_rook.png"],
+        ["n", "/assets/playground/chess_black_knight.png"],
+        ["b", "/assets/playground/chess_black_bishop.png"],
+        ["q", "/assets/playground/chess_black_queen.png"],
+        ["k", "/assets/playground/chess_black_king.png"],
+      ]);
 
       this.moveAudioURL = "/assets/playground/chess_move.mp3";
       this.captureAudioURL = "/assets/playground/chess_capture.mp3";
       this.castleAudioURL = "/assets/playground/chess_castle.mp3";
       this.checkAudioURL = "/assets/playground/chess_check.mp3";
+      // =====================================================================
 
       this.createSounds();
       this.createStateVisualizer();
 
-      this.promptButton = new InteractionButton(3.5, 0, 6, 135, this.parentElement);
+      this.promptButton = new InteractionButton(-3.5, 0, -6, -45, this.parentElement);
       this.prompt = document.createElement("m-prompt");
       this.promptEventListener = null;
       this.prompt.appendChild(this.promptButton.group);
       this.parentElement.appendChild(this.prompt);
 
       this.setBoardFromFEN(this.currentFEN);
+    }
+
+    create3DBoard() {
+      const board3DGroup = document.createElement("m-group");
+      const board = document.createElement("m-model");
+      board.setAttribute("src", "/assets/playground/chess_board_b.glb");
+      board.setAttribute("id", "3D-board");
+      board.setAttribute("sx", 5);
+      board.setAttribute("sy", 5);
+      board.setAttribute("sz", 5);
+      board3DGroup.appendChild(board);
+
+      const boardLight = document.createElement("m-light");
+      boardLight.setAttribute("id", "chess-light");
+      boardLight.setAttribute("color", "#ffbbbb");
+      boardLight.setAttribute("x", 0);
+      boardLight.setAttribute("y", 8);
+      boardLight.setAttribute("z", 0);
+      boardLight.setAttribute("cast-shadows", false);
+      boardLight.setAttribute("intensity", 500);
+      boardLight.setAttribute("type", "spotlight");
+      boardLight.setAttribute("angle", 60);
+      boardLight.setAttribute("distance", 15);
+      boardLight.setAttribute("debug", false);
+      board3DGroup.appendChild(boardLight);
+
+      return board3DGroup;
+    }
+
+    create2DBoard(width, height, emissive, opacity) {
+      const board2DGroup = document.createElement("m-group");
+
+      const board = document.createElement("m-image");
+      board.setAttribute("src", "/assets/playground/chess_2d_board.jpg");
+      board.setAttribute("id", "2D-board");
+      board.setAttribute("width", width);
+      board.setAttribute("height", height);
+      board.setAttribute("emissive", 0.3);
+      board.setAttribute("opacity", 1);
+      board.setAttribute("rx", 90);
+      board2DGroup.appendChild(board);
+
+      return board2DGroup;
     }
 
     randomFloatBetween(a, b) {
@@ -2556,7 +2553,7 @@
     }
 
     reset() {
-      this.resetBoardFromInitialFen();
+      this.setBoardFromFEN(this.initialFEN, true);
       this.promptButton.turnOn();
       if (this.stateText) {
         this.stateText.updateText("♟️ MML CHESS");
@@ -2565,51 +2562,12 @@
       this.busy = false;
     }
 
-    resetBoardFromInitialFen() {
-      this.currentFEN = this.initialFEN;
-      const boardState = this.getStateFromFEN(this.currentFEN);
-
-      this.extraPieces.forEach((piece) => {
-        this.piecesGroup.removeChild(piece);
-      });
-
-      this.piecesMap.clear();
-      this.capturedPiecesMap.white = [];
-      this.capturedPiecesMap.black = [];
-
-      for (let row = 0; row < this.boardSize; row++) {
-        for (let col = 0; col < this.boardSize; col++) {
-          const piece = boardState[row][col];
-          if (piece) {
-            const x = (col - this.centerOffset) * this.squareSize;
-            const y = this.yOffset;
-            const z = (row - this.centerOffset) * this.squareSize;
-
-            const file = String.fromCharCode(97 + x / this.squareSize + this.centerOffset); // a-h
-            const rank = 8 - (z / this.squareSize + this.centerOffset); // 1-8
-            const isWhite = piece === piece.toUpperCase();
-            const side = isWhite ? "w" : "b";
-            const pieceId = `${piece}${side}-${file}${rank}`;
-
-            const model = this.allPieces.find((p) => p.getAttribute("id") === pieceId);
-            if (model) {
-              this.translate(model, x, y, z);
-              this.scale(model, this.modelScale);
-              this.piecesMap.set(`${row}${col}`, model);
-            } else {
-              console.error(`Model not found for ${pieceId}`);
-            }
-          }
-        }
-      }
-    }
-
     createStateVisualizer() {
       this.stateLabelGroup = document.createElement("m-group");
-      this.stateLabelGroup.setAttribute("x", 5);
-      this.stateLabelGroup.setAttribute("y", 2.75);
+      this.stateLabelGroup.setAttribute("x", -5.7);
+      this.stateLabelGroup.setAttribute("y", 3);
       this.stateLabelGroup.setAttribute("z", 0);
-      this.stateLabelGroup.setAttribute("ry", -90);
+      this.stateLabelGroup.setAttribute("ry", 90);
 
       this.stateLabelBackground = document.createElement("m-cube");
       this.stateLabelBackground.setAttribute("id", "state-label-background");
@@ -2640,12 +2598,16 @@
 
       // this.stateImage = document.createElement("m-image");
       // this.stateImage.setAttribute("id", "state-image");
-      // this.stateImage.setAttribute("width", 13);
-      // this.stateImage.setAttribute("x", 3);
+      // this.stateImage.setAttribute("width", 15);
+      // this.stateImage.setAttribute("x", -3.5);
+      // this.stateImage.setAttribute("y", 0);
+      // this.stateImage.setAttribute("z", -this.boardSize / 2 - 0.3);
+      // this.stateImage.setAttribute("ry", 180);
+      // this.stateImage.setAttribute("rx", 90);
       // this.stateImage.setAttribute("collide", false);
       // this.stateImage.setAttribute("emissive", 5);
       // this.stateImage.setAttribute("content", "");
-      // this.stateLabelGroup.appendChild(this.stateImage);
+      // this.board2DWrapper.appendChild(this.stateImage);
 
       // this.stateText = this.generateTextImage(this.stateImage, "♟️ MML CHESS", {
       //   textColor: "#00ff00",
@@ -2747,10 +2709,10 @@
       });
     }
 
-    createModel(piece, pieceId, x, y, z, rotation, scale = this.modelScale) {
+    create3DPiece(piece3DAsset, pieceId, x, y, z, rotation, scale = this.piece3DScale) {
       const model = document.createElement("m-model");
 
-      model.setAttribute("src", this.pieceModels[piece]);
+      model.setAttribute("src", piece3DAsset);
       model.setAttribute("id", pieceId);
       model.setAttribute("x", 0);
       model.setAttribute("y", 0);
@@ -2758,9 +2720,9 @@
       model.setAttribute("rx", 0);
       model.setAttribute("ry", rotation);
       model.setAttribute("rz", 0);
-      model.setAttribute("sx", this.modelScale * 1.1);
-      model.setAttribute("sy", this.modelScale * 1.1);
-      model.setAttribute("sz", this.modelScale * 1.1);
+      model.setAttribute("sx", scale * 1.1);
+      model.setAttribute("sy", scale * 1.1);
+      model.setAttribute("sz", scale * 1.1);
       model.setAttribute("cast-shadows", true);
 
       const lerp = document.createElement("m-attr-lerp");
@@ -2785,6 +2747,26 @@
       this.scale(model, scale);
 
       return model;
+    }
+
+    create2DPiece(src, pieceId, x, y, z, width, height, emissive, rotation) {
+      const image = document.createElement("m-image");
+      image.setAttribute("id", pieceId);
+      image.setAttribute("src", src);
+      image.setAttribute("x", x);
+      image.setAttribute("y", y);
+      image.setAttribute("z", z);
+      image.setAttribute("width", width);
+      image.setAttribute("height", height);
+      image.setAttribute("emissive", emissive);
+      image.setAttribute("rx", rotation);
+
+      const lerp = document.createElement("m-attr-lerp");
+      lerp.setAttribute("attr", "x,z");
+      lerp.setAttribute("duration", this.movementDuration);
+      lerp.setAttribute("easing", "easeInOutQuint");
+      image.appendChild(lerp);
+      return image;
     }
 
     getModelPositionOnBoard(model) {
@@ -2812,7 +2794,7 @@
       plane.setAttribute("emissive", 2);
       plane.setAttribute("visible-to", -1);
       plane.addEventListener("click", (e) => {
-        this.piecesMap.forEach((model, i) => {
+        this.pieces3DMap.forEach((model, i) => {
           const modelPos = this.getModelPositionOnBoard(model);
           const modelId = model.getAttribute("id");
           if (id === modelPos) {
@@ -2824,54 +2806,104 @@
       return plane;
     }
 
-    setBoardFromFEN(fen) {
-      this.currentFEN = fen;
+    setBoardFromFEN(fen, reset = false) {
+      this.currentFEN = reset === true ? this.initialFEN : fen;
       const boardState = this.getStateFromFEN(fen);
 
-      this.piecesGroup.innerHTML = "";
-      this.piecesMap.clear();
+      if (reset === true) {
+        this.capturedPieces2DMap.white = [];
+        this.capturedPieces2DMap.black = [];
+        this.extra2DPieces.forEach((piece) => {
+          this.pieces2DGroup.removeChild(piece);
+        });
+        this.capturedPieces3DMap.white = [];
+        this.capturedPieces3DMap.black = [];
+        this.extra3DPieces.forEach((piece) => {
+          this.pieces3DGroup.removeChild(piece);
+        });
+      } else {
+        this.pieces3DGroup.innerHTML = "";
+        this.pieces3DMap.clear();
+      }
+
+      const board2D = document.getElementById("2D-board");
+      const board2DX = parseFloat(board2D.getAttribute("x"));
+      const board2DY = parseFloat(board2D.getAttribute("y"));
+      const board2DZ = parseFloat(board2D.getAttribute("z"));
 
       for (let row = 0; row < this.boardSize; row++) {
         for (let col = 0; col < this.boardSize; col++) {
           const piece = boardState[row][col];
 
-          const x = (col - this.centerOffset) * this.squareSize;
-          const y = this.yOffset;
-          const z = (row - this.centerOffset) * this.squareSize;
+          const x = this.inverse
+            ? (col - this.centerOffset) * this.squareSize
+            : (this.boardSize - 1 - col - this.centerOffset) * this.squareSize;
+
+          const z = this.inverse
+            ? (row - this.centerOffset) * this.squareSize
+            : (this.boardSize - 1 - row - this.centerOffset) * this.squareSize;
+
+          const y3D = this.board3DYOffset;
+          const y2D = this.board2DYOffset;
 
           const file = String.fromCharCode(97 + x / this.squareSize + this.centerOffset); // a-h
-          const rank = 8 - (z / this.squareSize + this.centerOffset); // 1-8
+          const rank = this.boardSize - y3D / this.squareSize - this.centerOffset; // 1-8
           const chessCellId = `${file}${rank}`;
 
-          const possibleSquare = this.createPlane(
-            chessCellId,
-            this.possibleImageURL,
-            x,
-            y + 0.007,
-            z,
-          );
-          this.piecesGroup.appendChild(possibleSquare);
+          if (reset === false) {
+            const possible3DSquare = this.createPlane(
+              chessCellId,
+              this.possibleImageURL,
+              x,
+              y3D + 0.007,
+              z,
+            );
+            this.pieces3DGroup.appendChild(possible3DSquare);
+          }
 
           if (piece) {
             const isWhite = piece === piece.toUpperCase();
             const side = isWhite ? "w" : "b";
-            const rotation = isWhite ? 0 : 180;
+            const rotation = isWhite ? 180 : 0;
             const pieceId = `${piece}${side}-${file}${rank}`;
 
-            const model = this.createModel(piece, pieceId, x, this.yOffset, z, rotation);
+            if (reset === true) {
+              const piece2D = this.all2DPieces.find((p) => p.getAttribute("id") === pieceId);
+              if (piece2D) {
+                this.translate(piece2D, x, y2D, z);
+                this.scale(piece2D, 1);
+                this.pieces2DMap.set(`${row}${col}`, piece2D);
+              } else {
+                console.error(`ERROR: setBoardFromFen: piece2D not found for ${pieceId}`);
+              }
 
-            this.piecesGroup.appendChild(model);
-            this.piecesMap.set(`${row}${col}`, model);
-            this.allPieces.push(model);
+              const piece3D = this.all3DPieces.find((p) => p.getAttribute("id") === pieceId);
+              if (piece3D) {
+                this.translate(piece3D, x, y3D, z);
+                this.scale(piece3D, this.piece3DScale);
+                this.pieces3DMap.set(`${row}${col}`, piece3D);
+              } else {
+                console.error(`ERROR: setBoardFromFen: piece3D not found for ${pieceId}`);
+              }
+            } else {
+              const piece2DAsset = this.pieces2DImages.get(piece);
+              const piece2D = this.create2DPiece(piece2DAsset, pieceId, x, y2D, z, 1, 1, 1, 90);
+              this.pieces2DGroup.appendChild(piece2D);
+              this.pieces2DMap.set(`${row}${col}`, piece2D);
+              this.all2DPieces.push(piece2D);
+
+              const piece3DAsset = this.pieces3DModels.get(piece);
+              const piece3D = this.create3DPiece(piece3DAsset, pieceId, x, y3D, z, rotation);
+              this.pieces3DGroup.appendChild(piece3D);
+              this.pieces3DMap.set(`${row}${col}`, piece3D);
+              this.all3DPieces.push(piece3D);
+            }
           }
         }
       }
     }
 
-    applyMove(from, to, description = "", isCapture = false) {
-      if (this.busy === false) {
-        this.busy = true;
-      }
+    setMoveText(from, to, description) {
       if (this.stateText) {
         if (description.length > 0) {
           this.stateText.updateText(description);
@@ -2887,28 +2919,112 @@
           this.stateLabel.setAttribute("content", `from: ${from} to: ${to}`);
         }
       }
+    }
+
+    applyMove(from, to, description = "", isCapture = false) {
+      if (this.busy === false) {
+        this.busy = true;
+      }
+
+      this.setMoveText(from, to, description);
+
       const fromRow = 8 - parseInt(from[1]);
       const fromCol = from.charCodeAt(0) - 97;
       const toRow = 8 - parseInt(to[1]);
       const toCol = to.charCodeAt(0) - 97;
 
-      const movingPieceModel = this.piecesMap.get(`${fromRow}${fromCol}`);
-      if (!movingPieceModel) {
-        console.error(`❌ ERROR: No piece found at ${from}`);
+      const movingPiece2D = this.pieces2DMap.get(`${fromRow}${fromCol}`);
+      if (!movingPiece2D) {
+        console.error(`❌ ERROR: No movingPiece2D found at ${from}`);
         return;
       }
 
-      this.translate(
-        movingPieceModel,
-        (toCol - this.centerOffset) * this.squareSize,
-        this.yOffset,
-        (toRow - this.centerOffset) * this.squareSize,
-        true,
-        isCapture,
-      );
+      const movingPiece3D = this.pieces3DMap.get(`${fromRow}${fromCol}`);
+      if (!movingPiece3D) {
+        console.error(`❌ ERROR: No movingPiece3D found at ${from}`);
+        return;
+      }
 
-      this.piecesMap.delete(`${fromRow}${fromCol}`);
-      this.piecesMap.set(`${toRow}${toCol}`, movingPieceModel);
+      const x = this.inverse
+        ? (toCol - this.centerOffset) * this.squareSize
+        : (this.boardSize - 1 - toCol - this.centerOffset) * this.squareSize;
+
+      const z = this.inverse
+        ? (toRow - this.centerOffset) * this.squareSize
+        : (this.boardSize - 1 - toRow - this.centerOffset) * this.squareSize;
+
+      this.translate(movingPiece3D, x, this.board3DYOffset, z, true, isCapture);
+      this.pieces3DMap.delete(`${fromRow}${fromCol}`);
+      this.pieces3DMap.set(`${toRow}${toCol}`, movingPiece3D);
+
+      this.translate(movingPiece2D, x, this.board2DYOffset, z, false, isCapture);
+      this.pieces2DMap.delete(`${fromRow}${fromCol}`);
+      this.pieces2DMap.set(`${toRow}${toCol}`, movingPiece2D);
+    }
+
+    sendToCapturedArea(position) {
+      const row = 8 - parseInt(position[1]);
+      const col = position.charCodeAt(0) - 97;
+
+      const capturedPiece2D = this.pieces2DMap.get(`${row}${col}`);
+      if (!capturedPiece2D) {
+        console.log(`❌ ERROR: No capturedPiece2D found at ${position} to capture!`);
+        return;
+      }
+      const piece2DId = capturedPiece2D.getAttribute("id");
+      if (!piece2DId) {
+        console.log(`❌ ERROR: Captured piece2DId at ${position} is missing an ID!`);
+        return;
+      }
+
+      const capturedPiece3D = this.pieces3DMap.get(`${row}${col}`);
+      if (!capturedPiece3D) {
+        console.log(`❌ ERROR: No capturedPiece3D found at ${position} to capture!`);
+        return;
+      }
+      const piece3DId = capturedPiece3D.getAttribute("id");
+      if (!piece3DId) {
+        console.log(`❌ ERROR: Captured piece3DId at ${position} is missing an ID!`);
+        return;
+      }
+
+      const isWhite = piece3DId.includes("w");
+
+      const capture2DArray = isWhite
+        ? this.capturedPieces2DMap.white
+        : this.capturedPieces2DMap.black;
+      capture2DArray.push(capturedPiece2D);
+
+      const capture3DArray = isWhite
+        ? this.capturedPieces3DMap.white
+        : this.capturedPieces3DMap.black;
+      capture3DArray.push(capturedPiece3D);
+
+      if (this.pieces3DMap.has(`${row}${col}`)) {
+        this.pieces3DMap.delete(`${row}${col}`);
+      } else {
+        console.log(`❌ ERROR: Piece at ${position} not found in pieces3DMap!`);
+      }
+
+      const captured3DX = isWhite ? -this.captured3DOffsetX : this.captured3DOffsetX;
+      const captured3DZ = isWhite
+        ? this.captured3DOffsetZ - capture3DArray.length * 0.5
+        : -this.captured3DOffsetZ + capture3DArray.length * 0.5;
+
+      setTimeout(() => {
+        this.translate(capturedPiece3D, captured3DX, this.board3DYOffset, captured3DZ);
+        this.scale(capturedPiece3D, this.capturedScale);
+      }, this.movementDuration * this.afterMoveRatio);
+
+      const captured2DX = isWhite ? -this.captured3DOffsetX : this.captured3DOffsetX;
+      const captured2DZ = isWhite
+        ? this.captured3DOffsetZ - capture2DArray.length * 0.5
+        : -this.captured3DOffsetZ + capture2DArray.length * 0.5;
+
+      setTimeout(() => {
+        this.translate(capturedPiece2D, captured2DX, this.board2DYOffset, captured2DZ);
+        this.scale(capturedPiece2D, 0.5);
+      }, this.movementDuration * this.afterMoveRatio);
     }
 
     promotePawn(position, newPiece) {
@@ -2917,7 +3033,7 @@
       const isWhite = newPiece === newPiece.toUpperCase();
       const rotation = isWhite ? 0 : 180;
 
-      const pawnModel = this.piecesMap.get(`${row}${col}`);
+      const pawnModel = this.pieces3DMap.get(`${row}${col}`);
       if (!pawnModel) {
         console.error(`❌ ERROR: No pawn found at ${position} to promote!`);
         return;
@@ -2925,75 +3041,106 @@
 
       this.sendToCapturedArea(pawnModel, newPiece);
 
-      const x = (col - this.centerOffset) * this.squareSize;
-      const z = (row - this.centerOffset) * this.squareSize;
-      const queenModel = this.createModel(newPiece, x, this.yOffset, z, rotation);
-      this.piecesGroup.appendChild(queenModel);
-      this.piecesMap.set(`${row}${col}`, queenModel);
-      this.extraPieces.push(queenModel);
-    }
+      const x = this.inverse
+        ? (col - this.centerOffset) * this.squareSize
+        : (this.boardSize - 1 - col - this.centerOffset) * this.squareSize;
 
-    sendToCapturedArea(position) {
-      const row = 8 - parseInt(position[1]);
-      const col = position.charCodeAt(0) - 97;
+      const z = this.inverse
+        ? (row - this.centerOffset) * this.squareSize
+        : (this.boardSize - 1 - row - this.centerOffset) * this.squareSize;
 
-      const capturedPieceModel = this.piecesMap.get(`${row}${col}`);
-      if (!capturedPieceModel) {
-        console.log(`❌ ERROR: No piece found at ${position} to capture!`);
-        return;
-      }
-      const pieceId = capturedPieceModel.getAttribute("id");
-      if (!pieceId) {
-        console.log(`❌ ERROR: Captured piece at ${position} is missing an ID!`);
-        return;
-      }
-
-      const isWhite = pieceId.includes("w");
-      const captureArray = isWhite ? this.capturedPiecesMap.white : this.capturedPiecesMap.black;
-      captureArray.push(capturedPieceModel);
-
-      if (this.piecesMap.has(`${row}${col}`)) {
-        this.piecesMap.delete(`${row}${col}`);
-      } else {
-        console.log(`❌ ERROR: Piece at ${position} not found in piecesMap!`);
-      }
-
-      const capturedX = isWhite ? this.capturedOffsetX : -this.capturedOffsetX;
-      const capturedZ = isWhite
-        ? -this.capturedOffsetZ + captureArray.length * 0.5
-        : this.capturedOffsetZ - captureArray.length * 0.5;
-      // const capturedZ = this.capturedOffsetZ - captureArray.length * 0.5;
-      setTimeout(() => {
-        this.translate(capturedPieceModel, capturedX, this.yOffset, capturedZ);
-        this.scale(capturedPieceModel, this.capturedScale);
-      }, this.movementDuration * this.afterMoveRatio);
+      const queenModel = this.create3DPiece(newPiece, x, this.board3DYOffset, z, rotation);
+      this.pieces3DGroup.appendChild(queenModel);
+      this.pieces3DMap.set(`${row}${col}`, queenModel);
+      this.extra3DPieces.push(queenModel);
     }
   }
 
-  class Chess2DRenderer {
-    constructor(parentElement) {
-      this.parentElement = parentElement;
-      this.createBoard();
+  function validateMoves(chessEngineInstance, moves, debug = false) {
+    let invalidMoves = [];
+
+    for (let i = 0; i < moves.length; i++) {
+      const currentMove = moves[i];
+
+      // **Ignore game results (e.g., "0-1", "1-0", "1/2-1/2")**
+      if (["1-0", "0-1", "1/2-1/2"].includes(currentMove)) {
+        if (debug === true) {
+          console.log(`Skipping game result: ${currentMove}`);
+          console.log(`Result: ${currentMove}`);
+        }
+        break;
+      }
+
+      if (debug === true) {
+        console.log(`move ${i}: ${currentMove}`);
+        console.log(`\n${chessEngineInstance.ascii()}\n`);
+      }
+
+      if (chessEngineInstance.isGameOver()) {
+        if (debug === true) {
+          console.log(`Game is over at move ${i}. Skipping remaining moves.`);
+        }
+        break;
+      }
+
+      const moveObject = chessEngineInstance.move(currentMove);
+      if (!moveObject) {
+        console.error(`❌ Invalid move at index ${i}: ${currentMove}`);
+        invalidMoves.push(currentMove);
+        break;
+      }
     }
 
-    createBoard() {
-      this.board = document.createElement("m-image");
-      this.board.setAttribute("src", "/assets/playground/chess_2d_board.jpg");
-      this.board.setAttribute("width", 8);
-      this.board.setAttribute("height", 8);
-      this.board.setAttribute("x", 0);
-      this.board.setAttribute("y", 9.85);
-      this.board.setAttribute("z", -7.997);
-      this.board.setAttribute("emissive", 0.3);
-
-      this.board.setAttribute("collide", true);
-      this.parentElement.appendChild(this.board);
+    if (invalidMoves.length === 0) {
+      if (debug === true) {
+        console.log("✅ All moves validated! The match is legal.");
+      }
+      return true;
+    } else {
+      if (debug === true) {
+        console.log("❌ Some moves were invalid:", invalidMoves);
+      }
+      return false;
     }
+  }
+
+  function cleanPGN(pgn) {
+    const movesOnly = pgn
+      .replace(/\[.*?\]\n?/g, "") // remove all headers
+      .trim() // remove leading and trailing whitespace
+      .replace(/\{.*?\}/g, "") // remove clock
+      .replace(/\d+\.+/g, "") // remove move numbers
+      .trim(); // remove leading and trailing whitespace
+    const movesArray = movesOnly.trim().split(/\s+/);
+    return movesArray;
+  }
+
+  function getChessGameByDate(username, year, month, callback) {
+    var xhr = new XMLHttpRequest();
+    var url = `https://api.chess.com/pub/player/${username}/games/${year}/${month}`;
+
+    xhr.open("GET", url, true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4 && xhr.status === 200) {
+        var response = JSON.parse(xhr.responseText);
+        if (response.games && response.games.length > 0) {
+          const match = response.games[0];
+          const cleanMatch = cleanPGN(match.pgn);
+          callback(cleanMatch);
+        } else {
+          callback("No games found for this period.");
+        }
+      }
+    };
+    xhr.send();
+  }
+
+  function gameBrowser(gamesList) {
+    console.log(gamesList);
   }
 
   const wrapper = document.getElementById("wrapper");
   const renderer = new ChessGameRenderer(wrapper);
-  const renderer2D = new Chess2DRenderer(wrapper);
   const engine = createChessEngine();
 
   function simulateMatch(chessEngineInstance, chessRendererInstance, moves, delay, debug = false) {
@@ -3156,7 +3303,7 @@
     (detail) => {
       const cleanValue = detail.value.trim().replace(/\s/g, "");
       const [username, year, month] = cleanValue.split(",");
-      getChessGame(username, year, month, function (pgn) {
+      getChessGameByDate(username, year, month, function (pgn) {
         if (!validateMoves(engine, pgn)) {
           console.error("❌ Aborting simulation: The move sequence is invalid.");
           return;
