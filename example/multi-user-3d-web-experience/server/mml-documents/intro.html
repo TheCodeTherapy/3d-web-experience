@@ -32,19 +32,6 @@
   </m-group>
 
   <m-group id="plinth-group">
-    <m-cylinder
-      rx="90"
-      id="cleaner"
-      width="3"
-      radius="0"
-      height="0.05"
-      x="0"
-      z="-1.4"
-      y="0"
-      opacity="0.5"
-      color="#77aaff"
-      cast-shadows="false"
-    ></m-cylinder>
     <m-model src="/assets/playground/base_plinth.glb"></m-model>
     <m-group id="cube-group" y="1">
       <m-group id="cube-label-group" y="0.2" z="1.5" sy="0" class="hidden"></m-group>
@@ -106,7 +93,6 @@
   const cubeGroup = document.getElementById("cube-group");
   const cubeLabelGroup = document.getElementById("cube-label-group");
   const cubeCodeGroup = document.getElementById("cube-code-group");
-  const cleaner = document.getElementById("cleaner");
 
   const videoPlayer1Video = document.getElementById("video-player-1");
   const videoPlayer2Video = document.getElementById("video-player-2");
@@ -170,62 +156,6 @@
       }, duration);
     }
     return anim;
-  }
-
-  function createSequence(element, sequence, easing, duration, pauses, loop = false) {
-    const timeAction = (cb, delay) => setTimeout(() => cb(), delay);
-
-    const animSequence = [];
-    for (let i = 0; i < sequence.length; i++) {
-      const seq = sequence[i];
-      if (Array.isArray(seq)) {
-        const subSeqArr = [];
-        for (let j = 0; j < seq.length; j++) {
-          const subSeq = seq[j];
-          subSeqArr.push(() =>
-            animate(element, subSeq.attr, subSeq.start, subSeq.end, duration, easing),
-          );
-        }
-        animSequence.push(subSeqArr);
-      } else {
-        animSequence.push(() =>
-          animate(element, sequence[i].attr, sequence[i].start, sequence[i].end, duration, easing),
-        );
-      }
-    }
-
-    const seqSize = animSequence.length;
-    const seqDuration = seqSize * duration + seqSize * pauses;
-
-    const playSeq = () => {
-      for (let i = 0; i < seqSize; i++) {
-        if (typeof animSequence[i] === "function") {
-          timeAction(animSequence[i], duration * i + pauses * i);
-        } else if (Array.isArray(animSequence[i])) {
-          for (let j = 0; j < animSequence[i].length; j++) {
-            timeAction(animSequence[i][j], duration * i + pauses * i);
-          }
-        }
-      }
-    };
-
-    playSeq();
-    if (loop === true) {
-      setInterval(() => playSeq(), seqDuration);
-    } else {
-      setTimeout(() => element.remove() + 100, seqDuration);
-    }
-  }
-
-  function clean() {
-    const cleanerRadius = 1.3;
-    const cleanSequence = [
-      [{ attr: "radius", start: 0, end: cleanerRadius }],
-      [{ attr: "z", start: -1.4, end: 1.4 }],
-      [{ attr: "radius", start: cleanerRadius, end: 0 }],
-      [{ attr: "z", start: 1.4, end: -1.4 }],
-    ];
-    createSequence(cleaner, cleanSequence, "easeInOutQuart", 500, 500, false);
   }
 
   function createAudio(src, start, pause, x, y, z, rx, angle, falloff, debug) {
@@ -426,10 +356,7 @@
     videoPlayer1Audio.setAttribute("pause-time", pauseTime);
     videoPlayer1Audio.setAttribute("volume", unmutedAudioVolume);
 
-    setTimeout(() => clean(), (cubeSpawnTimeInSeconds - 2) * 1000);
-
     setTimeout(() => {
-      cube.setAttribute("collide", true);
       cube.setAttribute("visible", true);
 
       setTimeout(() => {
