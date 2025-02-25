@@ -8,7 +8,7 @@
   const showAnimDuration = 600;
   const third = 1.0 / 3.0;
 
-  const musicVolume = 0.5;
+  const musicVolume = 0.7;
 
   let startedPlaying = 0;
   let songDuration = 0;
@@ -101,6 +101,7 @@
     light.setAttribute("color", "#ffddaa");
     light.setAttribute("intensity", 5);
     light.setAttribute("distance", 2);
+    light.setAttribute("cast-shadows", false);
     light.setAttribute("debug", false);
     jukebox.appendChild(light);
     return jukebox;
