@@ -38,7 +38,9 @@
       width="3"
       radius="0"
       height="0.05"
+      x="0"
       z="-1.4"
+      y="0"
       opacity="0.5"
       color="#77aaff"
       cast-shadows="false"
@@ -161,10 +163,12 @@
     anim.setAttribute("easing", easing);
     anim.setAttribute("loop", loop);
     element.appendChild(anim);
-    setTimeout(() => {
-      element.setAttribute(attr, end);
-      element.removeChild(anim);
-    }, duration);
+    if (loop === false) {
+      setTimeout(() => {
+        element.setAttribute(attr, end);
+        element.removeChild(anim);
+      }, duration);
+    }
     return anim;
   }
 
@@ -209,7 +213,7 @@
     if (loop === true) {
       setInterval(() => playSeq(), seqDuration);
     } else {
-      // setTimeout(() => element.remove() + 100, seqDuration);
+      setTimeout(() => element.remove() + 100, seqDuration);
     }
   }
 
