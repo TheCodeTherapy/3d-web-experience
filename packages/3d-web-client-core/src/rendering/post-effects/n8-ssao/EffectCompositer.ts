@@ -119,10 +119,14 @@ const EffectCompositer = {
       vec4 clipSpacePosition = vec4(coord * 2.0 - 1.0, z, 1.0);
       vec4 viewSpacePosition = projectionMatrixInv * clipSpacePosition;
 
-      vec4 worldSpacePosition = viewSpacePosition;
-      worldSpacePosition.xyz /= worldSpacePosition.w;
-      return worldSpacePosition.xyz;
+      if (abs(viewSpacePosition.w) < 1e-6) {
+        discard;
+      }
+
+      viewSpacePosition /= viewSpacePosition.w;
+      return (viewMatrixInv * viewSpacePosition).xyz;
     }
+
 
     vec3 computeNormal(vec3 worldPos, vec2 vUv) {
       ivec2 p = ivec2(vUv * resolution);

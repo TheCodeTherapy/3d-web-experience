@@ -23,7 +23,6 @@ import {
   Uniform,
   Vector2,
   Vector3,
-  WebGLMultipleRenderTargets,
   WebGLRenderTarget,
   WebGLRenderer,
 } from "three";
@@ -118,7 +117,7 @@ class N8SSAOPass extends Pass {
   private writeTargetInternal: WebGLRenderTarget;
   private readTargetInternal: WebGLRenderTarget;
   private outputTargetInternal: WebGLRenderTarget;
-  private depthDownsampleTarget: WebGLMultipleRenderTargets | null;
+  private depthDownsampleTarget: WebGLRenderTarget | null;
 
   private depthDownsampleQuad: FullScreenTriangle | null;
   private effectShaderQuad: FullScreenTriangle | null;
@@ -227,22 +226,18 @@ class N8SSAOPass extends Pass {
 
   private configureHalfResTargets(): void {
     if (this.configuration.halfRes) {
-      this.depthDownsampleTarget = new WebGLMultipleRenderTargets(
-        this.width / 2,
-        this.height / 2,
-        2,
-        {
-          depthBuffer: false,
-        },
-      );
-      this.depthDownsampleTarget.texture[0].format = RedFormat;
-      this.depthDownsampleTarget.texture[0].type = FloatType;
-      this.depthDownsampleTarget.texture[0].minFilter = NearestFilter;
-      this.depthDownsampleTarget.texture[0].magFilter = NearestFilter;
-      this.depthDownsampleTarget.texture[1].format = RGBAFormat;
-      this.depthDownsampleTarget.texture[1].type = HalfFloatType;
-      this.depthDownsampleTarget.texture[1].minFilter = NearestFilter;
-      this.depthDownsampleTarget.texture[1].magFilter = NearestFilter;
+      this.depthDownsampleTarget = new WebGLRenderTarget(this.width / 2, this.height / 2, {
+        count: 2,
+        depthBuffer: false,
+      });
+      this.depthDownsampleTarget.textures[0].format = RedFormat;
+      this.depthDownsampleTarget.textures[0].type = FloatType;
+      this.depthDownsampleTarget.textures[0].minFilter = NearestFilter;
+      this.depthDownsampleTarget.textures[0].magFilter = NearestFilter;
+      this.depthDownsampleTarget.textures[1].format = RGBAFormat;
+      this.depthDownsampleTarget.textures[1].type = HalfFloatType;
+      this.depthDownsampleTarget.textures[1].minFilter = NearestFilter;
+      this.depthDownsampleTarget.textures[1].magFilter = NearestFilter;
       this.depthDownsampleQuad = new FullScreenTriangle(new ShaderMaterial(DepthDownSample));
     } else {
       if (this.depthDownsampleTarget) {
@@ -439,10 +434,10 @@ class N8SSAOPass extends Pass {
 
     effectShaderUniforms.sceneDiffuse.value = inputBuffer.texture;
     effectShaderUniforms.sceneDepth.value = this.configuration.halfRes
-      ? this.depthDownsampleTarget!.texture[0]
+      ? this.depthDownsampleTarget!.textures[0]
       : this.depthTexture;
     effectShaderUniforms.sceneNormal.value = this.configuration.halfRes
-      ? this.depthDownsampleTarget!.texture[1]
+      ? this.depthDownsampleTarget!.textures[1]
       : null;
     effectShaderUniforms.projMat.value = this.camera.projectionMatrix;
     effectShaderUniforms.viewMat.value = this.camera.matrixWorldInverse;
@@ -486,7 +481,7 @@ class N8SSAOPass extends Pass {
       ];
       poissonBlurUniforms.tDiffuse.value = this.readTargetInternal.texture;
       poissonBlurUniforms.sceneDepth.value = this.configuration.halfRes
-        ? this.depthDownsampleTarget!.texture[0]
+        ? this.depthDownsampleTarget!.textures[0]
         : this.depthTexture;
       poissonBlurUniforms.projMat.value = this.camera.projectionMatrix;
       poissonBlurUniforms.viewMat.value = this.camera.matrixWorldInverse;
@@ -529,7 +524,7 @@ class N8SSAOPass extends Pass {
     effectCompositerUniforms.logDepth.value = renderer.capabilities.logarithmicDepthBuffer;
     effectCompositerUniforms.ortho.value = this.camera instanceof OrthographicCamera;
     effectCompositerUniforms.downsampledDepth.value = this.configuration.halfRes
-      ? this.depthDownsampleTarget!.texture[0]
+      ? this.depthDownsampleTarget!.textures[0]
       : this.depthTexture;
     effectCompositerUniforms.resolution.value = this.r;
     effectCompositerUniforms.blueNoise.value = this.bluenoise;
@@ -551,24 +546,16 @@ class N8SSAOPass extends Pass {
 
     if (this.scene.fog) {
       if (this.scene.fog instanceof Fog && this.scene.fog.isFog === true) {
-        // effectCompositerUniforms.fogExp.value = false;
-        // effectCompositerUniforms.fogNear.value = this.scene.fog.near;
-        // effectCompositerUniforms.fogFar.value = this.scene.fog.far;
-        // no-op (see below)
+        effectCompositerUniforms.fogExp.value = false;
+        effectCompositerUniforms.fogNear.value = this.scene.fog.near;
+        effectCompositerUniforms.fogFar.value = this.scene.fog.far;
       } else if (this.scene.fog instanceof FogExp2) {
-        // effectCompositerUniforms.fogExp.value = true;
-        // effectCompositerUniforms.fogDensity.value = this.scene.fog.density;
-        // no-op (see below)
+        effectCompositerUniforms.fogExp.value = true;
+        effectCompositerUniforms.fogDensity.value = this.scene.fog.density;
       } else {
-        // console.error(`Unsupported fog type ${this.scene.fog.constructor.name} in SSAOPass.`);
-        // no-op (see below)
+        console.error(`Unsupported fog type ${this.scene.fog.constructor.name} in SSAOPass.`);
       }
     }
-
-    // temporary fix until postprocessing v7 gets released with proper depth buffer management
-    effectCompositerUniforms.fogExp.value = false;
-    effectCompositerUniforms.fogNear.value = 0.0;
-    effectCompositerUniforms.fogFar.value = 500000.0;
 
     renderer.setRenderTarget(this.outputTargetInternal);
     this.effectCompositerQuad.render(renderer);
