@@ -1,4 +1,5 @@
 import fs from "fs";
+import http from "http";
 import path from "path";
 import url from "url";
 
@@ -152,6 +153,40 @@ if (
     }
   });
 }
+
+// Native proxy to forward requests to the compressor server
+app.use("/asset-compressor/optimize", (req: Request, res: Response) => {
+  const proxyReq = http.request(
+    {
+      hostname: "localhost",
+      port: 8083,
+      path: req.originalUrl.replace("/asset-compressor", ""),
+      method: req.method,
+      headers: req.headers,
+    },
+    (proxyRes) => {
+      res.writeHead(proxyRes.statusCode || 500, proxyRes.headers);
+      proxyRes.pipe(res, { end: true });
+    },
+  );
+
+  req.pipe(proxyReq, { end: true });
+
+  proxyReq.on("error", (err) => {
+    console.error("Proxy error:", err);
+    res.status(500).send("Proxy error");
+  });
+});
+
+const assetCompressorBuildDir = path.resolve(dirname, "../../../web-asset-compress/client/build");
+
+// Serve compressor client at /asset-compressor
+app.use("/asset-compressor", express.static(assetCompressorBuildDir));
+
+// Handle direct URL access (SPA routing)
+app.get("/asset-compressor/*", (_req, res) => {
+  res.sendFile(path.join(assetCompressorBuildDir, "index.html"));
+});
 
 // Start listening
 console.log("Listening on port", PORT);

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Asset Compressor (mml.mgz.me)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+
+      #info {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        z-index: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      <strong>Drag & drop</strong> a `.glb` or `.gltf` file to compare models.<br />
+      Left: Original | Right: Compressed
+    </div>
+
+    <!-- Include the built JavaScript -->
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>

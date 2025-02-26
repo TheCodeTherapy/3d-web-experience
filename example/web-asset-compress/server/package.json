@@ -1,0 +1,39 @@
+{
+  "name": "@mml-io/3d-web-asset-compress-server",
+  "private": true,
+  "version": "0.21.3",
+  "files": [
+    "/build"
+  ],
+  "bin": {
+    "draco-encoder": "./build/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "rimraf ./build && tsx ./build.ts --build",
+    "iterate": "tsx ./build.ts --watch",
+    "iterate:start": "node --enable-source-maps ./build/index.js",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
+    "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "3.10.1",
+    "@gltf-transform/extensions": "3.10.1",
+    "@gltf-transform/functions": "3.10.1",
+    "@types/draco3dgltf": "1.4.3",
+    "cors": "^2.8.5",
+    "draco3dgltf": "1.5.7",
+    "esbuild": "0.24.2",
+    "express": "^4.21.2",
+    "express-ws": "^5.0.2",
+    "meshoptimizer": "^0.22.0",
+    "multer": "^1.4.5-lts.1",
+    "three": "0.163.0",
+    "yargs": "17.7.2"
+  },
+  "devDependencies": {
+    "@types/multer": "^1.4.12",
+    "@types/three": "0.163.0"
+  }
+}
