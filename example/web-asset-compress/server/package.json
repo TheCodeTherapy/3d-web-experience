@@ -1,5 +1,5 @@
 {
-  "name": "@mml-io/3d-web-asset-compress",
+  "name": "@mml-io/3d-web-asset-compress-server",
   "private": true,
   "version": "0.21.3",
   "files": [
