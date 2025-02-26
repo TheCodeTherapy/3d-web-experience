@@ -4,7 +4,36 @@ import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Pane, FolderApi, ButtonApi } from "tweakpane";
 
-import { tweakPaneStyle } from "./tweakpane-style";
+import { toastStyle, tweakPaneStyle } from "./style";
+
+const toastStyleElement = document.createElement("style");
+toastStyleElement.type = "text/css";
+toastStyleElement.appendChild(document.createTextNode(toastStyle));
+document.head.appendChild(toastStyleElement);
+
+const toastContainer = document.createElement("div");
+toastContainer.className = "toast-container";
+document.body.appendChild(toastContainer);
+
+const showToast = (
+  message: string,
+  type: "success" | "error" | "info" = "info",
+  duration?: number, // If no duration, stays until manually removed
+) => {
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+
+  toastContainer.appendChild(toast);
+
+  if (duration) {
+    setTimeout(() => toast.remove(), duration);
+  }
+
+  return {
+    dismiss: () => toast.remove(), // Manual dismiss function
+  };
+};
 
 // ---------------------------------------
 // 📝 Style Injection for Tweakpane
@@ -233,8 +262,9 @@ const loadGLTF = (arrayBuffer: ArrayBuffer, scene: THREE.Scene, isCompressed: bo
 let currentFile: File | null = null;
 
 const handleCompression = async (file: File) => {
-  compressedBlob = null;
+  const loadingToast = showToast("Compressing...", "info");
 
+  compressedBlob = null;
   const originalSizeBytes = file.size;
   resultValues.originalSize = formatBytes(originalSizeBytes);
 
@@ -274,7 +304,11 @@ const handleCompression = async (file: File) => {
     resultValues.savedBytes = `${formatBytes(savedBytes)} ${savedBytes >= 0 ? "saved" : "increase"}`;
     resultValues.savedPercentage = `${savedPercentage.toFixed(2)}% ${savedBytes >= 0 ? "saved" : "increase"}`;
     pane.refresh();
+    loadingToast.dismiss();
+    showToast("Asset optimized! ✅", "success", 3000);
   } catch (err) {
+    loadingToast.dismiss();
+    showToast("Compression failed ❌", "error", 3000);
     console.error("Compression error:", err);
   }
 };
