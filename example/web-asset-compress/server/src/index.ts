@@ -8,6 +8,7 @@ import url, { fileURLToPath } from "url";
 import { WebIO } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
 import { draco, simplify, textureCompress, weld } from "@gltf-transform/functions";
+import bodyParser from "body-parser";
 import cors from "cors";
 import draco3d from "draco3dgltf";
 import express, { Request, Response } from "express";
@@ -22,10 +23,16 @@ const __dirname = path.dirname(__filename);
 
 const optimizationApp = express();
 const optimizationPort = process.env.PORT || 8083;
-const upload = multer({ dest: "uploads/" });
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: 210 * 1024 * 1024 }, // 210 MB
+});
 
 optimizationApp.use(cors());
 optimizationApp.use(express.json());
+optimizationApp.use(bodyParser.json({ limit: "210mb" }));
+optimizationApp.use(bodyParser.urlencoded({ limit: "210mb", extended: true }));
+optimizationApp.use(express.json({ limit: "210mb" }));
 
 optimizationApp.post(
   "/optimize",
