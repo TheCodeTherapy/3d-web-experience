@@ -2,12 +2,10 @@
   "name": "@mml-io/3d-web-asset-compress-server",
   "private": true,
   "version": "0.21.3",
-  "files": [
-    "/build"
-  ],
-  "bin": {
-    "draco-encoder": "./build/index.js"
+  "engines": {
+    "node": "20.x"
   },
+  "main": "./src/index.js",
   "type": "module",
   "scripts": {
     "build": "rimraf ./build && tsx ./build.ts --build",
