@@ -59,6 +59,10 @@
         font-family: "Segoe UI", Arial, sans-serif;
       }
 
+      .thumbnail {
+        width: 50%;
+      }
+
       .main-content {
         opacity: 0.001;
         position: fixed;
@@ -67,6 +71,10 @@
         overflow: hidden;
         background-color: transparent;
         color: #eee;
+        display: flex;
+        flex-direction: column;
+        padding: 0px 70px;
+        align-items: center;
       }
     </style>
   </head>
@@ -77,6 +85,7 @@
       <img
         src="https://mml.mgz.me/web-client/3d-web-experience-thumbnail.jpg"
         alt="The 3D Web Experience"
+        class="thumbnail"
       />
 
       <p>
