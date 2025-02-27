@@ -2317,8 +2317,8 @@
       this.piece3DScale = 0.2;
       this.capturedScale = 0.1;
 
-      this.captured3DOffsetX = 4.45;
-      this.captured3DOffsetZ = 4.45;
+      this.capturedOffsetX = 4.45;
+      this.capturedOffsetZ = 4.45;
 
       this.movementDuration = 500;
       this.afterMoveRatio = 0.3334;
@@ -3006,20 +3006,20 @@
         console.log(`❌ ERROR: Piece at ${position} not found in pieces3DMap!`);
       }
 
-      const captured3DX = isWhite ? -this.captured3DOffsetX : this.captured3DOffsetX;
+      const captured3DX = isWhite ? -this.capturedOffsetX : this.capturedOffsetX;
       const captured3DZ = isWhite
-        ? this.captured3DOffsetZ - capture3DArray.length * 0.5
-        : -this.captured3DOffsetZ + capture3DArray.length * 0.5;
+        ? this.capturedOffsetZ - capture3DArray.length * 0.5
+        : -this.capturedOffsetZ + capture3DArray.length * 0.5;
 
       setTimeout(() => {
         this.translate(capturedPiece3D, captured3DX, this.board3DYOffset, captured3DZ);
         this.scale(capturedPiece3D, this.capturedScale);
       }, this.movementDuration * this.afterMoveRatio);
 
-      const captured2DX = isWhite ? -this.captured3DOffsetX : this.captured3DOffsetX;
+      const captured2DX = isWhite ? -this.capturedOffsetX : this.capturedOffsetX;
       const captured2DZ = isWhite
-        ? this.captured3DOffsetZ - capture2DArray.length * 0.5
-        : -this.captured3DOffsetZ + capture2DArray.length * 0.5;
+        ? this.capturedOffsetZ - capture2DArray.length * 0.5
+        : -this.capturedOffsetZ + capture2DArray.length * 0.5;
 
       setTimeout(() => {
         this.translate(capturedPiece2D, captured2DX, this.board2DYOffset, captured2DZ);
