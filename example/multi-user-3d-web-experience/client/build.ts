@@ -33,6 +33,7 @@ const buildOptions: esbuild.BuildOptions = {
     ".jpg": "file",
     ".glb": "file",
     ".hdr": "file",
+    ".webp": "file",
   },
   outbase: "../../", // This is targeting the parent of the "assets" directory to avoid generated paths including a traversal
   sourceRoot: "./src",

@@ -2,7 +2,7 @@ import { AnimationConfig, AnimationSettings } from "@mml-io/3d-web-client-core";
 import { Networked3dWebExperienceClient } from "@mml-io/3d-web-experience-client";
 
 import hdrJpgUrl from "../../../assets/hdr/puresky_2k.jpg";
-import loadingBackground from "../../../assets/images/3d-web-experience.jpg";
+import loadingBackground from "../../../assets/images/3d-web-experience.webp";
 import airAnimationFileUrl from "../../../assets/models/anim_air.glb";
 import altFrontFlipFileUrl from "../../../assets/models/anim_alt_frontflip.glb";
 import backFlipFileUrl from "../../../assets/models/anim_backflip.glb";
@@ -119,7 +119,7 @@ const app = new Networked3dWebExperienceClient(holder, {
     background: "#424242",
     color: "#ffffff",
     backgroundImageUrl: loadingBackground,
-    backgroundBlurAmount: 3,
+    backgroundBlurAmount: 0,
     title: "The 3D Web Experience",
     subtitle: "https://mml.mgz.me",
   },
