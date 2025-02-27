@@ -410,7 +410,7 @@ export class GroundPlane extends Group {
       this.grass = new Grass({
         leavesCount: 3000000,
         radius: this.floorSize,
-        leafBaseWidth: 0.05,
+        leafBaseWidth: 0.03,
         leafHeight: 0.302,
         windForce: 1.06,
         windSpeed: 0.91,
