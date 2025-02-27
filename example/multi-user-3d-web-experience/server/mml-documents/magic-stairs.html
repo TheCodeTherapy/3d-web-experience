@@ -8,14 +8,13 @@
   const stepHeight = 0.23;
   const stepWidth = 6;
   const stepDepth = 1.5;
-  const stepsToKeep = 21;
-
+  const stepsToKeep = 16;
   const stepAngle = Math.PI / 64;
-  const gracePeriodDuration = 1000;
+  const gracePeriodDuration = 3000;
 
   const protectedStepRanges = {};
   const gracePeriodTimers = {};
-  const playersOnStep = {};
+  const playersOnStep = new Map(); // Map<stepId, Set<connectionId>>
 
   function generateStepsData(numSteps = 204) {
     const stepDataArray = [];
@@ -53,15 +52,24 @@
     step.setAttribute("color", stepData.color);
     step.setAttribute("id", id);
     step.setAttribute("collision-interval", "250");
-    step.addEventListener("collisionstart", () => {
-      spawnSurroundingSteps(id);
+
+    step.addEventListener("collisionstart", (event) => {
+      const connectionId = event.detail.connectionId;
+      handleCollisionStart(id, connectionId);
     });
+
+    step.addEventListener("collisionend", (event) => {
+      const connectionId = event.detail.connectionId;
+      handleCollisionEnd(id, connectionId);
+    });
+
     return step;
   }
 
   function isStepProtected(stepIndex) {
     for (let key in protectedStepRanges) {
       const [start, end] = protectedStepRanges[key];
+      if (stepIndex < stepsToKeep) return true;
       if (stepIndex >= start && stepIndex <= end) return true;
     }
     return false;
@@ -79,7 +87,7 @@
     );
 
     const stepsToRemove = currentStepsOnStaircase.filter((idx) => {
-      return idx !== 0 && !isStepProtected(idx);
+      return idx > stepsToKeep && !isStepProtected(idx);
     });
 
     stepsToRemove.forEach((idx) => {
@@ -93,14 +101,12 @@
     }
   }
 
-  function handleCollisionStart(event) {
-    const stepId = event.target.id;
-    spawnSurroundingSteps(stepId);
-
-    if (!playersOnStep[stepId]) {
-      playersOnStep[stepId] = 0;
+  function handleCollisionStart(stepId, connectionId) {
+    if (!playersOnStep.has(stepId)) {
+      playersOnStep.set(stepId, new Set());
     }
-    playersOnStep[stepId]++;
+    playersOnStep.get(stepId).add(connectionId);
+    spawnSurroundingSteps(stepId);
 
     if (gracePeriodTimers[stepId]) {
       clearTimeout(gracePeriodTimers[stepId]);
@@ -108,18 +114,38 @@
     }
   }
 
-  function handleCollisionEnd(event) {
-    const stepId = event.target.id;
-    playersOnStep[stepId]--;
+  function handleCollisionEnd(stepId, connectionId) {
+    if (!playersOnStep.has(stepId)) return;
 
-    if (playersOnStep[stepId] === 0) {
+    const playerSet = playersOnStep.get(stepId);
+    playerSet.delete(connectionId);
+
+    if (playerSet.size === 0) {
       gracePeriodTimers[stepId] = setTimeout(() => {
-        if (playersOnStep[stepId] === 0) {
+        if (playersOnStep.get(stepId).size === 0) {
+          playersOnStep.delete(stepId);
           delete protectedStepRanges[stepId];
           delete gracePeriodTimers[stepId];
+          removeUnprotectedSteps();
         }
       }, gracePeriodDuration);
     }
+  }
+
+  function handlePlayerDisconnect(event) {
+    const connectionId = event.detail.connectionId;
+
+    playersOnStep.forEach((playerSet, stepId) => {
+      if (playerSet.has(connectionId)) {
+        playerSet.delete(connectionId);
+
+        if (playerSet.size === 0) {
+          playersOnStep.delete(stepId);
+          delete protectedStepRanges[stepId];
+          removeUnprotectedSteps();
+        }
+      }
+    });
   }
 
   function removeUnprotectedSteps() {
@@ -128,22 +154,22 @@
     );
 
     const stepsToRemove = currentStepsOnStaircase.filter((idx) => {
-      return idx !== 0 && !isStepProtected(idx);
+      return idx > stepsToKeep && !isStepProtected(idx);
     });
 
     stepsToRemove.forEach((idx) => {
-      staircaseHolder.removeChild(stepElementsArray[idx]);
+      if (stepElementsArray[idx]) {
+        staircaseHolder.removeChild(stepElementsArray[idx]);
+      }
     });
   }
 
+  window.addEventListener("disconnected", handlePlayerDisconnect);
+
   const stepsArray = generateStepsData();
+  const stepElementsArray = stepsArray.map((stepData) => createStep(stepData, stepData.id));
 
-  const stepElementsArray = stepsArray.map((stepData) => {
-    const step = createStep(stepData, stepData.id);
-    step.addEventListener("collisionstart", handleCollisionStart);
-    step.addEventListener("collisionend", handleCollisionEnd);
-    return step;
-  });
-
-  for (let i = 0; i < stepsToKeep; i++) staircaseHolder.appendChild(stepElementsArray[i]);
+  for (let i = 0; i < stepsToKeep; i++) {
+    staircaseHolder.appendChild(stepElementsArray[i]);
+  }
 </script>
