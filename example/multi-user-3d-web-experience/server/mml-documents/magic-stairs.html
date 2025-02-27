@@ -86,12 +86,20 @@
       parseInt(el.id.replace("step-", "")),
     );
 
-    const stepsToRemove = currentStepsOnStaircase.filter((idx) => {
-      return idx > stepsToKeep && !isStepProtected(idx);
-    });
+    const stepsToRemove = currentStepsOnStaircase
+      .filter((idx) => idx > stepsToKeep && !isStepProtected(idx))
+      .sort((a, b) => a - b);
 
-    stepsToRemove.forEach((idx) => {
-      staircaseHolder.removeChild(stepElementsArray[idx]);
+    stepsToRemove.forEach((idx, i) => {
+      setTimeout(() => {
+        if (
+          stepElementsArray[idx] &&
+          staircaseHolder.contains(stepElementsArray[idx]) &&
+          !isStepProtected(idx)
+        ) {
+          staircaseHolder.removeChild(stepElementsArray[idx]);
+        }
+      }, i * 30);
     });
 
     for (let i = start; i <= end; i++) {
@@ -153,14 +161,20 @@
       parseInt(el.id.replace("step-", "")),
     );
 
-    const stepsToRemove = currentStepsOnStaircase.filter((idx) => {
-      return idx > stepsToKeep && !isStepProtected(idx);
-    });
+    const stepsToRemove = currentStepsOnStaircase
+      .filter((idx) => idx > stepsToKeep && !isStepProtected(idx))
+      .sort((a, b) => a - b);
 
-    stepsToRemove.forEach((idx) => {
-      if (stepElementsArray[idx]) {
-        staircaseHolder.removeChild(stepElementsArray[idx]);
-      }
+    stepsToRemove.forEach((idx, i) => {
+      setTimeout(() => {
+        if (
+          stepElementsArray[idx] &&
+          staircaseHolder.contains(stepElementsArray[idx]) &&
+          !isStepProtected(idx)
+        ) {
+          staircaseHolder.removeChild(stepElementsArray[idx]);
+        }
+      }, i * 30);
     });
   }
 
