@@ -5,10 +5,13 @@
   const wrapper = document.getElementById("wrapper");
   const jukeboxWrapper = document.getElementById("jukebox-wrapper");
 
-  const showAnimDuration = 600;
-  const third = 1.0 / 3.0;
+  const jukeboxModelURL = "/assets/playground/jukebox.glb";
+  const jukeboxDiskModelURL = "/assets/playground/jukebox_disk.glb";
 
-  const musicVolume = 0.7;
+  const showAnimDuration = 700;
+  const animationOffset = 1 / 2.1;
+
+  const musicVolume = 0.8;
 
   let startedPlaying = 0;
   let songDuration = 0;
@@ -46,20 +49,20 @@
     if (menuHidden === false) return;
     menuHidden = false;
     selectionMenuGroup.setAttribute("sx", 1);
-    setTimeout(() => selectionMenuGroup.setAttribute("sy", 1), showAnimDuration * third);
+    setTimeout(() => selectionMenuGroup.setAttribute("sy", 1), showAnimDuration * animationOffset);
   }
 
   function hideSelectionMenu() {
     if (menuHidden === true) return;
     menuHidden = true;
-    selectionMenuGroup.setAttribute("sy", 0);
-    setTimeout(() => selectionMenuGroup.setAttribute("sx", 0), showAnimDuration * third);
+    selectionMenuGroup.setAttribute("sy", 0.005);
+    setTimeout(() => selectionMenuGroup.setAttribute("sx", 0), showAnimDuration * animationOffset);
   }
 
   function createJukeboxProximityProbe() {
     const probe = document.createElement("m-position-probe");
     probe.setAttribute("id", "jukebox-proximity-probe");
-    probe.setAttribute("range", 3.1);
+    probe.setAttribute("range", 5);
     probe.setAttribute("interval", 250);
     probe.setAttribute("debug", false);
 
@@ -90,26 +93,17 @@
   function createJukebox() {
     const jukebox = document.createElement("m-model");
     jukebox.setAttribute("id", "jukebox");
-    jukebox.setAttribute("src", "/assets/playground/jukebox.glb");
+    jukebox.setAttribute("src", jukeboxModelURL);
     jukebox.setAttribute("collide", false);
     jukebox.setAttribute("visible", true);
     jukebox.setAttribute("cast-shadows", true);
 
-    // const light = document.createElement("m-light");
-    // light.setAttribute("y", 2.55);
-    // light.setAttribute("x", -0.1);
-    // light.setAttribute("color", "#ffddaa");
-    // light.setAttribute("intensity", 5);
-    // light.setAttribute("distance", 2);
-    // light.setAttribute("cast-shadows", false);
-    // light.setAttribute("debug", false);
-    // jukebox.appendChild(light);
     return jukebox;
   }
 
   function createJukeboxDisk() {
     const diskModel = document.createElement("m-model");
-    diskModel.setAttribute("src", "/assets/playground/jukebox_disk.glb");
+    diskModel.setAttribute("src", jukeboxDiskModelURL);
     diskModel.setAttribute("x", "0.125");
     diskModel.setAttribute("y", "1.755");
     diskModel.setAttribute("z", "-0.22");
@@ -230,13 +224,13 @@
 
   function setupSelectionMenuGroup() {
     selectionMenuGroup.setAttribute("id", "music-selection-menu");
-    selectionMenuGroup.setAttribute("ry", "90");
-    selectionMenuGroup.setAttribute("x", "0.2");
+    selectionMenuGroup.setAttribute("ry", "120");
+    selectionMenuGroup.setAttribute("x", "1");
     selectionMenuGroup.setAttribute("y", "1.5");
-    selectionMenuGroup.setAttribute("z", "1.95");
+    selectionMenuGroup.setAttribute("z", "1.75");
     selectionMenuGroup.setAttribute("sx", 0);
-    selectionMenuGroup.setAttribute("sy", 1);
-    selectionMenuGroup.setAttribute("sz", 1);
+    selectionMenuGroup.setAttribute("sy", 0.01);
+    selectionMenuGroup.setAttribute("sz", 0.3);
 
     const selectionLerp = document.createElement("m-attr-lerp");
     selectionLerp.setAttribute("attr", "sx,sy");
@@ -266,6 +260,21 @@
         const row = Math.floor(i / 2);
 
         const y = (middleIndex - row) * (height / 2 + spacing);
+
+        const labelBackground = document.createElement("m-cube");
+        labelBackground.setAttribute("x", column === 0 ? -0.515 : 0.515);
+        labelBackground.setAttribute("y", y);
+        labelBackground.setAttribute("z", -0.013);
+        labelBackground.setAttribute("sx", 0.5);
+        labelBackground.setAttribute("sy", 0.5);
+        labelBackground.setAttribute("width", 2.03);
+        labelBackground.setAttribute("height", height + 0.03);
+        labelBackground.setAttribute("depth", 0.02);
+        labelBackground.setAttribute("color", "#00bbff");
+        labelBackground.setAttribute("emissive", 0);
+        labelBackground.setAttribute("opacity", 0.9);
+        labelBackground.setAttribute("collide", false);
+        selectionMenuGroup.appendChild(labelBackground);
 
         const label = document.createElement("m-label");
         label.setAttribute("content", name);
