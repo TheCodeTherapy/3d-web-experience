@@ -11,7 +11,6 @@ import {
   LinearFilter,
   LinearMipMapLinearFilter,
   LinearMipmapLinearFilter,
-  LoadingManager,
   Mesh,
   MeshStandardMaterial,
   NearestFilter,
@@ -24,7 +23,6 @@ import {
   Uniform,
   UniformsLib,
   UniformsUtils,
-  Vector3,
 } from "three";
 
 // Create a simple 2x2 checkerboard image
@@ -91,7 +89,7 @@ class TexturedMaterial extends MeshStandardMaterial {
 
         shader.fragmentShader = shader.fragmentShader.replace(
           "#include <common>",
-          `
+          /* glsl */ `
   varying vec2 vUv;
   #include <common>
   float rand(vec2 co, float seed) {
@@ -112,7 +110,7 @@ class TexturedMaterial extends MeshStandardMaterial {
   `,
         );
 
-        const fragmentMain = `
+        const fragmentMain = /* glsl */ `
           vec2 uv = vUv;
           vec2 tile = (uv * ${tileRepeat.toFixed(1)});
           vec2 center = tile + vec2(0.5, 0.5);
@@ -223,6 +221,7 @@ ${this.simpleNoiseVertexShaderChunk}
 
 const float ATHIRD = 1.0 / 3.0;
 const float THIRDPI = PI * ATHIRD;
+
 void main(void) {
   #include <begin_vertex>
   #include <beginnormal_vertex>
@@ -234,20 +233,44 @@ void main(void) {
 
   vUv = uv;
 
-  float t = time * windSpeed;
-
-  mvPosition = vec4(position, 1.0);
+  // Compute world position of the instance
+  vec4 instancePosition = vec4(0.0, 0.0, 0.0, 1.0);
   #ifdef USE_INSTANCING
-    mvPosition = instanceMatrix * mvPosition;
+    instancePosition = instanceMatrix * instancePosition;
   #endif
-  float noise = smoothNoise(mvPosition.xz * 0.5 + vec2(0.0, t));
+
+  // Compute the direction vector to the camera on XZ plane
+  vec3 toCamera = normalize(vec3(cameraPosition.x, 0.0, cameraPosition.z) - vec3(instancePosition.x, 0.0, instancePosition.z));
+
+  // Compute rotation angle around Y-axis
+  float angle = atan(toCamera.x, toCamera.z);
+
+  // Rotate the vertex around its local Y-axis
+  mat3 rotationMatrix = mat3(
+    cos(angle), 0.0, -sin(angle),
+    0.0,        1.0,  0.0,
+    sin(angle), 0.0,  cos(angle)
+  );
+
+  // Rotate the leaf mesh locally
+  vec3 rotatedVertex = rotationMatrix * position;
+
+  // Compute final world position
+  worldPosition = vec4(rotatedVertex, 1.0);
+  #ifdef USE_INSTANCING
+    worldPosition = instanceMatrix * worldPosition;
+  #endif
+
+  // Apply wind animation after billboard rotation
+  float t = time * windSpeed;
+  float noise = smoothNoise(worldPosition.xz * 0.5 + vec2(0.0, t));
   noise = pow(noise * 0.5 + 0.5, 2.0) * 2.0;
-  float dispPower = windForce - cos(uv.y * 0.7);
+  float dispPower = windForce - cos(vUv.y * 0.7);
   float displacement = noise * (0.5 * dispPower);
-  // mvPosition.y += ${this.leafHeight.toFixed(4)};
-  mvPosition.z -= displacement;
-  // mvPosition.y -= displacement * 0.42;
-  vec4 modelViewPosition = modelViewMatrix * mvPosition;
+  worldPosition.z -= displacement;
+
+  // Final transformation to camera space
+  vec4 modelViewPosition = modelViewMatrix * worldPosition;
   gl_Position = projectionMatrix * modelViewPosition;
 }
 `;
@@ -304,9 +327,9 @@ void main(void) {
       this.grassLeafMaterial,
       this.leavesCount,
     );
+    this.instancedGrassMesh.castShadow = false;
     this.instancedGrassMesh.receiveShadow = true;
     this.distributeGrassUsingFibonacci(this.radius);
-    // this.instancedGrassMesh.position.add(new Vector3(0, -(this.leafHeight + 0.01), 0));
     this.add(this.instancedGrassMesh);
   }
 
@@ -315,6 +338,8 @@ void main(void) {
     const angleIncrement = Math.PI * 2 * goldenRatio;
     const rndOff = 0.21;
     const halfRndOff = rndOff / 2;
+
+    const randomFloatBetween = (min: number, max: number) => Math.random() * (max - min) + min;
 
     for (let i = 0; i < this.leavesCount; i++) {
       const t = i / this.leavesCount;
@@ -325,10 +350,9 @@ void main(void) {
       const y = 0;
 
       this.dummy.position.set(x, y, z);
-      this.dummy.scale.setScalar(0.5 + Math.random() * 0.5);
-      this.dummy.rotation.y = Math.random() * Math.PI;
-      this.dummy.rotation.x = Math.random() * 0.6 - 0.3;
-      this.dummy.rotation.z = Math.random() * 0.6 - 0.3;
+      this.dummy.scale.setScalar(0.4 + Math.random() * 0.59);
+      this.dummy.rotation.x = randomFloatBetween(-0.1, 0.1);
+      this.dummy.rotation.z = randomFloatBetween(-0.1, 0.1);
       this.dummy.updateMatrix();
       this.instancedGrassMesh.setMatrixAt(i, this.dummy.matrix);
     }
@@ -373,7 +397,7 @@ export class GroundPlane extends Group {
       this.floorMaterial.map = this.floorTexture;
       this.floorMaterial.needsUpdate = true;
     } else if (groundPlaneType === "grass") {
-      this.floorSize = 55;
+      this.floorSize = 50;
       this.floorGeometry = new CircleGeometry(this.floorSize, 32);
       this.floorMaterial = new TexturedMaterial(20.0, {
         color: new Color(0x77bb99),
@@ -384,11 +408,11 @@ export class GroundPlane extends Group {
       this.add(this.floorMesh);
 
       this.grass = new Grass({
-        leavesCount: 2000000,
+        leavesCount: 3000000,
         radius: this.floorSize,
-        leafBaseWidth: 0.03, //0.027,
-        leafHeight: 0.32,
-        windForce: 1.05,
+        leafBaseWidth: 0.05,
+        leafHeight: 0.302,
+        windForce: 1.06,
         windSpeed: 0.91,
       });
     }
