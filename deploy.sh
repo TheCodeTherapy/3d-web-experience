@@ -13,6 +13,9 @@ echo "Deploying to $vpsuser@$vpsaddress..."
 ssh $vpsuser@$vpsaddress <<EOF
 bash -l -c "
 mkdir -p ${mmlappdir}
+cd ${mmlappdir}
+git restore .
+cd ~
 "
 EOF
 
