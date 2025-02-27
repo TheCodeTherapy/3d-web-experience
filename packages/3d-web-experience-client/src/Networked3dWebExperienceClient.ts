@@ -390,6 +390,7 @@ export class Networked3dWebExperienceClient {
     holder.style.position = "absolute";
     holder.style.width = "100%";
     holder.style.height = "100%";
+    holder.style.zIndex = "1";
     holder.style.overflow = "hidden";
     document.body.appendChild(holder);
     return holder;
