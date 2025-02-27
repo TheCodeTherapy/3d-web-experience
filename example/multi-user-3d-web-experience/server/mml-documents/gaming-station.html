@@ -14,7 +14,7 @@
   const codeImage = document.getElementById("code-image");
 
   const assetsPath = "/assets/playground";
-  const videoFileNames = ["Sonic_TH1", "FlashBack", "ToeJamAE"];
+  const videoFileNames = ["Sonic", "FlashBack", "ToeJamAE"];
 
   const videosAvailable = [];
   const audiosAvailable = [];
@@ -51,7 +51,7 @@
   let currentVideoIndex = 0;
   const firstVideo = videosAvailable[currentVideoIndex];
   const firstAudio = audiosAvailable[currentVideoIndex];
-  const video = createVideo(tvGroup, firstVideo, 0, 2.92, 1.35, 4.5, 3.95, 1.5);
+  const video = createVideo(tvGroup, firstVideo, 0, 2.92, 1.35, 4.5, 3.95, 1.1);
   const audio = createAudio(wrapper, firstAudio, 0, 21, 0, 90, 45, 100, false);
 
   class AttributesToCanvasImage {
