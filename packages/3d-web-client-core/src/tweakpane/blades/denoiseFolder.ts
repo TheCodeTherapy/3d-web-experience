@@ -7,7 +7,7 @@ export const denoiseValues = {
   distBias: 0.6,
   tolerance: 20.0,
   multiplier: 1.5,
-  amount: 0.42,
+  amount: 0,
 };
 
 const denoiseOptions = {
