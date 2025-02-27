@@ -42,3 +42,4 @@ dist
 .envrc
 .direnv
 renamed-packages.json
+example/web-asset-compress/server/uploads
