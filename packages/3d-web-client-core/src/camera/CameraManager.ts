@@ -32,8 +32,10 @@ export class CameraManager {
   public fov: number = this.initialFOV;
   private targetFOV: number = this.initialFOV;
 
-  public minPolarAngle: number = Math.PI * 0.25;
-  private maxPolarAngle: number = Math.PI * 0.95;
+  public defaultMinPolarAngle: number = Math.PI * 0.05;
+  public defaultFirstPersonPolarAngle: number = Math.PI * 0.25;
+  public minPolarAngle: number = this.defaultMinPolarAngle;
+  private maxPolarAngle: number = Math.PI * 0.98;
 
   public distance: number = this.initialDistance;
   public targetDistance: number = this.initialDistance;

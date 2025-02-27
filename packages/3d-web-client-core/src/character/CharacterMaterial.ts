@@ -124,11 +124,12 @@ export class CharacterMaterial extends MeshStandardMaterial {
       this.currentAlpha += ease(this.targetAlpha, this.currentAlpha, 0.07);
       if (this.currentAlpha > 0.999) {
         this.currentAlpha = 1;
-        this.config.cameraManager.minPolarAngle = Math.PI * 0.15;
+        this.config.cameraManager.minPolarAngle = this.config.cameraManager.defaultMinPolarAngle;
       }
       if (this.currentAlpha < 0.001) {
         this.currentAlpha = 0;
-        this.config.cameraManager.minPolarAngle = Math.PI * 0.25;
+        this.config.cameraManager.minPolarAngle =
+          this.config.cameraManager.defaultFirstPersonPolarAngle;
       }
       this.uniforms.discardAll.value = this.currentAlpha === 0 ? 1 : 0;
       if (this.currentAlpha !== this.opacity) {
