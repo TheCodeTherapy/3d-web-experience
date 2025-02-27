@@ -6,6 +6,9 @@ import { Pane, FolderApi, ButtonApi } from "tweakpane";
 
 import { toastStyle, tweakPaneStyle } from "./style";
 
+const MAX_FILE_SIZE_MB = 100;
+const ALLOWED_EXTENSIONS = ["glb", "gltf"];
+
 const toastStyleElement = document.createElement("style");
 toastStyleElement.type = "text/css";
 toastStyleElement.appendChild(document.createTextNode(toastStyle));
@@ -18,7 +21,7 @@ document.body.appendChild(toastContainer);
 const showToast = (
   message: string,
   type: "success" | "error" | "info" = "info",
-  duration?: number, // If no duration, stays until manually removed
+  duration?: number,
 ) => {
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
@@ -31,7 +34,7 @@ const showToast = (
   }
 
   return {
-    dismiss: () => toast.remove(), // Manual dismiss function
+    dismiss: () => toast.remove(),
   };
 };
 
@@ -152,12 +155,21 @@ resultsFolder.addBinding(resultValues, "trianglePercentage", { readonly: true })
 
 // Compress button
 const compressButton: ButtonApi = optimizationFolder.addButton({ title: "Compress" });
+
+const setCompressButtonState = (text: string, disabled: boolean) => {
+  const button = compressButton.controller.view.element.querySelector("button")!;
+  button.textContent = text;
+  button.disabled = disabled;
+};
+
 compressButton.on("click", async () => {
-  if (!currentFile) {
-    alert("Please drag and drop a file first.");
+  if (!currentFile || compressButton.controller.view.element.querySelector("button")!.disabled) {
     return;
   }
+
+  setCompressButtonState("Compressing... 🕖", true); // Update text & disable
   await handleCompression(currentFile);
+  setCompressButtonState("Compress", false); // Restore after compression
 });
 
 // Download button
@@ -184,18 +196,25 @@ downloadButton.on("click", () => {
 // ---------------------------------------
 
 const container = document.createElement("div");
+container.style.display = "flex";
+container.style.width = "100%";
+container.style.height = "100vh";
 document.body.appendChild(container);
 
 const rendererLeft = new THREE.WebGLRenderer({ antialias: true });
-const rendererRight = new THREE.WebGLRenderer({ antialias: true });
-rendererLeft.setSize(window.innerWidth / 2, window.innerHeight);
-rendererRight.setSize(window.innerWidth / 2, window.innerHeight);
+rendererLeft.setSize(window.innerWidth / 2 - 0.5, window.innerHeight);
 rendererLeft.setPixelRatio(window.devicePixelRatio);
-rendererRight.setPixelRatio(window.devicePixelRatio);
-
-rendererLeft.domElement.style.float = "left";
-rendererRight.domElement.style.float = "right";
 container.appendChild(rendererLeft.domElement);
+
+const separator = document.createElement("div");
+separator.style.width = "1px";
+separator.style.backgroundColor = "#333";
+separator.style.height = "100vh";
+container.appendChild(separator);
+
+const rendererRight = new THREE.WebGLRenderer({ antialias: true });
+rendererRight.setSize(window.innerWidth / 2 - 0.5, window.innerHeight); // Adjust for the separator width
+rendererRight.setPixelRatio(window.devicePixelRatio);
 container.appendChild(rendererRight.domElement);
 
 const sceneLeft = new THREE.Scene();
@@ -262,7 +281,7 @@ const loadGLTF = (arrayBuffer: ArrayBuffer, scene: THREE.Scene, isCompressed: bo
 let currentFile: File | null = null;
 
 const handleCompression = async (file: File) => {
-  const loadingToast = showToast("Compressing...", "info");
+  const loadingToast = showToast("Compressing... wait 🕖", "info", 10000);
 
   compressedBlob = null;
   const originalSizeBytes = file.size;
@@ -305,15 +324,39 @@ const handleCompression = async (file: File) => {
     resultValues.savedPercentage = `${savedPercentage.toFixed(2)}% ${savedBytes >= 0 ? "saved" : "increase"}`;
     pane.refresh();
     loadingToast.dismiss();
-    showToast("Asset optimized! ✅", "success", 3000);
+    showToast("Asset optimized! ✅", "success", 4000);
+    setCompressButtonState("Compress", false);
   } catch (err) {
     loadingToast.dismiss();
-    showToast("Compression failed ❌", "error", 3000);
+    showToast("Compression failed ❌", "error", 4000);
     console.error("Compression error:", err);
+    setCompressButtonState("Compress", false);
   }
 };
 
-const handleFile = (file: File) => {
+const validateFile = (file: File): boolean => {
+  const fileExtension = file.name.split(".").pop()?.toLowerCase();
+  const fileSizeMB = file.size / (1024 * 1024);
+
+  if (!fileExtension || !ALLOWED_EXTENSIONS.includes(fileExtension)) {
+    showToast("❌ Unsupported file type. Only GLB and GLTF are allowed.", "error", 4000);
+    return false;
+  }
+
+  if (fileSizeMB > MAX_FILE_SIZE_MB) {
+    showToast(`❌ File too large. Max allowed size is ${MAX_FILE_SIZE_MB} MB.`, "error", 4000);
+    return false;
+  }
+
+  return true;
+};
+
+const handleFile = async (file: File): Promise<void> => {
+  if (!validateFile(file)) {
+    setCompressButtonState("Compress", false);
+    return;
+  }
+
   currentFile = file;
   handleCompression(file);
 };
@@ -330,8 +373,17 @@ const handleFile = (file: File) => {
 });
 
 window.addEventListener("drop", (e) => {
-  if (e.dataTransfer?.files?.length) {
-    handleFile(e.dataTransfer.files[0]);
+  e.preventDefault();
+  e.stopPropagation();
+
+  const file = e.dataTransfer?.files?.[0];
+  if (!file) return;
+
+  if (validateFile(file)) {
+    setCompressButtonState("Compressing... 🕖", true);
+    handleFile(file);
+  } else {
+    setCompressButtonState("Compress", false);
   }
 });
 
@@ -340,10 +392,12 @@ window.addEventListener("drop", (e) => {
 // ---------------------------------------
 
 window.addEventListener("resize", () => {
-  const width = window.innerWidth / 2;
+  const width = window.innerWidth / 2 - 0.5;
   const height = window.innerHeight;
+
   rendererLeft.setSize(width, height);
   rendererRight.setSize(width, height);
+
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 });

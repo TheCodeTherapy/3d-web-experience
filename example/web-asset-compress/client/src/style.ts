@@ -108,7 +108,7 @@ export const toastStyle = `
   font-family: sans-serif;
   font-size: 14px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  animation: fadeIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+  animation: fadeIn 0.3s ease, fadeOut 0.3s ease 3.7s forwards;
 }
 
 .toast.success { background-color: #28a745; }
