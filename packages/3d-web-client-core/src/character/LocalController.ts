@@ -114,7 +114,7 @@ export class LocalController {
     this.respawnDiv.style.width = "60px";
     this.respawnDiv.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
     this.respawnDiv.style.position = "fixed";
-    this.respawnDiv.style.top = "12px";
+    this.respawnDiv.style.bottom = "12px";
     this.respawnDiv.style.right = "12px";
     this.respawnDiv.style.color = "rgb(255, 255, 255)";
     this.respawnDiv.style.textAlign = "center";
