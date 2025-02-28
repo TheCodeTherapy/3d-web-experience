@@ -505,6 +505,54 @@
         this.load(fen);
       }
 
+      validateSequenceOfMoves(engineInstance, moves, debug = false) {
+        let invalidMoves = [];
+
+        for (let i = 0; i < moves.length; i++) {
+          const currentMove = moves[i];
+
+          // **Ignore game results (e.g., "0-1", "1-0", "1/2-1/2")**
+          if (["1-0", "0-1", "1/2-1/2"].includes(currentMove)) {
+            if (debug === true) {
+              console.log(`Skipping game result: ${currentMove}`);
+              console.log(`Result: ${currentMove}`);
+            }
+            break;
+          }
+
+          if (debug === true) {
+            console.log(`move ${i}: ${currentMove}`);
+            console.log(`\n${engineInstance.ascii()}\n`);
+          }
+
+          if (engineInstance.isGameOver()) {
+            if (debug === true) {
+              console.log(`Game is over at move ${i}. Skipping remaining moves.`);
+            }
+            break;
+          }
+
+          const moveObject = engineInstance.move(currentMove);
+          if (!moveObject) {
+            console.error(`❌ Invalid move at index ${i}: ${currentMove}`);
+            invalidMoves.push(currentMove);
+            break;
+          }
+        }
+
+        if (invalidMoves.length === 0) {
+          if (debug === true) {
+            console.log("✅ All moves validated! The match is legal.");
+          }
+          return true;
+        } else {
+          if (debug === true) {
+            console.log("❌ Some moves were invalid:", invalidMoves);
+          }
+          return false;
+        }
+      }
+
       clear({ preserveHeaders = false } = {}) {
         this._board = new Array(128);
         this._kings = { w: EMPTY, b: EMPTY };
@@ -1749,6 +1797,7 @@
             from = matches[2];
             to = matches[3];
             promotion = matches[4];
+            Q;
             if (from.length == 1) {
               overlyDisambiguated = true;
             }
@@ -2297,6 +2346,57 @@
     }
   }
 
+  class LabelSign {
+    constructor(parentGroup, x, y, z, ry, width, height) {
+      this.width = width;
+      this.height = height;
+      this.group = document.createElement("m-group");
+      this.group.setAttribute("x", x);
+      this.group.setAttribute("y", y);
+      this.group.setAttribute("z", z);
+      this.group.setAttribute("ry", ry);
+      parentGroup.appendChild(this.group);
+
+      this.createLabel();
+      return this;
+    }
+
+    createLabel() {
+      this.labelGroup = document.createElement("m-group");
+      this.labelGroup.setAttribute("id", "label-group");
+
+      this.labelBackground = document.createElement("m-cube");
+      this.labelBackground.setAttribute("id", "state-label-background");
+      this.labelBackground.setAttribute("width", this.width);
+      this.labelBackground.setAttribute("height", this.height);
+      this.labelBackground.setAttribute("depth", 0.05);
+      this.labelBackground.setAttribute("color", "#000000");
+      this.labelBackground.setAttribute("opacity", 1);
+      this.labelBackground.setAttribute("collide", false);
+      this.labelGroup.appendChild(this.labelBackground);
+
+      this.label = document.createElement("m-label");
+      this.label.setAttribute("id", "state-label");
+      this.label.setAttribute("width", 9.5);
+      this.label.setAttribute("z", 0.026);
+      this.label.setAttribute("height", 0.45);
+      this.label.setAttribute("emissive", 4);
+      this.label.setAttribute("content", "");
+      this.label.setAttribute("color", "rgba(1, 0, 3, 0.45)");
+      this.label.setAttribute("font-color", "#4477ff");
+      this.label.setAttribute("padding", 7);
+      this.label.setAttribute("collide", true);
+      this.label.setAttribute("font-size", 30);
+      this.labelGroup.appendChild(this.label);
+
+      this.group.appendChild(this.labelGroup);
+    }
+
+    setContent(content) {
+      this.label.setAttribute("content", content);
+    }
+  }
+
   class ChessGameRenderer {
     constructor(
       parentElement,
@@ -2324,6 +2424,8 @@
       this.afterMoveRatio = 0.3334;
 
       this.inverse = false;
+
+      this.defaultMoveSoundVolume = 3;
       // =====================================================================
 
       // states and book keeping =============================================
@@ -2331,8 +2433,10 @@
       this.currentFEN = initialFEN;
 
       this.busy = false;
+
       this.all2DPieces = [];
       this.extra2DPieces = [];
+
       this.all3DPieces = [];
       this.extra3DPieces = [];
 
@@ -2413,15 +2517,8 @@
       // =====================================================================
 
       this.createSounds();
-      this.createStateVisualizer();
 
-      this.promptButton = new InteractionButton(-3.5, 0, -6, -45, this.parentElement);
-      this.prompt = document.createElement("m-prompt");
-      this.promptEventListener = null;
-      this.prompt.appendChild(this.promptButton.group);
-      this.parentElement.appendChild(this.prompt);
-
-      this.setBoardFromFEN(this.currentFEN);
+      this.setBoardFromFEN(this.initialFEN);
     }
 
     create3DBoard() {
@@ -2505,168 +2602,41 @@
       this.parentElement.appendChild(this.checkAudio);
     }
 
-    playMoveAudio() {
-      setTimeout(
-        () => {
-          this.moveAudio.setAttribute("volume", this.randomFloatBetween(2, 4));
-          this.moveAudio.setAttribute("start-time", document.timeline.currentTime);
-          this.moveAudio.setAttribute("pause-time", document.timeline.currentTime + 200);
-          setTimeout(() => this.moveAudio.setAttribute("volume", 0), 200);
-        },
-        this.randomFloatBetween(0, 50),
-      );
-    }
+    playAudio(movementType) {
+      const hasRandomness = movementType === "move";
+      const volume = hasRandomness
+        ? this.randomFloatBetween(2, 4)
+        : movementType === "check"
+          ? this.defaultMoveSoundVolume * 3
+          : this.defaultMoveSoundVolume;
 
-    playCaptureAudio() {
-      this.captureAudio.setAttribute("volume", 3);
-      this.captureAudio.setAttribute("start-time", document.timeline.currentTime);
-      this.captureAudio.setAttribute("pause-time", document.timeline.currentTime + 200);
-      setTimeout(() => {
-        this.captureAudio.setAttribute("volume", 0);
-      }, 200);
-    }
+      let audioElement = this.moveAudio;
+      if (movementType === "capture") {
+        audioElement = this.captureAudio;
+      } else if (movementType === "castle") {
+        audioElement = this.castleAudio;
+      } else if (movementType === "check") {
+        audioElement = this.checkAudio;
+      }
 
-    playCastleAudio() {
-      this.castleAudio.setAttribute("volume", 3);
-      this.castleAudio.setAttribute("start-time", document.timeline.currentTime);
-      this.castleAudio.setAttribute("pause-time", document.timeline.currentTime + 200);
-      setTimeout(() => {
-        this.castleAudio.setAttribute("volume", 0);
-      }, 200);
-    }
+      const play = () => {
+        const now = document.timeline.currentTime;
+        audioElement.setAttribute("volume", volume);
+        audioElement.setAttribute("start-time", now);
+        audioElement.setAttribute("pause-time", now + 200);
+        setTimeout(() => audioElement.setAttribute("volume", 0), 200);
+      };
 
-    playCheckAudio() {
-      this.checkAudio.setAttribute("volume", 8);
-      this.checkAudio.setAttribute("start-time", document.timeline.currentTime);
-      this.checkAudio.setAttribute("pause-time", document.timeline.currentTime + 200);
-      setTimeout(() => {
-        this.checkAudio.setAttribute("volume", 0);
-      }, 200);
-    }
-
-    createPrompt(message, placeholder, prefill, promptCallback) {
-      this.prompt.setAttribute("message", message);
-      this.prompt.setAttribute("placeholder", placeholder);
-      this.prompt.setAttribute("prefill", prefill);
-      this.promptButton.setupPlay(() => {});
-      this.prompt.addEventListener("prompt", (e) => promptCallback(e.detail));
+      if (hasRandomness) {
+        setTimeout(() => play(), this.randomFloatBetween(0, 50));
+      } else {
+        play();
+      }
     }
 
     reset() {
       this.setBoardFromFEN(this.initialFEN, true);
-      this.promptButton.turnOn();
-      if (this.stateText) {
-        this.stateText.updateText("♟️ MML CHESS");
-      }
-      this.stateLabel.setAttribute("content", "♟️ MML CHESS");
       this.busy = false;
-    }
-
-    createStateVisualizer() {
-      this.stateLabelGroup = document.createElement("m-group");
-      this.stateLabelGroup.setAttribute("x", -5.7);
-      this.stateLabelGroup.setAttribute("y", 3);
-      this.stateLabelGroup.setAttribute("z", 0);
-      this.stateLabelGroup.setAttribute("ry", 90);
-
-      this.stateLabelBackground = document.createElement("m-cube");
-      this.stateLabelBackground.setAttribute("id", "state-label-background");
-      this.stateLabelBackground.setAttribute("width", 9.45);
-      this.stateLabelBackground.setAttribute("height", 0.4);
-      this.stateLabelBackground.setAttribute("depth", 0.05);
-      this.stateLabelBackground.setAttribute("color", "#000000");
-      this.stateLabelBackground.setAttribute("opacity", 1);
-      this.stateLabelBackground.setAttribute("collide", true);
-      this.stateLabelGroup.appendChild(this.stateLabelBackground);
-
-      this.stateLabel = document.createElement("m-label");
-      this.stateLabel.setAttribute("id", "state-label");
-      this.stateLabel.setAttribute("width", 9.5);
-      this.stateLabel.setAttribute("z", 0.026);
-      this.stateLabel.setAttribute("height", 0.45);
-      this.stateLabel.setAttribute("emissive", 4);
-      this.stateLabel.setAttribute("content", "♟️ MML CHESS");
-      this.stateLabel.setAttribute("color", "rgba(1, 0, 3, 0.45)");
-      this.stateLabel.setAttribute("font-color", "#4477ff");
-      this.stateLabel.setAttribute("padding", 7);
-      this.stateLabel.setAttribute("collide", true);
-      this.stateLabel.setAttribute("font-size", 30);
-      // this.stateLabel.setAttribute("alignment", "center");
-      this.stateLabelGroup.appendChild(this.stateLabel);
-
-      this.parentElement.appendChild(this.stateLabelGroup);
-
-      // this.stateImage = document.createElement("m-image");
-      // this.stateImage.setAttribute("id", "state-image");
-      // this.stateImage.setAttribute("width", 15);
-      // this.stateImage.setAttribute("x", -3.5);
-      // this.stateImage.setAttribute("y", 0);
-      // this.stateImage.setAttribute("z", -this.boardSize / 2 - 0.3);
-      // this.stateImage.setAttribute("ry", 180);
-      // this.stateImage.setAttribute("rx", 90);
-      // this.stateImage.setAttribute("collide", false);
-      // this.stateImage.setAttribute("emissive", 5);
-      // this.stateImage.setAttribute("content", "");
-      // this.board2DWrapper.appendChild(this.stateImage);
-
-      // this.stateText = this.generateTextImage(this.stateImage, "♟️ MML CHESS", {
-      //   textColor: "#00ff00",
-      //   maxLineCharacters: 90,
-      // });
-    }
-
-    generateTextImage(targetImage, text, options) {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-
-      const fontSize = options.fontSize || 50;
-      const lineHeight = parseFloat((fontSize * 1.2).toFixed(2));
-      const textColor = options.textColor || "#ffffff";
-      const maxLineCharacters = options.maxLineCharacters || 42;
-
-      function splitTextIntoLines(text) {
-        const words = text.split(" ");
-        const lines = [];
-        let currentLine = "";
-
-        words.forEach((word) => {
-          const testLine = currentLine ? `${currentLine} ${word}` : word;
-          if (testLine.length <= maxLineCharacters) {
-            currentLine = testLine;
-          } else {
-            lines.push(currentLine);
-            currentLine = word;
-          }
-        });
-
-        if (currentLine) lines.push(currentLine);
-        return lines;
-      }
-
-      function paintText(text) {
-        const lines = splitTextIntoLines(text);
-        canvas.width = fontSize * (maxLineCharacters + 1) * 0.6;
-        canvas.height = lineHeight * (lines.length + 1);
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = `900 ${fontSize}px monospace`;
-        ctx.fillStyle = textColor;
-
-        let yPos = lineHeight;
-        lines.forEach((line) => {
-          ctx.fillText(line, 0, yPos);
-          yPos += lineHeight;
-        });
-
-        const dataUrl = canvas.toDataURL("image/png");
-        targetImage.setAttribute("src", dataUrl);
-      }
-
-      paintText(text);
-
-      return {
-        updateText: (newText) => paintText(newText),
-      };
     }
 
     scale(element, scale) {
@@ -2678,8 +2648,8 @@
     translate(element, x, y, z, moveY = false, isCapture = false) {
       element.setAttribute("x", x);
       if (moveY) {
-        const yOffset = this.randomFloatBetween(0.3, 0.5);
-        const timeRatio = this.randomFloatBetween(0.4, 0.5);
+        const yOffset = this.randomFloatBetween(0.3, 0.7);
+        const timeRatio = this.randomFloatBetween(0.4, 0.6);
         element.setAttribute("y", y + yOffset);
         setTimeout(() => element.setAttribute("y", y), this.movementDuration * timeRatio);
       } else {
@@ -2746,6 +2716,7 @@
       this.translate(model, x, y, z);
       this.scale(model, scale);
 
+      this.all3DPieces.push(model);
       return model;
     }
 
@@ -2766,6 +2737,7 @@
       lerp.setAttribute("duration", this.movementDuration);
       lerp.setAttribute("easing", "easeInOutQuint");
       image.appendChild(lerp);
+      this.all2DPieces.push(image);
       return image;
     }
 
@@ -2807,24 +2779,25 @@
     }
 
     setBoardFromFEN(fen, reset = false) {
-      this.currentFEN = reset === true ? this.initialFEN : fen;
       const boardState = this.getStateFromFEN(fen);
 
-      if (reset === true) {
-        this.capturedPieces2DMap.white = [];
-        this.capturedPieces2DMap.black = [];
-        this.extra2DPieces.forEach((piece) => {
-          this.pieces2DGroup.removeChild(piece);
-        });
-        this.capturedPieces3DMap.white = [];
-        this.capturedPieces3DMap.black = [];
-        this.extra3DPieces.forEach((piece) => {
-          this.pieces3DGroup.removeChild(piece);
-        });
-      } else {
-        this.pieces3DGroup.innerHTML = "";
-        this.pieces3DMap.clear();
-      }
+      this.all2DPieces.forEach((piece) => this.pieces2DGroup.removeChild(piece));
+      this.all2DPieces = [];
+      this.pieces2DMap.clear();
+
+      this.all3DPieces.forEach((piece) => this.pieces3DGroup.removeChild(piece));
+      this.all3DPieces = [];
+      this.pieces3DMap.clear();
+
+      this.capturedPieces2DMap.white = [];
+      this.capturedPieces2DMap.black = [];
+      this.capturedPieces3DMap.white = [];
+      this.capturedPieces3DMap.black = [];
+
+      this.possibleMovesMap.forEach((square) => this.pieces3DGroup.removeChild(square));
+      this.possibleMovesMap.clear();
+
+      this.pieces3DGroup.innerHTML = "";
 
       const board2D = document.getElementById("2D-board");
       const board2DX = parseFloat(board2D.getAttribute("x"));
@@ -2850,16 +2823,15 @@
           const rank = this.boardSize - y3D / this.squareSize - this.centerOffset; // 1-8
           const chessCellId = `${file}${rank}`;
 
-          if (reset === false) {
-            const possible3DSquare = this.createPlane(
-              chessCellId,
-              this.possibleImageURL,
-              x,
-              y3D + 0.007,
-              z,
-            );
-            this.pieces3DGroup.appendChild(possible3DSquare);
-          }
+          const possible3DSquare = this.createPlane(
+            chessCellId,
+            this.possibleImageURL,
+            x,
+            y3D + 0.007,
+            z,
+          );
+          this.possibleMovesMap.set(chessCellId, possible3DSquare);
+          this.pieces3DGroup.appendChild(possible3DSquare);
 
           if (piece) {
             const isWhite = piece === piece.toUpperCase();
@@ -2867,66 +2839,22 @@
             const rotation = isWhite ? 180 : 0;
             const pieceId = `${piece}${side}-${file}${rank}`;
 
-            if (reset === true) {
-              const piece2D = this.all2DPieces.find((p) => p.getAttribute("id") === pieceId);
-              if (piece2D) {
-                this.translate(piece2D, x, y2D, z);
-                this.scale(piece2D, 1);
-                this.pieces2DMap.set(`${row}${col}`, piece2D);
-              } else {
-                console.error(`ERROR: setBoardFromFen: piece2D not found for ${pieceId}`);
-              }
+            const piece2DAsset = this.pieces2DImages.get(piece);
+            const piece2D = this.create2DPiece(piece2DAsset, pieceId, x, y2D, z, 1, 1, 1, 90);
+            this.pieces2DGroup.appendChild(piece2D);
+            this.pieces2DMap.set(`${row}${col}`, piece2D);
 
-              const piece3D = this.all3DPieces.find((p) => p.getAttribute("id") === pieceId);
-              if (piece3D) {
-                this.translate(piece3D, x, y3D, z);
-                this.scale(piece3D, this.piece3DScale);
-                this.pieces3DMap.set(`${row}${col}`, piece3D);
-              } else {
-                console.error(`ERROR: setBoardFromFen: piece3D not found for ${pieceId}`);
-              }
-            } else {
-              const piece2DAsset = this.pieces2DImages.get(piece);
-              const piece2D = this.create2DPiece(piece2DAsset, pieceId, x, y2D, z, 1, 1, 1, 90);
-              this.pieces2DGroup.appendChild(piece2D);
-              this.pieces2DMap.set(`${row}${col}`, piece2D);
-              this.all2DPieces.push(piece2D);
-
-              const piece3DAsset = this.pieces3DModels.get(piece);
-              const piece3D = this.create3DPiece(piece3DAsset, pieceId, x, y3D, z, rotation);
-              this.pieces3DGroup.appendChild(piece3D);
-              this.pieces3DMap.set(`${row}${col}`, piece3D);
-              this.all3DPieces.push(piece3D);
-            }
+            const piece3DAsset = this.pieces3DModels.get(piece);
+            const piece3D = this.create3DPiece(piece3DAsset, pieceId, x, y3D, z, rotation);
+            this.pieces3DGroup.appendChild(piece3D);
+            this.pieces3DMap.set(`${row}${col}`, piece3D);
           }
         }
       }
     }
 
-    setMoveText(from, to, description) {
-      if (this.stateText) {
-        if (description.length > 0) {
-          this.stateText.updateText(description);
-        } else {
-          this.stateText.updateText(`from: ${from} to: ${to}`);
-        }
-      }
-
-      if (this.stateLabel) {
-        if (description.length > 0) {
-          this.stateLabel.setAttribute("content", description);
-        } else {
-          this.stateLabel.setAttribute("content", `from: ${from} to: ${to}`);
-        }
-      }
-    }
-
-    applyMove(from, to, description = "", isCapture = false) {
-      if (this.busy === false) {
-        this.busy = true;
-      }
-
-      this.setMoveText(from, to, description);
+    applyMove(from, to, isCapture = false) {
+      if (this.busy === false) this.busy = true;
 
       const fromRow = 8 - parseInt(from[1]);
       const fromCol = from.charCodeAt(0) - 97;
@@ -3006,6 +2934,12 @@
         console.log(`❌ ERROR: Piece at ${position} not found in pieces3DMap!`);
       }
 
+      if (this.pieces2DMap.has(`${row}${col}`)) {
+        this.pieces2DMap.delete(`${row}${col}`);
+      } else {
+        console.log(`❌ ERROR: Piece at ${position} not found in pieces2DMap!`);
+      }
+
       const captured3DX = isWhite ? -this.capturedOffsetX : this.capturedOffsetX;
       const captured3DZ = isWhite
         ? this.capturedOffsetZ - capture3DArray.length * 0.5
@@ -3033,14 +2967,22 @@
       const isWhite = newPiece === newPiece.toUpperCase();
       const rotation = isWhite ? 0 : 180;
 
-      const pawnModel = this.pieces3DMap.get(`${row}${col}`);
-      if (!pawnModel) {
+      const pawn3D = this.pieces3DMap.get(`${row}${col}`);
+      const pawn2D = this.pieces2DMap.get(`${row}${col}`);
+
+      if (!pawn3D || !pawn2D) {
         console.error(`❌ ERROR: No pawn found at ${position} to promote!`);
         return;
       }
 
-      this.sendToCapturedArea(pawnModel, newPiece);
+      // Move the pawn to the captured area
+      this.sendToCapturedArea(position);
 
+      // Remove the pawn from the maps
+      this.pieces3DMap.delete(`${row}${col}`);
+      this.pieces2DMap.delete(`${row}${col}`);
+
+      // Compute new position
       const x = this.inverse
         ? (col - this.centerOffset) * this.squareSize
         : (this.boardSize - 1 - col - this.centerOffset) * this.squareSize;
@@ -3049,270 +2991,435 @@
         ? (row - this.centerOffset) * this.squareSize
         : (this.boardSize - 1 - row - this.centerOffset) * this.squareSize;
 
-      const queenModel = this.create3DPiece(newPiece, x, this.board3DYOffset, z, rotation);
-      this.pieces3DGroup.appendChild(queenModel);
-      this.pieces3DMap.set(`${row}${col}`, queenModel);
-      this.extra3DPieces.push(queenModel);
+      const y3D = this.board3DYOffset;
+      const y2D = this.board2DYOffset;
+
+      // Create and place the promoted piece (3D)
+      const promoted3DAsset = this.pieces3DModels.get(newPiece);
+      if (!promoted3DAsset) {
+        console.error(`❌ ERROR: No 3D model found for ${newPiece}!`);
+        return;
+      }
+      const promoted3D = this.create3DPiece(
+        promoted3DAsset,
+        `${newPiece}-${position}`,
+        x,
+        y3D,
+        z,
+        rotation,
+      );
+      this.pieces3DGroup.appendChild(promoted3D);
+      this.pieces3DMap.set(`${row}${col}`, promoted3D);
+      this.extra3DPieces.push(promoted3D);
+
+      // Create and place the promoted piece (2D)
+      const promoted2DAsset = this.pieces2DImages.get(newPiece);
+      if (!promoted2DAsset) {
+        console.error(`❌ ERROR: No 2D image found for ${newPiece}!`);
+        return;
+      }
+      const promoted2D = this.create2DPiece(
+        promoted2DAsset,
+        `${newPiece}-${position}`,
+        x,
+        y2D,
+        z,
+        1,
+        1,
+        1,
+        90,
+      );
+      this.pieces2DGroup.appendChild(promoted2D);
+      this.pieces2DMap.set(`${row}${col}`, promoted2D);
+      this.extra2DPieces.push(promoted2D);
     }
   }
 
-  function validateMoves(chessEngineInstance, moves, debug = false) {
-    let invalidMoves = [];
+  class MatchViewer {
+    chessEngineInstance = null;
+    constructor(parentElement, chessEngineInstance, chessRendererInstance, x, y, z, ry) {
+      this.parentElement = parentElement;
+      this.chessRendererInstance = chessRendererInstance;
+      this.chessEngineInstance = chessEngineInstance;
+      this.x = x;
+      this.y = y;
+      this.z = z;
+      this.ry = ry;
+      this.activationButton = new InteractionButton(x, y, z, ry, this.parentElement);
+      this.activationButton.setupPlay(() => {});
+      this.label = new LabelSign(this.parentElement, -5.7, 3, 0, 90, 9.5, 0.45);
+      this.label.setContent("♟️ MML CHESS");
 
-    for (let i = 0; i < moves.length; i++) {
-      const currentMove = moves[i];
+      this.promptCallback = null;
+      this.prompt = this.createPrompt(
+        "Enter a Chess.com playername, year, month, day (comma-separated values) to re-watch a match",
+        "",
+        "magnuscarlsen,2023,12,14",
+        async (detail) => {
+          const cleanValue = detail.value.trim().replace(/\s/g, "");
+          const [username, year, month, day] = cleanValue.split(",");
+          const games = await this.getChessGameByDate(username, year, month, day);
+          if (games.length > 0) {
+            this.createGameSelector(games);
+          } else {
+            console.log("No games found for", username, year, month, day);
+          }
+        },
+      );
 
-      // **Ignore game results (e.g., "0-1", "1-0", "1/2-1/2")**
-      if (["1-0", "0-1", "1/2-1/2"].includes(currentMove)) {
-        if (debug === true) {
-          console.log(`Skipping game result: ${currentMove}`);
-          console.log(`Result: ${currentMove}`);
+      this.parentElement.appendChild(this.prompt);
+      this.prompt.appendChild(this.activationButton.group);
+
+      this.optionsGroup = document.createElement("m-group");
+      this.optionsGroup.setAttribute("id", "match-viewer-options");
+      this.optionsGroup.setAttribute("x", this.x - 0.5);
+      this.optionsGroup.setAttribute("y", this.y + 2);
+      this.optionsGroup.setAttribute("z", this.z);
+      this.optionsGroup.setAttribute("ry", this.ry + 180);
+      this.parentElement.appendChild(this.optionsGroup);
+
+      this.menuOptions = [];
+    }
+
+    simulateMatch(moves, delay, debug = false) {
+      this.label.setContent("♟️ MML CHESS");
+
+      if (!this.chessEngineInstance || !this.chessRendererInstance) {
+        console.error("❌ ERROR: NO chessEngineInstance or chessRendererInstances.");
+        return;
+      }
+      if (!moves || moves.length === 0) {
+        console.error("❌ ERROR: No moves provided for simulation.");
+        return;
+      }
+      if (delay < this.chessRendererInstance.movementDuration) {
+        console.error("❌ ERROR: Delay is too short for simulation.");
+        return;
+      }
+
+      if (this.label) {
+        this.label.setContent("♟️ MML CHESS");
+      }
+      this.chessEngineInstance.reset();
+
+      let moveIndex = 0;
+      let isGameOver = false;
+
+      const playNextMove = (moves, moveIndex, delay, debug = false) => {
+        if (moveIndex >= moves.length || isGameOver) {
+          if (debug === true) {
+            console.log("✅ Game Over - Simulation Complete!");
+          }
+          return;
         }
-        break;
-      }
 
-      if (debug === true) {
-        console.log(`move ${i}: ${currentMove}`);
-        console.log(`\n${chessEngineInstance.ascii()}\n`);
-      }
+        const moveNotation = moves[moveIndex];
+        const moveNumber = `${moveIndex + 1}`.padStart(3, " ");
+        const paddedMoveNotation = moveNotation.padStart(5, " ");
+        let moveDescription = `[${moveNumber}] ${paddedMoveNotation}`;
 
-      if (chessEngineInstance.isGameOver()) {
-        if (debug === true) {
-          console.log(`Game is over at move ${i}. Skipping remaining moves.`);
+        if (["1-0", "0-1", "1/2-1/2"].includes(moveNotation)) {
+          if (moveNotation === "1-0") {
+            this.label.setContent("♟️ WHITE WINS");
+          } else if (moveNotation === "0-1") {
+            this.label.setContent("♟️ BLACK WINS");
+          } else {
+            this.label.setContent("♟️ DRAW");
+          }
+          moveDescription = `🏁 Game Over`;
+          if (debug === true) {
+            console.log(moveDescription);
+          }
+          this.chessEngineInstance.reset();
+          isGameOver = true;
+          this.activationButton.turnOn();
+          setTimeout(() => {
+            this.chessRendererInstance.reset();
+            this.label.setContent("♟️ MML CHESS");
+          }, this.chessRendererInstance.movementDuration * 10);
+          return;
         }
-        break;
-      }
 
-      const moveObject = chessEngineInstance.move(currentMove);
-      if (!moveObject) {
-        console.error(`❌ Invalid move at index ${i}: ${currentMove}`);
-        invalidMoves.push(currentMove);
-        break;
-      }
-    }
+        const move = this.chessEngineInstance.move(moveNotation);
+        if (!move) {
+          console.error(`❌ ERROR: Invalid move: ${moveNotation}`);
+          return;
+        }
+        const isWhiteTurn = move.color === "w";
+        moveDescription = isWhiteTurn ? ` ⚪ ${moveDescription}` : ` ⚫ ${moveDescription}`;
+        const piece = isWhiteTurn ? move.piece.toUpperCase() : move.piece.toLowerCase();
+        const fromSquare = move.from;
+        const toSquare = move.to;
 
-    if (invalidMoves.length === 0) {
-      if (debug === true) {
-        console.log("✅ All moves validated! The match is legal.");
-      }
-      return true;
-    } else {
-      if (debug === true) {
-        console.log("❌ Some moves were invalid:", invalidMoves);
-      }
-      return false;
-    }
-  }
+        const pieceFromTo = `${piece} from ${fromSquare} to ${toSquare}`;
+        moveDescription = `${moveDescription} | ${pieceFromTo} |`.padEnd(30, " ");
 
-  function cleanPGN(pgn) {
-    const movesOnly = pgn
-      .replace(/\[.*?\]\n?/g, "") // remove all headers
-      .trim() // remove leading and trailing whitespace
-      .replace(/\{.*?\}/g, "") // remove clock
-      .replace(/\d+\.+/g, "") // remove move numbers
-      .trim(); // remove leading and trailing whitespace
-    const movesArray = movesOnly.trim().split(/\s+/);
-    return movesArray;
-  }
+        const isCapture = move.captured;
+        const isCastle = move.flags.includes("k") || move.flags.includes("q");
+        const isCheck = this.chessEngineInstance.isCheck();
 
-  function getChessGameByDate(username, year, month, callback) {
-    var xhr = new XMLHttpRequest();
-    var url = `https://api.chess.com/pub/player/${username}/games/${year}/${month}`;
+        if (isCapture) {
+          const captured = move.captured;
+          const isWhite = move.color === "w";
+          const capturedPiece = isWhite ? captured.toLowerCase() : captured.toUpperCase();
+          moveDescription = `${moveDescription} ⚔️ ${capturedPiece} captured at ${toSquare}`;
+          this.chessRendererInstance.sendToCapturedArea(move.to);
+        }
 
-    xhr.open("GET", url, true);
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4 && xhr.status === 200) {
-        var response = JSON.parse(xhr.responseText);
-        if (response.games && response.games.length > 0) {
-          const match = response.games[0];
-          const cleanMatch = cleanPGN(match.pgn);
-          callback(cleanMatch);
+        // Handle castling
+        if (isCastle) {
+          const isKingside = move.flags.includes("k");
+          const rookFrom = isKingside
+            ? move.from[1] === "1"
+              ? "h1"
+              : "h8"
+            : move.from[1] === "1"
+              ? "a1"
+              : "a8";
+          const rookTo = isKingside
+            ? move.from[1] === "1"
+              ? "f1"
+              : "f8"
+            : move.from[1] === "1"
+              ? "d1"
+              : "d8";
+
+          const side = isKingside ? "king-side" : "queen-side";
+          moveDescription = `${moveDescription} 🏰 Castled ${side} from ${rookFrom} to ${rookTo}`;
+
+          // Apply move to renderer
+          setTimeout(() => {
+            this.chessRendererInstance.applyMove(rookFrom, rookTo, false);
+          }, this.chessRendererInstance.movementDuration * 0.5);
+        }
+
+        if (isCheck) {
+          moveDescription = `${moveDescription} 🚨 Check!`;
+        }
+
+        if (this.label) {
+          this.label.setContent(moveDescription);
+        }
+
+        // Apply move to renderer
+        this.chessRendererInstance.applyMove(fromSquare, toSquare, isCapture);
+
+        // Handle pawn promotion
+        if (move.promotion) {
+          this.chessRendererInstance.promotePawn(toSquare, move.promotion.toUpperCase());
         } else {
-          callback("No games found for this period.");
         }
-      }
-    };
-    xhr.send();
-  }
 
-  function gameBrowser(gamesList) {
-    console.log(gamesList);
+        let audioDelay = isCheck
+          ? renderer.movementDuration * 0.7
+          : isCapture || isCastle
+            ? renderer.movementDuration * 0.5
+            : renderer.movementDuration * 0.85;
+
+        if (isCheck) {
+          setTimeout(() => this.chessRendererInstance.playAudio("check"), audioDelay);
+        }
+
+        if (isCapture) {
+          setTimeout(() => this.chessRendererInstance.playAudio("capture"), audioDelay);
+        } else if (isCastle) {
+          setTimeout(() => this.chessRendererInstance.playAudio("castle"), audioDelay);
+        } else {
+          setTimeout(() => this.chessRendererInstance.playAudio("move"), audioDelay);
+        }
+
+        setTimeout(() => playNextMove(moves, moveIndex + 1, delay), delay, debug);
+      };
+
+      playNextMove(moves, moveIndex, delay, debug);
+    }
+
+    watchMatch(game) {
+      this.chessEngineInstance.reset();
+      if (this.chessEngineInstance.validateSequenceOfMoves(this.chessEngineInstance, game.pgn)) {
+        this.menuOptions.forEach((option) => {
+          option.label.removeEventListener("click", option.eventListener);
+          this.optionsGroup.removeChild(option.label);
+        });
+        this.menuOptions = [];
+        this.simulateMatch(game.pgn, this.chessRendererInstance.movementDuration * 2, true);
+      }
+    }
+
+    createGameSelector(games) {
+      const height = 0.2;
+      const spacing = 0.025;
+      const totalItems = games.length;
+
+      games.forEach((game, i) => {
+        const column = i % 2 === 0 ? 0 : 1;
+        const row = Math.floor(i / 2);
+        const middleIndex = totalItems / 4;
+        const y = (middleIndex - row) * (height / 2 + spacing);
+
+        const date = new Date(game.utcDate);
+        const matchTimeStamp = `${date.toLocaleDateString()} ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${date.getSeconds().toString().padStart(2, "0")}`;
+        const matchName = `${matchTimeStamp} | ${game.whiteName} vs ${game.blackName}: ${game.result.toUpperCase()}`;
+
+        const option = {};
+
+        const label = document.createElement("m-label");
+        label.setAttribute("content", matchName);
+        label.setAttribute("x", column === 0 ? -1.1 : 1.1);
+        label.setAttribute("y", y);
+        label.setAttribute("z", 0);
+        label.setAttribute("sx", 0.5);
+        label.setAttribute("sy", 0.5);
+        label.setAttribute("width", 4.2);
+        label.setAttribute("height", height);
+        label.setAttribute("font-size", 13);
+        label.setAttribute("padding", 3);
+        label.setAttribute("color", "rgba(0, 0, 0, 0.9)");
+        label.setAttribute("font-color", "#33ff88");
+        label.setAttribute("emissive", 3);
+        label.setAttribute("cast-shadows", false);
+        label.setAttribute("collide", false);
+
+        option.label = label;
+        option.eventListener = (event) => {
+          console.log(`${event.detail.connectionId} clicked on ${matchName}`);
+          this.watchMatch(game);
+        };
+        option.label.addEventListener("click", option.eventListener);
+
+        this.menuOptions.push(option);
+        this.optionsGroup.appendChild(label);
+      });
+    }
+
+    createPrompt(message, placeholder, prefill, callback) {
+      const prompt = document.createElement("m-prompt");
+      prompt.setAttribute("id", "match-viewer-prompt");
+      prompt.setAttribute("message", message);
+      prompt.setAttribute("placeholder", placeholder);
+      prompt.setAttribute("prefill", prefill);
+      this.promptCallback = callback;
+      prompt.addEventListener("prompt", (e) => {
+        this.promptCallback(e.detail);
+      });
+      return prompt;
+    }
+
+    async getChessGameByDate(username, year, month = null, day = null) {
+      let url = `https://api.chess.com/pub/player/${username}/games/${year}`;
+      if (month) url += `/${month}`;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch games: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (!data.games || data.games.length === 0) {
+          return [];
+        }
+
+        let gamesArray = data.games.map((game) => this.parsePGN(game.pgn, username));
+
+        if (day) {
+          const dayStr = day.toString().padStart(2, "0");
+          gamesArray = gamesArray.filter((game) => {
+            const gameDay = new Date(game.utcDate).getUTCDate().toString().padStart(2, "0");
+            return gameDay === dayStr;
+          });
+        }
+
+        return gamesArray;
+      } catch (error) {
+        console.error("Error fetching games:", error);
+        return [];
+      }
+    }
+
+    parsePGN(pgn, username) {
+      const pgnLines = pgn.split("\n");
+
+      const extractTag = (tag) => {
+        const line = pgnLines.find((l) => l.startsWith(`[${tag} `));
+        return line ? line.match(/\[.* "(.*)"\]/)[1] : null;
+      };
+
+      const parseTime = (timeStr) => {
+        const [hours, minutes, seconds] = timeStr.split(":").map(Number);
+        return hours * 3600 + minutes * 60 + seconds;
+      };
+
+      const formatDuration = (seconds) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        return `${h > 0 ? `${h}h ` : ""}${m > 0 ? `${m}m ` : ""}${s}s`.trim();
+      };
+
+      const utcDateStr = extractTag("UTCDate");
+      const utcTimeStr = extractTag("UTCTime");
+      const whiteName = extractTag("White");
+      const whiteElo = extractTag("WhiteElo");
+      const blackName = extractTag("Black");
+      const blackElo = extractTag("BlackElo");
+      const startTimeStr = extractTag("StartTime");
+      const endTimeStr = extractTag("EndTime");
+      const resultStr = extractTag("Result");
+      const matchURL = extractTag("Link");
+
+      const utcDateTimeStr = `${utcDateStr} ${utcTimeStr} UTC`;
+      const utcDate = new Date(utcDateTimeStr);
+      const startTime = new Date(`${utcDateStr} ${startTimeStr} UTC`);
+      const endTime = new Date(`${utcDateStr} ${endTimeStr} UTC`);
+      const matchDuration = (endTime - startTime) / 1000;
+      const matchDurationHR = formatDuration(matchDuration);
+
+      let result = "draw";
+
+      if (resultStr === "1-0") {
+        result = username.toLowerCase() === whiteName.toLowerCase() ? "win" : "lose";
+      }
+      if (resultStr === "0-1") {
+        result = username.toLowerCase() === blackName.toLowerCase() ? "win" : "lose";
+      }
+
+      return {
+        utcDate,
+        whiteName,
+        whiteElo: whiteElo ? parseInt(whiteElo, 10) : null,
+        blackName,
+        blackElo: blackElo ? parseInt(blackElo, 10) : null,
+        matchDuration,
+        matchDurationHR,
+        result,
+        matchURL,
+        pgn: this.cleanPGN(pgn),
+      };
+    }
+
+    cleanPGN(pgn) {
+      const movesOnly = pgn
+        .replace(/\[.*?\]\n?/g, "") // remove all headers
+        .trim() // remove leading and trailing whitespace
+        .replace(/\{.*?\}/g, "") // remove clock
+        .replace(/\d+\.+/g, "") // remove move numbers
+        .trim(); // remove leading and trailing whitespace
+      const movesArray = movesOnly.trim().split(/\s+/);
+      return movesArray;
+    }
+
+    dispose() {
+      if (this.promptCallback && this.prompt) {
+        this.prompt.removeEventListener("prompt", this.promptCallback);
+        this.promptCallback = null;
+      }
+    }
   }
 
   const wrapper = document.getElementById("wrapper");
   const renderer = new ChessGameRenderer(wrapper);
   const engine = createChessEngine();
 
-  function simulateMatch(chessEngineInstance, chessRendererInstance, moves, delay, debug = false) {
-    if (!chessEngineInstance || !chessRendererInstance) {
-      console.error("❌ ERROR: NO chessEngineInstance or chessRendererInstances.");
-      return;
-    }
-    if (!moves || moves.length === 0) {
-      console.error("❌ ERROR: No moves provided for simulation.");
-      return;
-    }
-    if (delay < chessRendererInstance.movementDuration) {
-      console.error("❌ ERROR: Delay is too short for simulation.");
-      return;
-    }
-    if (debug === true) {
-      console.log(`\n🔍 Starting simulation for game PGN: ${moves.join(", ")}`);
-    }
-
-    engine.reset();
-    let moveIndex = 0;
-    let isGameOver = false;
-
-    function playNextMove(moves, moveIndex, delay, debug = false) {
-      if (moveIndex >= moves.length || isGameOver) {
-        if (debug === true) {
-          console.log("✅ Game Over - Simulation Complete!");
-        }
-        return;
-      }
-
-      const moveNotation = moves[moveIndex];
-      const moveNumber = `${moveIndex + 1}`.padStart(3, " ");
-      const paddedMoveNotation = moveNotation.padStart(5, " ");
-      let moveDescription = `[${moveNumber}] ${paddedMoveNotation}`;
-
-      if (["1-0", "0-1", "1/2-1/2"].includes(moveNotation)) {
-        if (moveNotation === "1-0") {
-          if (renderer.stateText) {
-            renderer.stateText.updateText("♟️ WHITE WINS");
-          }
-          renderer.stateLabel.setAttribute("content", "♟️ WHITE WINS");
-        } else if (moveNotation === "0-1") {
-          if (renderer.stateText) {
-            renderer.stateText.updateText("♟️ BLACK WINS");
-          }
-          renderer.stateLabel.setAttribute("content", "♟️ BLACK WINS");
-        } else {
-          if (renderer.stateText) {
-            renderer.stateText.updateText("♟️ DRAW");
-          }
-          renderer.stateLabel.setAttribute("content", "♟️ DRAW");
-        }
-        moveDescription = `🏁 Game Over`;
-        if (debug === true) {
-          console.log(moveDescription);
-        }
-        engine.reset();
-        isGameOver = true;
-        setTimeout(() => {
-          chessRendererInstance.reset();
-        }, renderer.movementDuration * 10);
-        return;
-      }
-
-      const move = chessEngineInstance.move(moveNotation);
-      if (!move) {
-        console.error(`❌ ERROR: Invalid move: ${moveNotation}`);
-        return;
-      }
-      const isWhiteTurn = move.color === "w";
-      moveDescription = isWhiteTurn ? ` ⚪ ${moveDescription}` : ` ⚫ ${moveDescription}`;
-      const piece = isWhiteTurn ? move.piece.toUpperCase() : move.piece.toLowerCase();
-      const fromSquare = move.from;
-      const toSquare = move.to;
-
-      moveDescription = `${moveDescription} | ${piece} from ${fromSquare} to ${toSquare} |`.padEnd(
-        30,
-        " ",
-      );
-
-      let isCapture = false;
-      let isCastle = false;
-      const isCheck = chessEngineInstance.isCheck();
-
-      if (move.captured) {
-        isCapture = true;
-        const capturedPiece =
-          move.color === "w" ? move.captured.toLowerCase() : move.captured.toUpperCase();
-        moveDescription = `${moveDescription} ⚔️ ${capturedPiece} captured at ${toSquare}`;
-        chessRendererInstance.sendToCapturedArea(move.to);
-      }
-
-      // Handle castling
-      if (move.flags.includes("k") || move.flags.includes("q")) {
-        isCastle = true;
-        const isKingside = move.flags.includes("k");
-        const rookFrom = isKingside
-          ? move.from[1] === "1"
-            ? "h1"
-            : "h8"
-          : move.from[1] === "1"
-            ? "a1"
-            : "a8";
-        const rookTo = isKingside
-          ? move.from[1] === "1"
-            ? "f1"
-            : "f8"
-          : move.from[1] === "1"
-            ? "d1"
-            : "d8";
-
-        const side = isKingside ? "king-side" : "queen-side";
-        moveDescription = `${moveDescription} 🏰 Castled ${side} from ${rookFrom} to ${rookTo}`;
-        // Apply move to renderer
-        setTimeout(() => {
-          chessRendererInstance.applyMove(rookFrom, rookTo, moveDescription, false);
-        }, renderer.movementDuration * 0.5);
-      }
-
-      if (isCheck) {
-        moveDescription = `${moveDescription} 🚨 Check!`;
-      }
-
-      if (debug === true) {
-        console.log(moveDescription);
-      }
-
-      // Apply move to renderer
-      chessRendererInstance.applyMove(fromSquare, toSquare, moveDescription, isCapture);
-
-      // Handle pawn promotion
-      if (move.promotion) {
-        chessRendererInstance.promotePawn(toSquare, move.promotion.toUpperCase());
-      }
-
-      if (isCheck) {
-        setTimeout(() => chessRendererInstance.playCheckAudio(), renderer.movementDuration * 0.7);
-      }
-
-      // Play move audio
-      if (isCapture) {
-        setTimeout(() => chessRendererInstance.playCaptureAudio(), renderer.movementDuration * 0.5);
-      } else if (isCastle) {
-        setTimeout(() => chessRendererInstance.playCastleAudio(), renderer.movementDuration * 0.5);
-      } else {
-        setTimeout(() => chessRendererInstance.playMoveAudio(), renderer.movementDuration * 0.85);
-      }
-
-      setTimeout(() => playNextMove(moves, moveIndex + 1, delay), delay, debug);
-    }
-
-    playNextMove(moves, moveIndex, delay, debug);
-  }
-
-  renderer.createPrompt(
-    "Enter a Chess.com playername, year, month (comma-separated values) to re-watch a match",
-    "",
-    "magnuscarlsen,2023,12",
-    (detail) => {
-      const cleanValue = detail.value.trim().replace(/\s/g, "");
-      const [username, year, month] = cleanValue.split(",");
-      getChessGameByDate(username, year, month, function (pgn) {
-        if (!validateMoves(engine, pgn)) {
-          console.error("❌ Aborting simulation: The move sequence is invalid.");
-          return;
-        } else {
-          if (renderer.busy === false) {
-            simulateMatch(engine, renderer, pgn, renderer.movementDuration * 2);
-          }
-        }
-      });
-    },
-  );
+  const matchViewer = new MatchViewer(wrapper, engine, renderer, 6, 0, 0, -90);
 </script>
