@@ -3074,7 +3074,7 @@
       }
     }
 
-    clearMoves() {
+    clearHighlightedMoves() {
       this.possibleMovesMap.forEach((square, index) => {
         square.setAttribute("y", this.squareY);
         square.setAttribute("emissive", 0.2);
@@ -3919,7 +3919,7 @@
       moveDescription = isWhiteTurn ? ` ⚪ ${moveDescription}` : ` ⚫ ${moveDescription}`;
       moveDescription = `${moveDescription} | ${pieceFromTo} |`.padEnd(30, " ");
 
-      this.chessRenderEngine.clearMoves();
+      this.chessRenderEngine.clearHighlightedMoves();
 
       if (isCapture) {
         const captured = move.captured;
@@ -4155,14 +4155,15 @@
         this.player2Ready = false;
         this.player2ConnectionId = null;
       }
+      this.resetGame();
     }
 
     createPresenceProbe() {
       const probe = document.createElement("m-position-probe");
       probe.setAttribute("id", "presence-probe");
       probe.setAttribute("interval", 500);
-      probe.setAttribute("range", 15);
-      probe.setAttribute("debug", true);
+      probe.setAttribute("range", 22);
+      probe.setAttribute("debug", false);
 
       probe.addEventListener("positionenter", (e) => {
         this.presenceMap.set(e.detail.connectionId, e.detail);
