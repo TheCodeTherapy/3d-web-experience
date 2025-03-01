@@ -3794,28 +3794,34 @@
         return;
       }
 
-      // If a piece is already selected, check if the clicked position is a valid move
+      // Allow reselecting another piece before committing to a move
       if (this.selectedPiece) {
-        if (
-          userId !==
-          (this.currentTurn === "w" ? this.player1ConnectionId : this.player2ConnectionId)
-        ) {
-          console.log(`🚫 Not ${userId}'s turn!`);
+        if (this.selectedPiece === position) {
+          console.log(`🔄 ${userId} reselected ${pieceId} at ${position}`);
           return;
         }
 
-        const possibleMoves = this.chessEngine.moves({ square: this.selectedPiece, verbose: true });
+        // If clicking on another of their own pieces, change selection
+        const clickedPiece = this.chessEngine.get(position);
+        if (clickedPiece && clickedPiece.color === playerColor) {
+          console.log(`🔄 ${userId} switched selection to ${pieceId} at ${position}`);
+          this.chessRenderEngine.clearHighlightedMoves();
+          this.selectedPiece = position;
+        } else {
+          // If clicking on an opponent’s piece in a valid capture position, move
+          const possibleMoves = this.chessEngine
+            .moves({ square: this.selectedPiece, verbose: true })
+            .map((move) => move.to); // Extract valid target squares
 
-        const possibleMoveSquares = possibleMoves.map((move) => move.to); // Extract valid target squares
+          if (possibleMoves.includes(position)) {
+            console.log(`⚔️ ${userId} clicked enemy piece at ${position}, capturing it!`);
+            this.handleMoveSelection(userId, position);
+            return;
+          }
 
-        if (possibleMoveSquares.includes(position)) {
-          console.log(`⚔️ ${userId} clicked enemy piece at ${position}, capturing it!`);
-          this.handleMoveSelection(userId, position);
+          console.log(`❌ ${userId} clicked ${position}, but it's not a valid move.`);
           return;
         }
-
-        console.log(`❌ ${userId} clicked ${position}, but it's not a valid move.`);
-        return;
       }
 
       // Get possible moves with extra details
