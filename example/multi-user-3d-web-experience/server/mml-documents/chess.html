@@ -2398,11 +2398,9 @@
   }
 
   class ChessGameRenderer {
-    constructor(
-      parentElement,
-      initialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-    ) {
+    constructor(parentElement, clickCallback) {
       this.parentElement = parentElement;
+      this.clickCallback = clickCallback;
 
       // chess game settings =================================================
       this.boardSize = 8;
@@ -2429,8 +2427,9 @@
       // =====================================================================
 
       // states and book keeping =============================================
-      this.initialFEN = initialFEN;
-      this.currentFEN = initialFEN;
+      this.gameInProgress = false;
+      this.initialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+      this.currentFEN = this.initialFEN;
 
       this.busy = false;
 
@@ -2519,6 +2518,8 @@
       this.createSounds();
 
       this.setBoardFromFEN(this.initialFEN);
+
+      this.reactiveCallback = null;
     }
 
     create3DBoard() {
@@ -2716,6 +2717,15 @@
       this.translate(model, x, y, z);
       this.scale(model, scale);
 
+      const position = pieceId.split("-")[1];
+      model.setAttribute("class", position);
+
+      model.clickCallback = (connectionId) => {
+        this.gameInProgress = true;
+        this.clickCallback(connectionId, pieceId, model.getAttribute("class"));
+      };
+      model.addEventListener("click", (e) => model.clickCallback(e.detail.connectionId));
+
       this.all3DPieces.push(model);
       return model;
     }
@@ -2737,6 +2747,16 @@
       lerp.setAttribute("duration", this.movementDuration);
       lerp.setAttribute("easing", "easeInOutQuint");
       image.appendChild(lerp);
+
+      const position = pieceId.split("-")[1];
+      image.setAttribute("class", position);
+
+      image.clickCallback = (connectionId) => {
+        this.gameInProgress = true;
+        this.clickCallback(connectionId, pieceId, image.getAttribute("class"));
+      };
+      image.addEventListener("click", (e) => image.clickCallback(e.detail.connectionId));
+
       this.all2DPieces.push(image);
       return image;
     }
@@ -2819,8 +2839,8 @@
           const y3D = this.board3DYOffset;
           const y2D = this.board2DYOffset;
 
-          const file = String.fromCharCode(97 + x / this.squareSize + this.centerOffset); // a-h
-          const rank = this.boardSize - y3D / this.squareSize - this.centerOffset; // 1-8
+          const file = String.fromCharCode(97 + (this.inverse ? this.boardSize - 1 - col : col));
+          const rank = this.inverse ? row + 1 : this.boardSize - row;
           const chessCellId = `${file}${rank}`;
 
           const possible3DSquare = this.createPlane(
@@ -2881,10 +2901,12 @@
         ? (toRow - this.centerOffset) * this.squareSize
         : (this.boardSize - 1 - toRow - this.centerOffset) * this.squareSize;
 
+      movingPiece3D.setAttribute("class", to);
       this.translate(movingPiece3D, x, this.board3DYOffset, z, true, isCapture);
       this.pieces3DMap.delete(`${fromRow}${fromCol}`);
       this.pieces3DMap.set(`${toRow}${toCol}`, movingPiece3D);
 
+      movingPiece2D.setAttribute("class", to);
       this.translate(movingPiece2D, x, this.board2DYOffset, z, false, isCapture);
       this.pieces2DMap.delete(`${fromRow}${fromCol}`);
       this.pieces2DMap.set(`${toRow}${toCol}`, movingPiece2D);
@@ -3418,7 +3440,10 @@
   }
 
   const wrapper = document.getElementById("wrapper");
-  const renderer = new ChessGameRenderer(wrapper);
+  const clickFunction = (userId, pieceId, position) => {
+    console.log(`User ${userId} clicked on piece ${pieceId} at position ${position}`);
+  };
+  const renderer = new ChessGameRenderer(wrapper, clickFunction);
   const engine = createChessEngine();
 
   const matchViewer = new MatchViewer(wrapper, engine, renderer, 6, 0, 0, -90);
