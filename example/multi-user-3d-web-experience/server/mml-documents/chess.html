@@ -1,8 +1,195 @@
 <!-- MML Chess by Marco Gomez (@TheCodeTherapy) 2025 -->
 <!-- https://github.com/thecodetherapy -->
 
-<m-group id="wrapper"></m-group>
+<m-group id="wrapper">
+  <m-group id="pvp-wrapper" x="976.5" y="0" z="1000">
+    <m-cylinder radius="150" height="0.01" color="#5050aa" cast-shadows="false"></m-cylinder>
+  </m-group>
+</m-group>
 <script>
+  function createTeleporter(parentElement, startX, startY, startZ, endX, endY, endZ) {
+    const transporterYOffset = -0.047;
+    const transporterAnimTravel = 0.047;
+    const transporterAnimDuration = 1200;
+
+    const usersColliding = new Set();
+    let telerportingStarted = false;
+
+    const animate = (element, attr, start, end, duration, easing, cb) => {
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("start-time", document.timeline.currentTime);
+      anim.setAttribute("end-time", document.timeline.currentTime + duration);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("easing", easing);
+      anim.setAttribute("loop", false);
+      element.appendChild(anim);
+      setTimeout(() => {
+        element.setAttribute(attr, end);
+        element.removeChild(anim);
+        cb();
+      }, duration);
+    };
+
+    const teleporterStart = document.createElement("m-model");
+    teleporterStart.setAttribute("src", "/assets/playground/base_plinth.glb");
+    teleporterStart.setAttribute("ry", 180);
+    teleporterStart.setAttribute("x", startX);
+    teleporterStart.setAttribute("y", startY);
+    teleporterStart.setAttribute("z", startZ);
+
+    const transporter = document.createElement("m-model");
+    transporter.setAttribute("src", "/assets/playground/base_plinth_platform.glb");
+    transporter.setAttribute("x", startX);
+    transporter.setAttribute("y", startY + transporterYOffset);
+    transporter.setAttribute("z", startZ);
+    parentElement.appendChild(transporter);
+
+    const teleporterEnd = document.createElement("m-model");
+    teleporterEnd.setAttribute("src", "/assets/playground/base_plinth.glb");
+    teleporterEnd.setAttribute("ry", 180);
+    teleporterEnd.setAttribute("x", endX);
+    teleporterEnd.setAttribute("y", endY);
+    teleporterEnd.setAttribute("z", endZ);
+    parentElement.appendChild(teleporterEnd);
+
+    const teleporterProbe = document.createElement("m-position-probe");
+    teleporterProbe.setAttribute("debug", false);
+    teleporterProbe.setAttribute("range", 1.32);
+    teleporterProbe.setAttribute("interval", 500);
+    teleporterProbe.setAttribute("x", startX);
+    teleporterProbe.setAttribute("y", startY + 0.3);
+    teleporterProbe.setAttribute("z", startZ);
+    parentElement.appendChild(teleporterProbe);
+
+    teleporterProbe.addEventListener("positionenter", (e) => {
+      teleport();
+    });
+    teleporterProbe.addEventListener("positionmove", (e) => {
+      teleport();
+    });
+
+    const createAudio = (src) => {
+      const sfx = document.createElement("m-audio");
+      sfx.setAttribute("loop", false);
+      sfx.setAttribute("volume", 0);
+      sfx.setAttribute("start-time", document.timeline.currentTime - 4000);
+      sfx.setAttribute("pause-time", document.timeline.currentTime - 100);
+      sfx.setAttribute("src", src);
+      sfx.setAttribute("y", 15);
+      sfx.setAttribute("rx", 90);
+      sfx.setAttribute("cone-angle", 45);
+      sfx.setAttribute("cone-falloff-angle", 100);
+      sfx.setAttribute("debug", false);
+      return sfx;
+    };
+
+    const sfxStart = createAudio("/assets/playground/charge.mp3");
+    const sfxEnd = createAudio("/assets/playground/charge.mp3");
+    teleporterStart.appendChild(sfxStart);
+    teleporterEnd.appendChild(sfxEnd);
+
+    const stopSFX = () => {
+      sfxStart.setAttribute("volume", 0);
+      sfxStart.setAttribute("start-time", document.timeline.currentTime - 4000);
+      sfxStart.setAttribute("pause-time", document.timeline.currentTime - 100);
+      sfxEnd.setAttribute("volume", 0);
+      sfxEnd.setAttribute("start-time", document.timeline.currentTime - 4000);
+      sfxEnd.setAttribute("pause-time", document.timeline.currentTime - 100);
+    };
+
+    const playSFX = () => {
+      sfxStart.setAttribute("volume", 6);
+      sfxStart.setAttribute("start-time", document.timeline.currentTime);
+      sfxStart.setAttribute("pause-time", document.timeline.currentTime + 4000);
+      sfxEnd.setAttribute("volume", 6);
+      sfxEnd.setAttribute("start-time", document.timeline.currentTime);
+      sfxEnd.setAttribute("pause-time", document.timeline.currentTime + 4000);
+      setTimeout(() => {
+        stopSFX();
+      }, 3100);
+    };
+
+    const teleport = () => {
+      if (telerportingStarted) {
+        return;
+      }
+      telerportingStarted = true;
+      playSFX();
+      animate(
+        transporter,
+        "y",
+        startY + transporterYOffset,
+        startY + transporterYOffset + transporterAnimTravel,
+        transporterAnimDuration,
+        "EaseInOutCubic",
+        () => {
+          transporter.setAttribute("y", endY + 5000);
+          transporter.setAttribute("x", endX);
+          transporter.setAttribute("z", endZ);
+          transporter.setAttribute("y", endY - 0.003);
+          animate(
+            transporter,
+            "y",
+            endY + transporterYOffset + transporterAnimTravel,
+            endY + transporterYOffset,
+            transporterAnimDuration,
+            "EaseInOutCubuc",
+            () => {
+              transporter.setAttribute("x", startX);
+              transporter.setAttribute("y", startY + transporterYOffset);
+              transporter.setAttribute("z", startZ);
+              telerportingStarted = false;
+            },
+          );
+        },
+      );
+    };
+
+    parentElement.appendChild(teleporterStart);
+
+    const randomFloatBetween = (a, b) => {
+      return Math.random() * (b - a) + a;
+    };
+
+    const createParticles = (parentElement, maxParticles, radius) => {
+      const particles = new Map();
+      const goldenRatio = (1 + Math.sqrt(5)) / 2;
+      const angleIncrement = Math.PI * 2 * goldenRatio;
+      for (let i = 0; i < maxParticles; i++) {
+        const t = i / maxParticles;
+        const inc = Math.acos(1 - 2 * t);
+        const azimuth = angleIncrement * i;
+        const x = radius * Math.sin(inc) * Math.cos(azimuth);
+        const z = radius * Math.sin(inc) * Math.sin(azimuth);
+        const image = document.createElement("m-image");
+        image.setAttribute("src", "/assets/playground/particle.png");
+        image.setAttribute("emissive", 200);
+        image.setAttribute("x", x);
+        image.setAttribute("y", -Math.random() * 4);
+        image.setAttribute("z", z);
+        image.setAttribute("rx", randomFloatBetween(-45, 45));
+        image.setAttribute("ry", randomFloatBetween(-180, 180));
+        image.setAttribute("rz", randomFloatBetween(-45, 45));
+        image.setAttribute("width", randomFloatBetween(0.03, 0.08));
+        image.setAttribute("collide", false);
+        image.setAttribute("cast-shadows", false);
+        const anim = document.createElement("m-attr-anim");
+        anim.setAttribute("attr", "y");
+        anim.setAttribute("start", 0);
+        anim.setAttribute("end", 3 + Math.random() * 2);
+        anim.setAttribute("duration", 3000 + Math.random() * 3000);
+        anim.setAttribute("start-time", document.timeline.currentTime - Math.random() * 2000);
+        image.appendChild(anim);
+        particles.set(i, image);
+        parentElement.appendChild(image);
+      }
+    };
+    createParticles(teleporterStart, 12, 1);
+  }
+
   function createChessEngine(fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
     const WHITE = "w";
     const BLACK = "b";
@@ -2398,9 +2585,14 @@
   }
 
   class ChessGameRenderer {
-    constructor(parentElement, clickCallback) {
+    constructor(parentElement, pieceClickFunction, squareClickFunction, options = {}) {
       this.parentElement = parentElement;
-      this.clickCallback = clickCallback;
+      this.clickCallback = pieceClickFunction;
+      this.squareClickFunction = squareClickFunction;
+
+      this.boardCastShadows = options.boardCastShadows || false;
+      this.piecesCastShadows = options.piecesCastShadows || false;
+      this.boardLightCastShadows = options.boardLightCastShadows || false;
 
       // chess game settings =================================================
       this.boardSize = 8;
@@ -2411,6 +2603,7 @@
 
       this.board2DYOffset = 0.003;
       this.board3DYOffset = 0.35;
+      this.squareY = this.board3DYOffset + 0.007;
 
       this.piece3DScale = 0.2;
       this.capturedScale = 0.1;
@@ -2441,8 +2634,10 @@
 
       this.pieces2DMap = new Map();
       this.pieces3DMap = new Map();
+
       this.possibleMovesMap = new Map();
       this.possibleCapturesMap = new Map();
+      this.squareEventListeners = new Map();
 
       this.capturedPieces2DMap = { white: [], black: [] };
       this.capturedPieces3DMap = { white: [], black: [] };
@@ -2530,6 +2725,7 @@
       board.setAttribute("sx", 5);
       board.setAttribute("sy", 5);
       board.setAttribute("sz", 5);
+      board.setAttribute("cast-shadows", this.boardCastShadows);
       board3DGroup.appendChild(board);
 
       const boardLight = document.createElement("m-light");
@@ -2538,7 +2734,7 @@
       boardLight.setAttribute("x", 0);
       boardLight.setAttribute("y", 8);
       boardLight.setAttribute("z", 0);
-      boardLight.setAttribute("cast-shadows", false);
+      boardLight.setAttribute("cast-shadows", this.boardLightCastShadows);
       boardLight.setAttribute("intensity", 500);
       boardLight.setAttribute("type", "spotlight");
       boardLight.setAttribute("angle", 60);
@@ -2560,6 +2756,8 @@
       board.setAttribute("emissive", 0.3);
       board.setAttribute("opacity", 1);
       board.setAttribute("rx", 90);
+      board.setAttribute("cast-shadows", false);
+      board.setAttribute("collide", false);
       board2DGroup.appendChild(board);
 
       return board2DGroup;
@@ -2636,7 +2834,7 @@
     }
 
     reset() {
-      this.setBoardFromFEN(this.initialFEN, true);
+      this.setBoardFromFEN(this.initialFEN);
       this.busy = false;
     }
 
@@ -2694,7 +2892,8 @@
       model.setAttribute("sx", scale * 1.1);
       model.setAttribute("sy", scale * 1.1);
       model.setAttribute("sz", scale * 1.1);
-      model.setAttribute("cast-shadows", true);
+      model.setAttribute("cast-shadows", this.piecesCastShadows);
+      model.setAttribute("collide", true);
 
       const lerp = document.createElement("m-attr-lerp");
       lerp.setAttribute("attr", "x,z,sx,sy,sz");
@@ -2741,6 +2940,8 @@
       image.setAttribute("height", height);
       image.setAttribute("emissive", emissive);
       image.setAttribute("rx", rotation);
+      image.setAttribute("cast-shadows", false);
+      image.setAttribute("collide", false);
 
       const lerp = document.createElement("m-attr-lerp");
       lerp.setAttribute("attr", "x,z");
@@ -2798,7 +2999,7 @@
       return plane;
     }
 
-    setBoardFromFEN(fen, reset = false) {
+    setBoardFromFEN(fen) {
       const boardState = this.getStateFromFEN(fen);
 
       this.all2DPieces.forEach((piece) => this.pieces2DGroup.removeChild(piece));
@@ -2847,7 +3048,7 @@
             chessCellId,
             this.possibleImageURL,
             x,
-            y3D + 0.007,
+            this.squareY,
             z,
           );
           this.possibleMovesMap.set(chessCellId, possible3DSquare);
@@ -2871,6 +3072,62 @@
           }
         }
       }
+    }
+
+    clearMoves() {
+      this.possibleMovesMap.forEach((square, index) => {
+        square.setAttribute("y", this.squareY);
+        square.setAttribute("emissive", 0.2);
+        square.setAttribute("visible-to", "-1");
+        if (this.squareEventListeners.has(index)) {
+          square.removeEventListener("click", this.squareEventListeners.get(index));
+          this.squareEventListeners.delete(index);
+        }
+      });
+    }
+
+    highlightMoves(moves, captures, userId) {
+      if (!Array.isArray(moves) || moves.length === 0) {
+        console.warn("⚠️ No valid moves to highlight.");
+        return;
+      }
+
+      if (!userId) {
+        console.error("❌ ERROR: No userId provided for highlighting moves.");
+        return;
+      }
+
+      // Show new possible moves for the user
+      moves.forEach((move) => {
+        const square = this.possibleMovesMap.get(move);
+        if (square) {
+          square.setAttribute("visible-to", userId); // Make visible to the player
+
+          captures.forEach((capture) => {
+            if (capture === move) {
+              square.setAttribute("y", this.squareY + 0.07);
+              square.setAttribute("emissive", 7);
+            }
+          });
+
+          const clickHandler = (event) => {
+            if (this.squareClickFunction) {
+              this.squareClickFunction(userId, move);
+            } else {
+              console.error(
+                "❌ ERROR: No squareClickFunction provided for handling square clicks.",
+              );
+            }
+          };
+
+          square.addEventListener("click", clickHandler);
+          this.squareEventListeners.set(move, clickHandler);
+        } else {
+          console.warn(`⚠️ Move square ${move} not found in possibleMovesMap.`);
+        }
+      });
+
+      console.log(`✅ Highlighted moves ${moves.join(", ")} for user ${userId}`);
     }
 
     applyMove(from, to, isCapture = false) {
@@ -3162,6 +3419,7 @@
           return;
         }
 
+        // check the intended move with the chess engine =====================
         const move = this.chessEngineInstance.move(moveNotation);
         if (!move) {
           console.error(`❌ ERROR: Invalid move: ${moveNotation}`);
@@ -3439,12 +3697,515 @@
     }
   }
 
+  class PlayerVsPlayer {
+    presenceMap = new Map();
+
+    constructor(parentElement) {
+      this.parentElement = parentElement;
+
+      this.chessEngine = createChessEngine();
+      this.chessRenderEngine = new ChessGameRenderer(
+        this.parentElement,
+        this.handlePieceClick.bind(this),
+        this.handleMoveSelection.bind(this),
+        {
+          boardLightCastShadows: false,
+          boardCastShadows: true,
+          piecesCastShadows: true,
+        },
+      );
+
+      // states ==============================================================
+      this.currentTurn = "w";
+      this.selectedPiece = null;
+      this.gameOver = false;
+      this.moveIndex = 0;
+
+      // create stuff ========================================================
+      this.presenceProbe = this.createPresenceProbe();
+      this.parentElement.appendChild(this.presenceProbe);
+
+      this.player1Ready = false;
+      this.player1ConnectionId = null;
+      this.player2Ready = false;
+      this.player2ConnectionId = null;
+
+      const { player1Button, player2Button } = this.createStartInterface();
+      this.player1Button = player1Button;
+      this.player2Button = player2Button;
+
+      this.startInterfaceGroup = this.createStartInterfaceGroup();
+      this.startInterfaceGroup.appendChild(this.player1Button.group);
+      this.startInterfaceGroup.appendChild(this.player2Button.group);
+      this.parentElement.appendChild(this.startInterfaceGroup);
+
+      this.healthCheck = this.healthCheck.bind(this);
+      setInterval(() => this.healthCheck(), 1000);
+    }
+
+    showStartButtons() {
+      if (this.startInterfaceGroup.getAttribute("class") === "visible") {
+        return;
+      }
+      this.startInterfaceGroup.setAttribute("class", "visible");
+      this.startInterfaceGroup.removeAttribute("visible-to");
+      this.startInterfaceGroup.setAttribute("sx", 1);
+      this.startInterfaceGroup.setAttribute("sy", 1);
+      this.startInterfaceGroup.setAttribute("sz", 1);
+    }
+
+    hideStartButtons() {
+      if (this.startInterfaceGroup.getAttribute("class") === "hidden") {
+        return;
+      }
+      this.startInterfaceGroup.setAttribute("class", "hidden");
+      this.startInterfaceGroup.setAttribute("sx", 0);
+      this.startInterfaceGroup.setAttribute("sy", 0);
+      this.startInterfaceGroup.setAttribute("sz", 0);
+      setTimeout(() => {
+        this.startInterfaceGroup.setAttribute("visible-to", "-1");
+      }, 1000);
+    }
+
+    checkStartGame() {
+      if (this.player1Ready && this.player2Ready) {
+        console.log("✅ Both players are ready! Starting match...");
+        this.startMatch();
+      }
+    }
+
+    startMatch() {
+      this.chessEngine.reset();
+      this.currentTurn = "w";
+      this.gameOver = false;
+      this.selectedPiece = null;
+      this.chessRenderEngine.reset();
+    }
+
+    handlePieceClick(userId, pieceId, position) {
+      if (this.gameOver) {
+        console.log("⏹️ Game is over. No moves allowed.");
+        return;
+      }
+
+      const playerColor = this.player1ConnectionId === userId ? "w" : "b";
+      if (playerColor !== this.currentTurn) {
+        console.log(`🚫 Not ${userId}'s turn!`);
+        return;
+      }
+
+      // If a piece is already selected, check if the clicked position is a valid move
+      if (this.selectedPiece) {
+        if (
+          userId !==
+          (this.currentTurn === "w" ? this.player1ConnectionId : this.player2ConnectionId)
+        ) {
+          console.log(`🚫 Not ${userId}'s turn!`);
+          return;
+        }
+
+        const possibleMoves = this.chessEngine.moves({ square: this.selectedPiece, verbose: true });
+
+        const possibleMoveSquares = possibleMoves.map((move) => move.to); // Extract valid target squares
+
+        if (possibleMoveSquares.includes(position)) {
+          console.log(`⚔️ ${userId} clicked enemy piece at ${position}, capturing it!`);
+          this.handleMoveSelection(userId, position);
+          return;
+        }
+
+        console.log(`❌ ${userId} clicked ${position}, but it's not a valid move.`);
+        return;
+      }
+
+      // Get possible moves with extra details
+      const possibleMovesSAN = this.chessEngine.moves({ square: position, verbose: true });
+      if (possibleMovesSAN.length === 0) {
+        console.log(`❌ No valid moves for ${pieceId} at ${position}`);
+        return;
+      }
+
+      // Split moves into normal moves and captures
+      const possibleSquares = [];
+      const possibleCaptures = [];
+
+      possibleMovesSAN.forEach((move) => {
+        const moveSquare = move.to; // Target square
+
+        if (move.san.includes("=")) {
+          possibleSquares.push(moveSquare); // Pawn promotions
+          possibleCaptures.push(moveSquare);
+        } else if (move.san === "O-O") {
+          possibleSquares.push(playerColor === "w" ? "g1" : "g8"); // Kingside castle
+        } else if (move.san === "O-O-O") {
+          possibleSquares.push(playerColor === "w" ? "c1" : "c8"); // Queenside castle
+        } else if (move.flags.includes("c") || move.flags.includes("e")) {
+          possibleSquares.push(moveSquare);
+          possibleCaptures.push(moveSquare); // Captures or en passant
+        } else {
+          possibleSquares.push(moveSquare); // Normal moves
+        }
+      });
+
+      console.log(
+        `✅ ${userId} clicked ${pieceId} at ${position}, possible moves:`,
+        possibleSquares,
+        `| possible captures: `,
+        possibleCaptures,
+      );
+
+      // Highlight possible moves and captures differently
+      this.chessRenderEngine.highlightMoves(possibleSquares, possibleCaptures, userId);
+      this.selectedPiece = position;
+    }
+
+    handleMoveSelection(userId, targetPosition) {
+      if (!this.selectedPiece) {
+        console.log("⚠️ No piece selected!");
+        return;
+      }
+
+      if (this.gameOver) {
+        console.log("⏹️ Game is over. No moves allowed.");
+        return;
+      }
+
+      const playerColor = this.player1ConnectionId === userId ? "w" : "b";
+      if (playerColor !== this.currentTurn) {
+        console.log(`🚫 Not ${userId}'s turn!`);
+        return;
+      }
+
+      const pieceToBeMoved = this.chessEngine.get(this.selectedPiece);
+      if (!pieceToBeMoved) {
+        console.log(`❌ No piece found at ${this.selectedPiece}`);
+        return;
+      }
+      let moveOptions = { from: this.selectedPiece, to: targetPosition };
+      const mayBeWhitePromotion = playerColor === "w" && targetPosition[1] === "8";
+      const mayBeBlackPromotion = playerColor === "b" && targetPosition[1] === "1";
+      if (pieceToBeMoved?.type === "p" && (mayBeWhitePromotion || mayBeBlackPromotion)) {
+        console.log(`♟️ Pawn promotion detected! Defaulting to Queen.`);
+        moveOptions.promotion = "q";
+      }
+
+      // check the intended move with the chess engine =======================
+      const move = this.chessEngine.move(moveOptions);
+      if (!move) {
+        console.log(`❌ Invalid move from ${this.selectedPiece} to ${targetPosition}`);
+        return;
+      } else {
+        console.log(`✅ Move executed: ${move.san}`);
+      }
+      const moveNotation = move.san;
+      const isWhiteTurn = move.color === "w";
+      const fromSquare = move.from;
+      const toSquare = move.to;
+
+      const isCapture = move.captured;
+      const isCastle = move.flags.includes("k") || move.flags.includes("q");
+      const isCheck = this.chessEngine.isCheck();
+      const isCheckMate = this.chessEngine.isCheckmate();
+      const isStalemate = this.chessEngine.isStalemate();
+      const isThreefoldRepetition = this.chessEngine.isThreefoldRepetition();
+      const isInsufficientMaterial = this.chessEngine.isInsufficientMaterial();
+
+      const piece = isWhiteTurn ? move.piece.toUpperCase() : move.piece.toLowerCase();
+      const pieceFromTo = `${piece} from ${fromSquare} to ${toSquare}`;
+
+      const moveNumber = `${this.moveIndex + 1}`.padStart(3, " ");
+      const paddedMoveNotation = moveNotation.padStart(5, " ");
+      let moveDescription = `[${moveNumber}] ${paddedMoveNotation}`;
+      moveDescription = isWhiteTurn ? ` ⚪ ${moveDescription}` : ` ⚫ ${moveDescription}`;
+      moveDescription = `${moveDescription} | ${pieceFromTo} |`.padEnd(30, " ");
+
+      this.chessRenderEngine.clearMoves();
+
+      if (isCapture) {
+        const captured = move.captured;
+        const isWhite = move.color === "w";
+        const capturedPiece = isWhite ? captured.toLowerCase() : captured.toUpperCase();
+        moveDescription = `${moveDescription} ⚔️ ${capturedPiece} captured at ${toSquare}`;
+        this.chessRenderEngine.sendToCapturedArea(move.to);
+      }
+
+      if (isCastle) {
+        const isKingside = move.flags.includes("k");
+        const rookFrom = isKingside
+          ? move.from[1] === "1"
+            ? "h1"
+            : "h8"
+          : move.from[1] === "1"
+            ? "a1"
+            : "a8";
+        const rookTo = isKingside
+          ? move.from[1] === "1"
+            ? "f1"
+            : "f8"
+          : move.from[1] === "1"
+            ? "d1"
+            : "d8";
+
+        const side = isKingside ? "king-side" : "queen-side";
+        moveDescription = `${moveDescription} 🏰 Castled ${side} from ${rookFrom} to ${rookTo}`;
+
+        setTimeout(() => {
+          this.chessRenderEngine.applyMove(rookFrom, rookTo, false);
+        }, this.chessRenderEngine.movementDuration * 0.5);
+      }
+
+      if (isCheck) {
+        moveDescription = `${moveDescription} 🚨 Check!`;
+      }
+
+      // execute the move with the renderer ==================================
+      console.log(`✅ Move executed: ${moveDescription}`);
+      this.chessRenderEngine.applyMove(fromSquare, toSquare, isCapture);
+
+      if (move.promotion) {
+        this.chessRenderEngine.promotePawn(toSquare, move.promotion.toUpperCase());
+      }
+
+      let audioDelay = isCheck
+        ? this.chessRenderEngine.movementDuration * 0.7
+        : isCapture || isCastle
+          ? this.chessRenderEngine.movementDuration * 0.5
+          : this.chessRenderEngine.movementDuration * 0.85;
+      if (isCapture) {
+        setTimeout(() => this.chessRenderEngine.playAudio("capture"), audioDelay);
+      } else if (isCastle) {
+        setTimeout(() => this.chessRenderEngine.playAudio("castle"), audioDelay);
+      } else {
+        setTimeout(() => this.chessRenderEngine.playAudio("move"), audioDelay);
+      }
+
+      // Handle game-ending conditions =========================================
+      if (isCheckMate) {
+        this.gameOver = true;
+        console.log(`🏆 Checkmate! ${playerColor === "w" ? "White" : "Black"} wins!`);
+        setTimeout(() => this.resetGame(), 2000);
+        return;
+      }
+
+      if (isStalemate) {
+        this.gameOver = true;
+        console.log("🤝 Stalemate! The game is a draw.");
+        setTimeout(() => this.resetGame(), 2000);
+        return;
+      }
+
+      if (isThreefoldRepetition) {
+        this.gameOver = true;
+        console.log("🤝 Threefold repetition! The game is a draw.");
+        setTimeout(() => this.resetGame(), 2000);
+        return;
+      }
+
+      if (isInsufficientMaterial) {
+        this.gameOver = true;
+        console.log("🤝 Draw due to insufficient material.");
+        setTimeout(() => this.resetGame(), 2000);
+        return;
+      }
+
+      // Switch turn =========================================================
+      this.currentTurn = this.currentTurn === "w" ? "b" : "w";
+      console.log(`🔄 Next turn: ${this.currentTurn === "w" ? "White" : "Black"}`);
+
+      this.selectedPiece = null;
+      this.moveIndex++;
+    }
+
+    healthCheck() {
+      if (this.gameOver || !this.player1Ready || !this.player2Ready) {
+        this.showStartButtons();
+      } else {
+        this.hideStartButtons();
+      }
+    }
+
+    resetGame() {
+      console.log("🔄 Resetting game...");
+      this.chessEngine.reset();
+      this.chessRenderEngine.reset();
+      this.currentTurn = "w";
+      this.gameOver = false;
+      this.selectedPiece = null;
+      this.moveIndex = 0;
+    }
+
+    createStartInterfaceGroup() {
+      const group = document.createElement("m-group");
+      group.setAttribute("id", "start-interface");
+      group.setAttribute("x", 0);
+      group.setAttribute("y", 0);
+      group.setAttribute("z", 0);
+      group.setAttribute("sx", 0);
+      group.setAttribute("sy", 0);
+      group.setAttribute("sz", 0);
+      group.setAttribute("class", "hidden");
+
+      const lerp = document.createElement("m-attr-lerp");
+      lerp.setAttribute("attr", "all");
+      lerp.setAttribute("duration", 1000);
+      lerp.setAttribute("easing", "easeInOutQuad");
+      group.appendChild(lerp);
+
+      return group;
+    }
+
+    createButton(x, y, z, ry, width, height) {
+      const buttonGroup = document.createElement("m-group");
+      buttonGroup.setAttribute("x", x);
+      buttonGroup.setAttribute("y", y);
+      buttonGroup.setAttribute("z", z);
+      buttonGroup.setAttribute("ry", ry);
+
+      const background = document.createElement("m-cube");
+      background.setAttribute("width", width);
+      background.setAttribute("height", height);
+      background.setAttribute("depth", 0.03);
+      background.setAttribute("collide", false);
+      background.setAttribute("color", "#33ff33");
+
+      const label = document.createElement("m-label");
+      label.setAttribute("width", width - 0.03);
+      label.setAttribute("height", height - 0.03);
+      label.setAttribute("font-size", 20);
+      label.setAttribute("padding", 10);
+      label.setAttribute("z", 0.02);
+      label.setAttribute("alignment", "center");
+      label.setAttribute("color", "rgba(0, 0, 0, 0.9)");
+      label.setAttribute("font-color", "#33ff88");
+      label.setAttribute("emissive", 1);
+      label.setAttribute("cast-shadows", false);
+      label.setAttribute("collide", false);
+
+      buttonGroup.appendChild(background);
+      buttonGroup.appendChild(label);
+      return {
+        group: buttonGroup,
+        label: label,
+      };
+    }
+
+    createStartInterface() {
+      const p1Ready = "W ☑ Ready";
+      const p1NotReady = "W ☐ Ready";
+      const p2Ready = "B ☑ Ready";
+      const p2NotReady = "B ☐ Ready";
+      const buttonWidth = 1.3;
+      const buttonHeight = 0.4;
+
+      const x = 4;
+      const y = 2;
+      const z = buttonWidth / 2;
+      const off = 0.02;
+
+      const player1ReadyButton = this.createButton(x, y, -z - off, 90, buttonWidth, buttonHeight);
+      player1ReadyButton.label.setAttribute("content", p1NotReady);
+      player1ReadyButton.group.addEventListener("click", (e) => {
+        const connectionId = e.detail.connectionId;
+        const hasPlayer = this.player1Ready && connectionId !== this.player1ConnectionId;
+        const isAnotherPlayer = this.player2Ready && connectionId === this.player2ConnectionId;
+        if (hasPlayer || isAnotherPlayer) return;
+        this.player1Ready = !this.player1Ready;
+        this.player1ConnectionId = this.player1Ready ? connectionId : null;
+        player1ReadyButton.label.setAttribute("content", this.player1Ready ? p1Ready : p1NotReady);
+        player1ReadyButton.label.setAttribute("emissive", this.player1Ready ? 5 : 1);
+      });
+
+      const player2ReadyButton = this.createButton(x, y, z + off, 90, buttonWidth, buttonHeight);
+      player2ReadyButton.label.setAttribute("content", p2NotReady);
+      player2ReadyButton.group.addEventListener("click", (e) => {
+        const connectionId = e.detail.connectionId;
+        const hasPlayer = this.player2Ready && connectionId !== this.player2ConnectionId;
+        const isAnotherPlayer = this.player1Ready && connectionId === this.player1ConnectionId;
+        if (hasPlayer || isAnotherPlayer) return;
+        this.player2Ready = !this.player2Ready;
+        this.player2ConnectionId = this.player2Ready ? connectionId : null;
+        player2ReadyButton.label.setAttribute("content", this.player2Ready ? p2Ready : p2NotReady);
+        player2ReadyButton.label.setAttribute("emissive", this.player2Ready ? 5 : 1);
+      });
+
+      return {
+        player1Button: player1ReadyButton,
+        player2Button: player2ReadyButton,
+      };
+    }
+
+    removePlayer(connectionId) {
+      console.log(`User ${connectionId} left the area.`);
+      if (this.presenceMap.has(connectionId)) {
+        this.presenceMap.delete(connectionId);
+      }
+      if (this.player1ConnectionId === connectionId) {
+        if (this.player1Button) {
+          this.player1Button.label.setAttribute("content", "W ☐ Ready");
+          this.player1Button.label.setAttribute("emissive", 1);
+        }
+        this.player1Ready = false;
+        this.player1ConnectionId = null;
+      }
+      if (this.player2ConnectionId === connectionId) {
+        if (this.player2Button) {
+          this.player2Button.label.setAttribute("content", "B ☐ Ready");
+          this.player2Button.label.setAttribute("emissive", 1);
+        }
+        this.player2Ready = false;
+        this.player2ConnectionId = null;
+      }
+    }
+
+    createPresenceProbe() {
+      const probe = document.createElement("m-position-probe");
+      probe.setAttribute("id", "presence-probe");
+      probe.setAttribute("interval", 500);
+      probe.setAttribute("range", 15);
+      probe.setAttribute("debug", true);
+
+      probe.addEventListener("positionenter", (e) => {
+        this.presenceMap.set(e.detail.connectionId, e.detail);
+      });
+
+      probe.addEventListener("positionmove", (e) => {
+        this.presenceMap.set(e.detail.connectionId, e.detail);
+      });
+
+      probe.addEventListener("positionleave", (e) => {
+        this.removePlayer(e.detail.connectionId);
+      });
+
+      window.addEventListener("disconnected", (e) => {
+        this.removePlayer(e.detail.connectionId);
+      });
+
+      return probe;
+    }
+  }
+
   const wrapper = document.getElementById("wrapper");
+  const pvpWrapper = document.getElementById("pvp-wrapper");
+  const engine = createChessEngine();
+
   const clickFunction = (userId, pieceId, position) => {
     console.log(`User ${userId} clicked on piece ${pieceId} at position ${position}`);
   };
-  const renderer = new ChessGameRenderer(wrapper, clickFunction);
-  const engine = createChessEngine();
 
+  const renderer = new ChessGameRenderer(wrapper, clickFunction, {
+    boardLightCastShadows: false,
+    boardCastShadows: true,
+    piecesCastShadows: true,
+  });
   const matchViewer = new MatchViewer(wrapper, engine, renderer, 6, 0, 0, -90);
+
+  const toPvPStart = [-25.5, 31.8, -17.5];
+  const toPvPEnd = [1000, 0, 1000];
+
+  const backFromPvPStart = [950, 0, 1000];
+  const backFromPvPEnd = [-18.5, 31.8, -17.5];
+  const toPvP = createTeleporter(wrapper, ...toPvPStart, ...toPvPEnd);
+  const backFromPvP = createTeleporter(wrapper, ...backFromPvPStart, ...backFromPvPEnd);
+
+  const pvp = new PlayerVsPlayer(pvpWrapper);
 </script>
