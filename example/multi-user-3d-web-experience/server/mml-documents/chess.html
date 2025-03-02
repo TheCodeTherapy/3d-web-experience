@@ -3,11 +3,16 @@
 
 <m-group id="wrapper">
   <m-group id="pvp-wrapper" x="976.5" y="0" z="1000">
-    <m-model src="/assets/playground/dome.glb" cast-shadows="true" collide="true"></m-model>
-    <m-cylinder radius="150" height="0.01" color="#5050aa" cast-shadows="false"></m-cylinder>
+    <!-- <m-model src="/assets/playground/dome.glb" cast-shadows="true" collide="true"></m-model> -->
+    <m-cylinder radius="300" height="0.01" color="#5050aa" cast-shadows="false"></m-cylinder>
   </m-group>
 </m-group>
 <script>
+  // TODO: something must signal who's turn it is
+  // TODO: 2d board should have possible moves highlight
+  // TODO: cleanup match browser properly
+  // TODO: create a "selecting match" indicator when the prompt is active
+
   function createTeleporter(parentElement, startX, startY, startZ, endX, endY, endZ) {
     const transporterYOffset = -0.047;
     const transporterAnimTravel = 0.047;
@@ -2646,7 +2651,9 @@
 
       // Create groups =======================================================
       this.group = document.createElement("m-group");
-      this.group.setAttribute("id", "chess-group");
+      this.group.setAttribute("sx", 0.7);
+      this.group.setAttribute("sy", 0.7);
+      this.group.setAttribute("sz", 0.7);
 
       this.board3D = this.create3DBoard();
       this.group.appendChild(this.board3D);
@@ -2673,7 +2680,7 @@
 
       // chess game assets ===================================================
       this.possibleImageURL = "/assets/playground/chess_possible.png";
-      this.captureImageURL = "/assets/playground/chess_capture.png";
+      this.checkImageURL = "/assets/playground/chess_check.png";
 
       this.pieces3DModels = new Map([
         ["P", "/assets/playground/chess_white_pawn.glb"],
@@ -3026,6 +3033,9 @@
       const board2DY = parseFloat(board2D.getAttribute("y"));
       const board2DZ = parseFloat(board2D.getAttribute("z"));
 
+      const checkSquare = this.createPlane("check-square", this.checkImageURL, 0, 1, 0);
+      this.pieces3DGroup.appendChild(checkSquare);
+
       for (let row = 0; row < this.boardSize; row++) {
         for (let col = 0; col < this.boardSize; col++) {
           const piece = boardState[row][col];
@@ -3073,6 +3083,43 @@
           }
         }
       }
+    }
+
+    highlightCheck(position) {
+      const row = 8 - parseInt(position[1]);
+      const col = position.charCodeAt(0) - 97;
+
+      console.log(`✅ Highlighting check at ${position}, row: ${row}, col: ${col}`);
+
+      const checkSquare = this.pieces3DGroup.querySelector("#check-square");
+      if (!checkSquare) {
+        console.error("❌ ERROR: No check-square found to highlight check!");
+        return;
+      }
+
+      const x = this.inverse
+        ? (col - this.centerOffset) * this.squareSize
+        : (this.boardSize - 1 - col - this.centerOffset) * this.squareSize;
+
+      const z = this.inverse
+        ? (row - this.centerOffset) * this.squareSize
+        : (this.boardSize - 1 - row - this.centerOffset) * this.squareSize;
+
+      this.translate(checkSquare, x, this.squareY, z);
+      checkSquare.removeAttribute("visible-to");
+      checkSquare.setAttribute("emissive", 8);
+    }
+
+    clearCheckHighlight() {
+      const checkSquare = this.pieces3DGroup.querySelector("#check-square");
+      if (!checkSquare) {
+        console.error("❌ ERROR: No check-square found to clear check highlight!");
+        return;
+      }
+
+      checkSquare.setAttribute("y", this.squareY);
+      checkSquare.setAttribute("emissive", 0);
+      checkSquare.setAttribute("visible-to", "-1");
     }
 
     clearHighlightedMoves() {
@@ -3523,7 +3570,7 @@
           this.optionsGroup.removeChild(option.label);
         });
         this.menuOptions = [];
-        this.simulateMatch(game.pgn, this.chessRendererInstance.movementDuration * 2, true);
+        this.simulateMatch(game.pgn, this.chessRendererInstance.movementDuration * 3, true);
       }
     }
 
@@ -3719,8 +3766,10 @@
       // states ==============================================================
       this.currentTurn = "w";
       this.selectedPiece = null;
-      this.gameOver = false;
       this.moveIndex = 0;
+      this.gameOver = false;
+      this.gameShouldReset = false;
+      this.gameIsResetting = false;
 
       // create stuff ========================================================
       this.presenceProbe = this.createPresenceProbe();
@@ -3782,7 +3831,13 @@
     }
 
     handlePieceClick(userId, pieceId, position) {
-      if (this.gameOver) {
+      if (
+        this.gameOver ||
+        !this.player1Ready ||
+        !this.player2Ready ||
+        this.gameShouldReset ||
+        this.gameIsResetting
+      ) {
         console.log("⏹️ Game is over. No moves allowed.");
         return;
       }
@@ -3865,13 +3920,19 @@
     }
 
     handleMoveSelection(userId, targetPosition) {
-      if (!this.selectedPiece) {
-        console.log("⚠️ No piece selected!");
+      if (
+        this.gameOver ||
+        !this.player1Ready ||
+        !this.player2Ready ||
+        this.gameShouldReset ||
+        this.gameIsResetting
+      ) {
+        console.log("⏹️ Game is over. No moves allowed.");
         return;
       }
 
-      if (this.gameOver) {
-        console.log("⏹️ Game is over. No moves allowed.");
+      if (!this.selectedPiece) {
+        console.log("⚠️ No piece selected!");
         return;
       }
 
@@ -3925,6 +3986,7 @@
       moveDescription = `${moveDescription} | ${pieceFromTo} |`.padEnd(30, " ");
 
       this.chessRenderEngine.clearHighlightedMoves();
+      this.chessRenderEngine.clearCheckHighlight();
 
       if (isCapture) {
         const captured = move.captured;
@@ -3960,7 +4022,29 @@
       }
 
       if (isCheck) {
-        moveDescription = `${moveDescription} 🚨 Check!`;
+        console.log(`🚨 CHECK detected! Finding enemy king's position...`);
+
+        // Get all board squares
+        const board = this.chessEngine.board();
+        let kingPosition = null;
+
+        // Find the king of the **opponent** color
+        for (let row of board) {
+          for (let square of row) {
+            if (square && square.type === "k" && square.color !== playerColor) {
+              kingPosition = square.square; // Get the square the king is on
+              break;
+            }
+          }
+          if (kingPosition) break;
+        }
+
+        if (kingPosition) {
+          console.log(`🔴 Enemy king at ${kingPosition} is in CHECK!`);
+          this.chessRenderEngine.highlightCheck(kingPosition);
+        } else {
+          console.error("❌ ERROR: Could not find enemy king!");
+        }
       }
 
       // execute the move with the renderer ==================================
@@ -3988,28 +4072,28 @@
       if (isCheckMate) {
         this.gameOver = true;
         console.log(`🏆 Checkmate! ${playerColor === "w" ? "White" : "Black"} wins!`);
-        setTimeout(() => this.resetGame(), 2000);
+        this.gameShouldReset = true;
         return;
       }
 
       if (isStalemate) {
         this.gameOver = true;
         console.log("🤝 Stalemate! The game is a draw.");
-        setTimeout(() => this.resetGame(), 2000);
+        this.gameShouldReset = true;
         return;
       }
 
       if (isThreefoldRepetition) {
         this.gameOver = true;
         console.log("🤝 Threefold repetition! The game is a draw.");
-        setTimeout(() => this.resetGame(), 2000);
+        this.gameShouldReset = true;
         return;
       }
 
       if (isInsufficientMaterial) {
         this.gameOver = true;
         console.log("🤝 Draw due to insufficient material.");
-        setTimeout(() => this.resetGame(), 2000);
+        this.gameShouldReset = true;
         return;
       }
 
@@ -4022,6 +4106,11 @@
     }
 
     healthCheck() {
+      if (this.gameShouldReset && !this.gameIsResetting) {
+        this.gameShouldReset = false;
+        this.gameIsResetting = true;
+        setTimeout(() => this.resetGame(), 5000);
+      }
       if (this.presenceMap.size === 0) {
         this.hideStartButtons();
       } else {
@@ -4041,6 +4130,22 @@
       this.gameOver = false;
       this.selectedPiece = null;
       this.moveIndex = 0;
+      this.selectedPiece = null;
+
+      this.player1Ready = false;
+      this.player1ConnectionId = null;
+      this.player1Button.labelFront.setAttribute("content", "W ☐ Ready");
+      this.player1Button.labelFront.setAttribute("emissive", 1);
+      this.player1Button.labelBack.setAttribute("content", "W ☐ Ready");
+      this.player1Button.labelBack.setAttribute("emissive", 1);
+      this.player2Ready = false;
+      this.player2ConnectionId = null;
+      this.player2Button.labelFront.setAttribute("content", "B ☐ Ready");
+      this.player2Button.labelFront.setAttribute("emissive", 1);
+      this.player2Button.labelBack.setAttribute("content", "B ☐ Ready");
+      this.player2Button.labelBack.setAttribute("emissive", 1);
+
+      this.gameIsResetting = false;
     }
 
     createStartInterfaceGroup() {
@@ -4076,24 +4181,40 @@
       background.setAttribute("collide", false);
       background.setAttribute("color", "#33ff33");
 
-      const label = document.createElement("m-label");
-      label.setAttribute("width", width - 0.03);
-      label.setAttribute("height", height - 0.03);
-      label.setAttribute("font-size", 20);
-      label.setAttribute("padding", 10);
-      label.setAttribute("z", 0.02);
-      label.setAttribute("alignment", "center");
-      label.setAttribute("color", "rgba(0, 0, 0, 0.9)");
-      label.setAttribute("font-color", "#33ff88");
-      label.setAttribute("emissive", 1);
-      label.setAttribute("cast-shadows", false);
-      label.setAttribute("collide", false);
+      const labelFront = document.createElement("m-label");
+      labelFront.setAttribute("width", width - 0.03);
+      labelFront.setAttribute("height", height - 0.03);
+      labelFront.setAttribute("font-size", 20);
+      labelFront.setAttribute("padding", 10);
+      labelFront.setAttribute("z", 0.02);
+      labelFront.setAttribute("alignment", "center");
+      labelFront.setAttribute("color", "rgba(0, 0, 0, 0.9)");
+      labelFront.setAttribute("font-color", "#33ff88");
+      labelFront.setAttribute("emissive", 1);
+      labelFront.setAttribute("cast-shadows", false);
+      labelFront.setAttribute("collide", false);
+
+      const labelBack = document.createElement("m-label");
+      labelBack.setAttribute("width", width - 0.03);
+      labelBack.setAttribute("height", height - 0.03);
+      labelBack.setAttribute("font-size", 20);
+      labelBack.setAttribute("padding", 10);
+      labelBack.setAttribute("z", -0.02);
+      labelBack.setAttribute("ry", 180);
+      labelBack.setAttribute("alignment", "center");
+      labelBack.setAttribute("color", "rgba(0, 0, 0, 0.9)");
+      labelBack.setAttribute("font-color", "#33ff88");
+      labelBack.setAttribute("emissive", 1);
+      labelBack.setAttribute("cast-shadows", false);
+      labelBack.setAttribute("collide", false);
 
       buttonGroup.appendChild(background);
-      buttonGroup.appendChild(label);
+      buttonGroup.appendChild(labelFront);
+      buttonGroup.appendChild(labelBack);
       return {
         group: buttonGroup,
-        label: label,
+        labelFront: labelFront,
+        labelBack: labelBack,
       };
     }
 
@@ -4111,7 +4232,8 @@
       const off = 0.02;
 
       const player1ReadyButton = this.createButton(x, y, -z - off, 90, buttonWidth, buttonHeight);
-      player1ReadyButton.label.setAttribute("content", p1NotReady);
+      player1ReadyButton.labelFront.setAttribute("content", p1NotReady);
+      player1ReadyButton.labelBack.setAttribute("content", p1NotReady);
       player1ReadyButton.group.addEventListener("click", (e) => {
         const connectionId = e.detail.connectionId;
         const hasPlayer = this.player1Ready && connectionId !== this.player1ConnectionId;
@@ -4119,12 +4241,21 @@
         if (hasPlayer || isAnotherPlayer) return;
         this.player1Ready = !this.player1Ready;
         this.player1ConnectionId = this.player1Ready ? connectionId : null;
-        player1ReadyButton.label.setAttribute("content", this.player1Ready ? p1Ready : p1NotReady);
-        player1ReadyButton.label.setAttribute("emissive", this.player1Ready ? 5 : 1);
+        player1ReadyButton.labelFront.setAttribute(
+          "content",
+          this.player1Ready ? p1Ready : p1NotReady,
+        );
+        player1ReadyButton.labelBack.setAttribute(
+          "content",
+          this.player1Ready ? p1Ready : p1NotReady,
+        );
+        player1ReadyButton.labelFront.setAttribute("emissive", this.player1Ready ? 5 : 1);
+        player1ReadyButton.labelBack.setAttribute("emissive", this.player1Ready ? 5 : 1);
       });
 
       const player2ReadyButton = this.createButton(x, y, z + off, 90, buttonWidth, buttonHeight);
-      player2ReadyButton.label.setAttribute("content", p2NotReady);
+      player2ReadyButton.labelFront.setAttribute("content", p2NotReady);
+      player2ReadyButton.labelBack.setAttribute("content", p2NotReady);
       player2ReadyButton.group.addEventListener("click", (e) => {
         const connectionId = e.detail.connectionId;
         const hasPlayer = this.player2Ready && connectionId !== this.player2ConnectionId;
@@ -4132,8 +4263,16 @@
         if (hasPlayer || isAnotherPlayer) return;
         this.player2Ready = !this.player2Ready;
         this.player2ConnectionId = this.player2Ready ? connectionId : null;
-        player2ReadyButton.label.setAttribute("content", this.player2Ready ? p2Ready : p2NotReady);
-        player2ReadyButton.label.setAttribute("emissive", this.player2Ready ? 5 : 1);
+        player2ReadyButton.labelFront.setAttribute(
+          "content",
+          this.player2Ready ? p2Ready : p2NotReady,
+        );
+        player2ReadyButton.labelBack.setAttribute(
+          "content",
+          this.player2Ready ? p2Ready : p2NotReady,
+        );
+        player2ReadyButton.labelFront.setAttribute("emissive", this.player2Ready ? 5 : 1);
+        player2ReadyButton.labelBack.setAttribute("emissive", this.player2Ready ? 5 : 1);
       });
 
       return {
@@ -4149,21 +4288,31 @@
       }
       if (this.player1ConnectionId === connectionId) {
         if (this.player1Button) {
-          this.player1Button.label.setAttribute("content", "W ☐ Ready");
-          this.player1Button.label.setAttribute("emissive", 1);
+          this.player1Button.labelFront.setAttribute("content", "W ☐ Ready");
+          this.player1Button.labelFront.setAttribute("emissive", 1);
+          this.player1Button.labelBack.setAttribute("content", "W ☐ Ready");
+          this.player1Button.labelBack.setAttribute("emissive", 1);
         }
         this.player1Ready = false;
         this.player1ConnectionId = null;
-        this.resetGame();
+        this.gameOver = true;
+        if (!this.gameIsResetting) {
+          this.gameShouldReset = true;
+        }
       }
       if (this.player2ConnectionId === connectionId) {
         if (this.player2Button) {
-          this.player2Button.label.setAttribute("content", "B ☐ Ready");
-          this.player2Button.label.setAttribute("emissive", 1);
+          this.player2Button.labelFront.setAttribute("content", "B ☐ Ready");
+          this.player2Button.labelFront.setAttribute("emissive", 1);
+          this.player2Button.labelBack.setAttribute("content", "B ☐ Ready");
+          this.player2Button.labelBack.setAttribute("emissive", 1);
         }
         this.player2Ready = false;
         this.player2ConnectionId = null;
-        this.resetGame();
+        this.gameOver = true;
+        if (!this.gameIsResetting) {
+          this.gameShouldReset = true;
+        }
       }
     }
 
