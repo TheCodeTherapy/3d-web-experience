@@ -2600,6 +2600,13 @@
       this.piecesCastShadows = options.piecesCastShadows || false;
       this.boardLightCastShadows = options.boardLightCastShadows || false;
 
+      this.board2DX = options.board2DX || 0;
+      this.board2DY = options.board2DY || 11.58;
+      this.board2DZ = options.board2DZ || 11.425;
+      this.board2DRX = options.board2DRX || -90;
+      this.board2DRY = options.board2DRY || 0;
+      this.board2DRZ = options.board2DRZ || 0;
+
       // chess game settings =================================================
       this.boardSize = 8;
       this.squareSize = 1;
@@ -2660,10 +2667,12 @@
 
       this.board2DWrapper = document.createElement("m-group");
       this.board2DWrapper.setAttribute("id", "2D-board-wrapper");
-      this.board2DWrapper.setAttribute("x", 0);
-      this.board2DWrapper.setAttribute("y", 9.34);
-      this.board2DWrapper.setAttribute("z", 7.997);
-      this.board2DWrapper.setAttribute("rx", -90);
+      this.board2DWrapper.setAttribute("x", this.board2DX);
+      this.board2DWrapper.setAttribute("y", this.board2DY);
+      this.board2DWrapper.setAttribute("z", this.board2DZ);
+      this.board2DWrapper.setAttribute("rx", this.board2DRX);
+      this.board2DWrapper.setAttribute("ry", this.board2DRY);
+      this.board2DWrapper.setAttribute("rz", this.board2DRZ);
 
       this.pieces2DGroup = document.createElement("m-group");
       this.pieces2DGroup.setAttribute("id", "pieces-2D-group");
@@ -2728,7 +2737,7 @@
     create3DBoard() {
       const board3DGroup = document.createElement("m-group");
       const board = document.createElement("m-model");
-      board.setAttribute("src", "/assets/playground/chess_board_b.glb");
+      board.setAttribute("src", "/assets/playground/chess_board_c.glb");
       board.setAttribute("id", "3D-board");
       board.setAttribute("sx", 5);
       board.setAttribute("sy", 5);
@@ -2743,10 +2752,10 @@
       boardLight.setAttribute("y", 8);
       boardLight.setAttribute("z", 0);
       boardLight.setAttribute("cast-shadows", this.boardLightCastShadows);
-      boardLight.setAttribute("intensity", 500);
+      boardLight.setAttribute("intensity", 150);
       boardLight.setAttribute("type", "spotlight");
       boardLight.setAttribute("angle", 60);
-      boardLight.setAttribute("distance", 15);
+      boardLight.setAttribute("distance", 8);
       boardLight.setAttribute("debug", false);
       board3DGroup.appendChild(boardLight);
 
@@ -2765,7 +2774,7 @@
       board.setAttribute("opacity", 1);
       board.setAttribute("rx", 90);
       board.setAttribute("cast-shadows", false);
-      board.setAttribute("collide", false);
+      board.setAttribute("collide", true);
       board2DGroup.appendChild(board);
 
       return board2DGroup;
@@ -3760,6 +3769,12 @@
           boardLightCastShadows: false,
           boardCastShadows: true,
           piecesCastShadows: true,
+          board2DX: -8,
+          board2DY: 8,
+          board2DZ: 0.00001,
+          board2DRX: 0,
+          board2DRY: 0,
+          board2DRZ: -90,
         },
       );
 
