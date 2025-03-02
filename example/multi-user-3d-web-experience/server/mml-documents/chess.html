@@ -3,6 +3,7 @@
 
 <m-group id="wrapper">
   <m-group id="pvp-wrapper" x="976.5" y="0" z="1000">
+    <m-model src="/assets/playground/dome.glb" cast-shadows="true" collide="true"></m-model>
     <m-cylinder radius="150" height="0.01" color="#5050aa" cast-shadows="false"></m-cylinder>
   </m-group>
 </m-group>
@@ -3740,7 +3741,7 @@
       this.parentElement.appendChild(this.startInterfaceGroup);
 
       this.healthCheck = this.healthCheck.bind(this);
-      setInterval(() => this.healthCheck(), 1000);
+      setInterval(() => this.healthCheck(), 500);
     }
 
     showStartButtons() {
@@ -3751,7 +3752,6 @@
       this.startInterfaceGroup.removeAttribute("visible-to");
       this.startInterfaceGroup.setAttribute("sx", 1);
       this.startInterfaceGroup.setAttribute("sy", 1);
-      this.startInterfaceGroup.setAttribute("sz", 1);
     }
 
     hideStartButtons() {
@@ -3761,10 +3761,9 @@
       this.startInterfaceGroup.setAttribute("class", "hidden");
       this.startInterfaceGroup.setAttribute("sx", 0);
       this.startInterfaceGroup.setAttribute("sy", 0);
-      this.startInterfaceGroup.setAttribute("sz", 0);
       setTimeout(() => {
         this.startInterfaceGroup.setAttribute("visible-to", "-1");
-      }, 1000);
+      }, 500);
     }
 
     checkStartGame() {
@@ -4023,10 +4022,14 @@
     }
 
     healthCheck() {
-      if (this.gameOver || !this.player1Ready || !this.player2Ready) {
-        this.showStartButtons();
-      } else {
+      if (this.presenceMap.size === 0) {
         this.hideStartButtons();
+      } else {
+        if (this.gameOver || !this.player1Ready || !this.player2Ready) {
+          this.showStartButtons();
+        } else {
+          this.hideStartButtons();
+        }
       }
     }
 
@@ -4048,13 +4051,12 @@
       group.setAttribute("z", 0);
       group.setAttribute("sx", 0);
       group.setAttribute("sy", 0);
-      group.setAttribute("sz", 0);
       group.setAttribute("class", "hidden");
 
       const lerp = document.createElement("m-attr-lerp");
-      lerp.setAttribute("attr", "all");
-      lerp.setAttribute("duration", 1000);
-      lerp.setAttribute("easing", "easeInOutQuad");
+      lerp.setAttribute("attr", "sx,sy");
+      lerp.setAttribute("duration", 500);
+      lerp.setAttribute("easing", "easeInOutQuint");
       group.appendChild(lerp);
 
       return group;
@@ -4152,6 +4154,7 @@
         }
         this.player1Ready = false;
         this.player1ConnectionId = null;
+        this.resetGame();
       }
       if (this.player2ConnectionId === connectionId) {
         if (this.player2Button) {
@@ -4160,8 +4163,8 @@
         }
         this.player2Ready = false;
         this.player2ConnectionId = null;
+        this.resetGame();
       }
-      this.resetGame();
     }
 
     createPresenceProbe() {
