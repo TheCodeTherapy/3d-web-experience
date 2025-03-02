@@ -3,7 +3,7 @@
 
 <m-group id="wrapper">
   <m-group id="pvp-wrapper" x="976.5" y="0" z="1000">
-    <!-- <m-model src="/assets/playground/dome.glb" cast-shadows="true" collide="true"></m-model> -->
+    <m-model src="/assets/playground/dome.glb" cast-shadows="true" collide="true"></m-model>
     <m-cylinder radius="300" height="0.01" color="#5050aa" cast-shadows="false"></m-cylinder>
   </m-group>
 </m-group>
@@ -3985,6 +3985,7 @@
 
       const isCapture = move.captured;
       const isCastle = move.flags.includes("k") || move.flags.includes("q");
+      const isEnPassant = move.flags.includes("e");
       const isCheck = this.chessEngine.isCheck();
       const isCheckMate = this.chessEngine.isCheckmate();
       const isStalemate = this.chessEngine.isStalemate();
@@ -4009,6 +4010,12 @@
         const capturedPiece = isWhite ? captured.toLowerCase() : captured.toUpperCase();
         moveDescription = `${moveDescription} ⚔️ ${capturedPiece} captured at ${toSquare}`;
         this.chessRenderEngine.sendToCapturedArea(move.to);
+      }
+
+      if (isEnPassant) {
+        const enPassantSquare = move.to[0] + move.from[1];
+        moveDescription = `${moveDescription} ⚔️ En passant at ${enPassantSquare}`;
+        this.chessRenderEngine.sendToCapturedArea(enPassantSquare);
       }
 
       if (isCastle) {
