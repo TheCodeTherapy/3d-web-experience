@@ -8,7 +8,6 @@
   </m-group>
 </m-group>
 <script>
-  // TODO: something must signal who's turn it is
   // TODO: 2d board should have possible moves highlight
   // TODO: cleanup match browser properly
   // TODO: create a "selecting match" indicator when the prompt is active
@@ -2662,6 +2661,7 @@
       this.group.setAttribute("sy", 0.7);
       this.group.setAttribute("sz", 0.7);
 
+      this.board3DBorder = null;
       this.board3D = this.create3DBoard();
       this.group.appendChild(this.board3D);
 
@@ -2737,13 +2737,20 @@
     create3DBoard() {
       const board3DGroup = document.createElement("m-group");
       const board = document.createElement("m-model");
-      board.setAttribute("src", "/assets/playground/chess_board_c.glb");
+      board.setAttribute("src", "/assets/playground/chess_board_d.glb");
       board.setAttribute("id", "3D-board");
       board.setAttribute("sx", 5);
       board.setAttribute("sy", 5);
       board.setAttribute("sz", 5);
       board.setAttribute("cast-shadows", this.boardCastShadows);
       board3DGroup.appendChild(board);
+
+      const boardBorder = document.createElement("m-cube");
+      boardBorder.setAttribute("width", 9.5);
+      boardBorder.setAttribute("height", 0.7);
+      boardBorder.setAttribute("depth", 9.5);
+      board3DGroup.appendChild(boardBorder);
+      this.board3DBorder = boardBorder;
 
       const boardLight = document.createElement("m-light");
       boardLight.setAttribute("id", "chess-light");
@@ -3982,6 +3989,11 @@
       const isWhiteTurn = move.color === "w";
       const fromSquare = move.from;
       const toSquare = move.to;
+
+      this.chessRenderEngine.board3DBorder.setAttribute(
+        "color",
+        isWhiteTurn ? "#121212" : "#eeeeee",
+      );
 
       const isCapture = move.captured;
       const isCastle = move.flags.includes("k") || move.flags.includes("q");
