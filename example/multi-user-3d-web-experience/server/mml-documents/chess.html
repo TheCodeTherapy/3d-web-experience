@@ -3157,31 +3157,30 @@
       // Show new possible moves for the user
       moves.forEach((move) => {
         const square = this.possibleMovesMap.get(move);
-        if (square) {
-          square.setAttribute("visible-to", userId); // Make visible to the player
 
-          captures.forEach((capture) => {
-            if (capture === move) {
-              square.setAttribute("y", this.squareY + 0.07);
-              square.setAttribute("emissive", 7);
-            }
-          });
-
-          const clickHandler = (event) => {
-            if (this.squareClickFunction) {
-              this.squareClickFunction(userId, move);
-            } else {
-              console.error(
-                "❌ ERROR: No squareClickFunction provided for handling square clicks.",
-              );
-            }
-          };
-
-          square.addEventListener("click", clickHandler);
-          this.squareEventListeners.set(move, clickHandler);
-        } else {
+        if (!square) {
           console.warn(`⚠️ Move square ${move} not found in possibleMovesMap.`);
+          return;
         }
+
+        square.setAttribute("visible-to", userId);
+
+        captures.forEach((capture) => {
+          if (capture === move) {
+            square.setAttribute("y", this.squareY + 0.07);
+            square.setAttribute("emissive", 7);
+          }
+        });
+
+        const clickHandler = (event) => {
+          if (this.squareClickFunction) {
+            this.squareClickFunction(userId, move);
+          } else {
+            console.error("❌ ERROR: No squareClickFunction provided for handling square clicks.");
+          }
+        };
+        square.addEventListener("click", clickHandler);
+        this.squareEventListeners.set(move, clickHandler);
       });
 
       console.log(`✅ Highlighted moves ${moves.join(", ")} for user ${userId}`);
@@ -3298,6 +3297,7 @@
     }
 
     promotePawn(position, newPiece) {
+      console.log(`✅ Promoting pawn at ${position} to ${newPiece}`);
       const row = 8 - parseInt(position[1]);
       const col = position.charCodeAt(0) - 97;
       const isWhite = newPiece === newPiece.toUpperCase();
@@ -3331,7 +3331,7 @@
       const y2D = this.board2DYOffset;
 
       // Create and place the promoted piece (3D)
-      const promoted3DAsset = this.pieces3DModels.get(newPiece);
+      const promoted3DAsset = this.pieces3DModels.get(isWhite ? newPiece : newPiece.toLowerCase());
       if (!promoted3DAsset) {
         console.error(`❌ ERROR: No 3D model found for ${newPiece}!`);
         return;
@@ -4067,7 +4067,11 @@
       this.chessRenderEngine.applyMove(fromSquare, toSquare, isCapture);
 
       if (move.promotion) {
-        this.chessRenderEngine.promotePawn(toSquare, move.promotion.toUpperCase());
+        console.log(`🔼 ${move.promotion}`);
+        this.chessRenderEngine.promotePawn(
+          toSquare,
+          isWhiteTurn ? move.promotion.toUpperCase() : move.promotion.toLowerCase(),
+        );
       }
 
       let audioDelay = isCheck
