@@ -25,7 +25,7 @@
     "@mml-io/3d-web-experience-server": "^0.21.3",
     "@mml-io/3d-web-text-chat": "^0.21.3",
     "@mml-io/3d-web-user-networking": "^0.21.3",
-    "@mml-io/networked-dom-server": "0.0.0-experimental-8ff5dac-20250221",
+    "@mml-io/networked-dom-server": "0.19.4",
     "chokidar": "^4.0.3",
     "express": "4.21.2",
     "express-ws": "5.0.2",
