@@ -3071,8 +3071,9 @@
           const rank = this.inverse ? row + 1 : this.boardSize - row;
           const chessCellId = `${file}${rank}`;
 
+          const squareId = `square-${chessCellId}`;
           const possible3DSquare = this.createPlane(
-            chessCellId,
+            squareId,
             this.possibleImageURL,
             x,
             this.squareY,
@@ -3139,11 +3140,14 @@
     }
 
     clearHighlightedMoves() {
+      console.log("Clearing highlighted moves.");
       this.possibleMovesMap.forEach((square, index) => {
+        console.log(`Clearing square ${index} highlight.`);
         square.setAttribute("y", this.squareY);
         square.setAttribute("emissive", 0.2);
         square.setAttribute("visible-to", "-1");
         if (this.squareEventListeners.has(index)) {
+          console.log(`Removing event listener for square ${square} ${index}.`);
           square.removeEventListener("click", this.squareEventListeners.get(index));
           this.squareEventListeners.delete(index);
         }
@@ -3151,6 +3155,7 @@
     }
 
     highlightMoves(moves, captures, userId) {
+      console.log("highlightMoves", moves, captures, userId);
       if (!Array.isArray(moves) || moves.length === 0) {
         console.warn("⚠️ No valid moves to highlight.");
         return;
@@ -3161,7 +3166,6 @@
         return;
       }
 
-      // Show new possible moves for the user
       moves.forEach((move) => {
         const square = this.possibleMovesMap.get(move);
 
@@ -3870,21 +3874,19 @@
         return;
       }
 
-      // Allow reselecting another piece before committing to a move
       if (this.selectedPiece) {
         if (this.selectedPiece === position) {
           console.log(`🔄 ${userId} reselected ${pieceId} at ${position}`);
           return;
         }
 
-        // If clicking on another of their own pieces, change selection
+        // player should be able to click its own stuff to change its mind (select another)
         const clickedPiece = this.chessEngine.get(position);
         if (clickedPiece && clickedPiece.color === playerColor) {
           console.log(`🔄 ${userId} switched selection to ${pieceId} at ${position}`);
           this.chessRenderEngine.clearHighlightedMoves();
           this.selectedPiece = position;
         } else {
-          // If clicking on an opponent’s piece in a valid capture position, move
           const possibleMoves = this.chessEngine
             .moves({ square: this.selectedPiece, verbose: true })
             .map((move) => move.to); // Extract valid target squares
@@ -3900,14 +3902,12 @@
         }
       }
 
-      // Get possible moves with extra details
       const possibleMovesSAN = this.chessEngine.moves({ square: position, verbose: true });
       if (possibleMovesSAN.length === 0) {
         console.log(`❌ No valid moves for ${pieceId} at ${position}`);
         return;
       }
 
-      // Split moves into normal moves and captures
       const possibleSquares = [];
       const possibleCaptures = [];
 
@@ -3915,7 +3915,7 @@
         const moveSquare = move.to; // Target square
 
         if (move.san.includes("=")) {
-          possibleSquares.push(moveSquare); // Pawn promotions
+          possibleSquares.push(moveSquare);
           possibleCaptures.push(moveSquare);
         } else if (move.san === "O-O") {
           possibleSquares.push(playerColor === "w" ? "g1" : "g8"); // Kingside castle
@@ -3936,7 +3936,6 @@
         possibleCaptures,
       );
 
-      // Highlight possible moves and captures differently
       this.chessRenderEngine.highlightMoves(possibleSquares, possibleCaptures, userId);
       this.selectedPiece = position;
     }
@@ -4058,11 +4057,9 @@
       if (isCheck) {
         console.log(`🚨 CHECK detected! Finding enemy king's position...`);
 
-        // Get all board squares
         const board = this.chessEngine.board();
         let kingPosition = null;
 
-        // Find the king of the **opponent** color
         for (let row of board) {
           for (let square of row) {
             if (square && square.type === "k" && square.color !== playerColor) {
@@ -4081,7 +4078,6 @@
         }
       }
 
-      // execute the move with the renderer ==================================
       console.log(`✅ Move executed: ${moveDescription}`);
       this.chessRenderEngine.applyMove(fromSquare, toSquare, isCapture);
 
