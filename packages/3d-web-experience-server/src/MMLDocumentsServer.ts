@@ -71,7 +71,7 @@ export class MMLDocumentsServer {
     private directory: string,
     watchPattern: string,
   ) {
-    this.watchPattern = path.resolve(directory, watchPattern);
+    this.watchPattern = watchPattern;
     this.watch();
   }
 
