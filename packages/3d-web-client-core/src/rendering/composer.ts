@@ -539,6 +539,10 @@ export class Composer {
   }
 
   public setFog(): void {
+    if (envValues.fog.fogFar === 0) {
+      this.scene.fog = null;
+      return;
+    }
     const fogColor = new Color().setRGB(
       envValues.fog.fogColor.r,
       envValues.fog.fogColor.g,
