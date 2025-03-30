@@ -18,10 +18,10 @@
     "@mml-io/3d-web-text-chat": "^0.21.3",
     "@mml-io/3d-web-user-networking": "^0.21.3",
     "@mml-io/3d-web-voice-chat": "^0.21.3",
-    "@mml-io/mml-web": "0.19.4",
-    "@mml-io/mml-web-runner": "0.19.4",
-    "@mml-io/mml-web-threejs-standalone": "0.19.4",
-    "@mml-io/networked-dom-document": "0.19.4",
+    "@mml-io/mml-web": "0.19.6",
+    "@mml-io/mml-web-runner": "0.19.6",
+    "@mml-io/mml-web-threejs-standalone": "0.19.6",
+    "@mml-io/networked-dom-document": "0.19.6",
     "three": "0.163.0"
   },
   "devDependencies": {
