@@ -76,10 +76,11 @@ export abstract class ReconnectingWebSocket {
 
   private createWebsocketWithTimeout(timeout: number): Promise<WebSocket> {
     return new Promise((resolve, reject) => {
+      const websocket = this.websocketFactory(this.url);
       const timeoutId = setTimeout(() => {
         reject(new Error("websocket connection timed out"));
+        websocket.close();
       }, timeout);
-      const websocket = this.websocketFactory(this.url);
       websocket.binaryType = "arraybuffer";
       websocket.addEventListener("open", () => {
         clearTimeout(timeoutId);
