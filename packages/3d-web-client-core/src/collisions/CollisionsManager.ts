@@ -59,10 +59,14 @@ export class CollisionsManager {
     this.collisionTrigger = MMLCollisionTrigger.init();
   }
 
-  public raycastFirst(ray: Ray): [number, Vector3, CollisionMeshState] | null {
+  public raycastFirst(
+    ray: Ray,
+    maximumDistance: number | null = null,
+  ): [number, Vector3, CollisionMeshState, Vector3] | null {
     let minimumDistance: number | null = null;
     let minimumHit: CollisionMeshState | null = null;
-    let minimumNormal: Vector3 | null = new Vector3();
+    let minimumNormal: Vector3 | null = null;
+    let minimumPoint: Vector3 | null = null;
     for (const [, collisionMeshState] of this.collisionMeshState) {
       this.tempRay.copy(ray).applyMatrix4(this.tempMatrix.copy(collisionMeshState.matrix).invert());
       const hit = collisionMeshState.meshBVH.raycastFirst(this.tempRay, DoubleSide);
@@ -71,20 +75,35 @@ export class CollisionsManager {
         this.tempSegment.end.copy(hit.point);
         this.tempSegment.applyMatrix4(collisionMeshState.matrix);
         const dist = this.tempSegment.distance();
-        if (minimumDistance === null || dist < minimumDistance) {
+        if (
+          (maximumDistance === null || dist < maximumDistance) &&
+          (minimumDistance === null || dist < minimumDistance)
+        ) {
           minimumDistance = dist;
           minimumHit = collisionMeshState;
+          if (minimumNormal === null) {
+            minimumNormal = new Vector3();
+          }
+          if (minimumPoint === null) {
+            minimumPoint = new Vector3();
+          }
           minimumNormal = (hit.normal ? minimumNormal.copy(hit.normal) : minimumNormal)
             // Apply the rotation of the mesh to the normal
             .applyQuaternion(this.tempQuaternion.setFromRotationMatrix(collisionMeshState.matrix))
             .normalize();
+          minimumPoint = minimumPoint.copy(hit.point).applyMatrix4(collisionMeshState.matrix);
         }
       }
     }
-    if (minimumDistance === null || minimumNormal === null || minimumHit === null) {
+    if (
+      minimumDistance === null ||
+      minimumNormal === null ||
+      minimumHit === null ||
+      minimumPoint === null
+    ) {
       return null;
     }
-    return [minimumDistance, minimumNormal, minimumHit];
+    return [minimumDistance, minimumNormal, minimumHit, minimumPoint];
   }
 
   private createCollisionMeshState(group: Group, trackCollisions: boolean): CollisionMeshState {

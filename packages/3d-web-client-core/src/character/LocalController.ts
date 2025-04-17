@@ -64,7 +64,6 @@ export class LocalController {
   private rotationOffset: number = 0;
   private azimuthalAngle: number = 0;
 
-  private tempMatrix: Matrix4 = new Matrix4();
   private tempSegment: Line3 = new Line3();
   private tempQuaternion: Quaternion = new Quaternion();
   private tempEuler: Euler = new Euler();
@@ -343,17 +342,41 @@ export class LocalController {
         this.config.character.rotation.setFromQuaternion(asQuaternion);
       }
     }
-    this.config.character.updateMatrixWorld();
 
     const avatarSegment = this.tempSegment;
     avatarSegment.copy(this.capsuleInfo.segment!);
-    avatarSegment.start
-      .applyMatrix4(this.config.character.matrixWorld)
-      .applyMatrix4(this.tempMatrix);
-    avatarSegment.end.applyMatrix4(this.config.character.matrixWorld).applyMatrix4(this.tempMatrix);
+    avatarSegment.start.add(this.config.character.position);
+    avatarSegment.end.add(this.config.character.position);
 
     const positionBeforeCollisions = this.tempVector.copy(avatarSegment.start);
     this.config.collisionsManager.applyColliders(avatarSegment, this.capsuleInfo.radius!);
+
+    // Raycast from the top of the capsule to the bottom of the capsule to see if there is a surface intersecting the capsule
+    const capsuleLength =
+      this.capsuleInfo.segment.end.y -
+      this.capsuleInfo.segment.start.y +
+      this.capsuleInfo.radius * 2;
+    // Set the origin of the ray to the bottom of the segment (1 radius length from the bottom point of the capsule)
+    this.rayCaster.set(avatarSegment.start, this.vectorDown);
+
+    // Amount to ignore from the start and end of the ray (to avoid unwanted collisions)
+    const endIgnoreLength = 0.1;
+
+    // Move the ray origin to the bottom of the capsule and then add the total length to move the ray origin to the top point of the capsule
+    this.rayCaster.ray.origin.y += -this.capsuleInfo.radius + capsuleLength - endIgnoreLength;
+    // Find the first mesh that intersects the ray
+    const withinCapsuleRayHit = this.config.collisionsManager.raycastFirst(
+      this.rayCaster.ray,
+      capsuleLength - endIgnoreLength * 2,
+    );
+    if (withinCapsuleRayHit !== null) {
+      // There is a mesh ray collision within the capsule. Move the character up to the point of the collision
+      const rayHitPosition = withinCapsuleRayHit[3];
+      avatarSegment.start.copy(rayHitPosition);
+      // Account for the radius of the capsule
+      avatarSegment.start.y += this.capsuleInfo.radius;
+    }
+
     this.config.character.position.copy(avatarSegment.start);
     const deltaCollisionPosition = avatarSegment.start.sub(positionBeforeCollisions);
 

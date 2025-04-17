@@ -21,8 +21,13 @@ export class TimeManager {
   public fps: number = 0;
   public averageFPS: number = 0;
 
+  public static maxDeltaTime = 0.1; // 100ms
+
   update() {
     this.rawDeltaTime = this.clock.getDelta();
+    if (this.rawDeltaTime > TimeManager.maxDeltaTime) {
+      this.rawDeltaTime = TimeManager.maxDeltaTime;
+    }
     this.frame++;
     this.time += this.rawDeltaTime;
     this.deltaTimes.push(this.rawDeltaTime);
