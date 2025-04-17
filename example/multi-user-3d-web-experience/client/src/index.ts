@@ -81,6 +81,11 @@ const app = new Networked3dWebExperienceClient(holder, {
     skybox: {
       hdrJpgUrl: hdrJpgUrl,
     },
+    fog: {
+      fogNear: 12,
+      fogFar: 180,
+      fogColor: { r: 0.6, g: 0.6, b: 0.6 },
+    },
     groundPlane: true,
     groundPlaneType: "grass",
   },

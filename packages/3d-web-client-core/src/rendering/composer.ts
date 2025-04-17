@@ -86,6 +86,15 @@ export type EnvironmentConfiguration = {
     polarAngle?: number;
     azimuthalAngle?: number;
   };
+  fog?: {
+    fogNear?: number;
+    fogFar?: number;
+    fogColor?: {
+      r: number;
+      g: number;
+      b: number;
+    };
+  };
   postProcessing?: {
     bloomIntensity?: number;
   };
@@ -172,10 +181,6 @@ export class Composer {
 
     this.environmentConfiguration = environmentConfiguration;
 
-    this.updateSkyboxAndEnvValues();
-    this.updateAmbientLightValues();
-    this.setFog();
-
     this.effectComposer = new EffectComposer(this.renderer, {
       frameBufferType: HalfFloatType,
     });
@@ -219,6 +224,10 @@ export class Composer {
     if (environmentConfiguration?.postProcessing?.bloomIntensity) {
       extrasValues.bloom = environmentConfiguration.postProcessing.bloomIntensity;
     }
+
+    this.updateSkyboxAndEnvValues();
+    this.updateAmbientLightValues();
+    this.updateFogValues();
 
     this.bloomEffect = new BloomEffect({
       intensity: extrasValues.bloom,
@@ -335,6 +344,7 @@ export class Composer {
     this.updateSkyboxAndEnvValues();
     this.updateAmbientLightValues();
     this.updateSunValues();
+    this.updateFogValues();
   }
 
   public setupTweakPane(tweakPane: TweakPane) {
@@ -583,6 +593,25 @@ export class Composer {
       sunValues.sunPosition.sunPolarAngle = this.environmentConfiguration.sun.polarAngle;
       this.sun?.setPolarAngle(this.environmentConfiguration.sun.polarAngle * (Math.PI / 180));
     }
+  }
+
+  private updateFogValues() {
+    if (typeof this.environmentConfiguration?.fog?.fogNear === "number") {
+      envValues.fog.fogNear = this.environmentConfiguration.fog.fogNear;
+    }
+    if (typeof this.environmentConfiguration?.fog?.fogFar === "number") {
+      envValues.fog.fogFar = this.environmentConfiguration.fog.fogFar;
+    }
+    if (
+      typeof this.environmentConfiguration?.fog?.fogColor?.r === "number" &&
+      typeof this.environmentConfiguration?.fog?.fogColor?.g === "number" &&
+      typeof this.environmentConfiguration?.fog?.fogColor?.b === "number"
+    ) {
+      envValues.fog.fogColor.r = this.environmentConfiguration.fog.fogColor.r;
+      envValues.fog.fogColor.g = this.environmentConfiguration.fog.fogColor.g;
+      envValues.fog.fogColor.b = this.environmentConfiguration.fog.fogColor.b;
+    }
+    this.setFog();
   }
 
   private updateSkyboxAndEnvValues() {
