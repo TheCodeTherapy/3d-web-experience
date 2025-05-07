@@ -331,7 +331,7 @@
       const windX = Math.cos(angle) * (radius + windOffset);
       const windY = 7;
       const windZ = Math.sin(angle) * (radius + windOffset);
-      const windVolume = i % 2 === 0 ? 1.5 : 2;
+      const windVolume = i % 2 === 0 ? 2 : 3.5;
       const windDebug = false;
       const windSrc = "/assets/playground/wind.mp3";
       createWindSFX(windSrc, windX, windY, windZ, windVolume, now, windDebug);
@@ -462,7 +462,7 @@
   }
 
   placeAltars(altarsGroup, 42, 14);
-  // placeWind(42, 6);
+  placeWind(25, 6);
 
   new Respawner(contentGroup, -50, 0, true);
 
