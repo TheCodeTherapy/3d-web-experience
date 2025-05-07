@@ -1,6 +1,7 @@
 import { AnimationConfig, AnimationSettings } from "@mml-io/3d-web-client-core";
 import { Networked3dWebExperienceClient } from "@mml-io/3d-web-experience-client";
 
+import hdrNightJpgUrl from "../../../assets/hdr/moonless_golf_8k.jpg";
 import hdrJpgUrl from "../../../assets/hdr/puresky_2k.jpg";
 import loadingBackground from "../../../assets/images/3d-web-experience.webp";
 import airAnimationFileUrl from "../../../assets/models/anim_air.glb";
@@ -19,6 +20,7 @@ const voiceNetworkAddress = `${window.location.protocol}//${host}/livekit-voice-
 
 const useBackFlip = true;
 const useAltFrontFlip = false;
+const useNight = false;
 
 const doubleJumpAnimationFileUrl = useBackFlip
   ? backFlipFileUrl
@@ -79,7 +81,7 @@ const app = new Networked3dWebExperienceClient(holder, {
   mmlDocuments: { example: { url: `${protocol}//${host}/mml-documents/playground.html` } },
   environmentConfiguration: {
     skybox: {
-      hdrJpgUrl: hdrJpgUrl,
+      hdrJpgUrl: useNight ? hdrNightJpgUrl : hdrJpgUrl,
     },
     fog: {
       fogNear: 12,
