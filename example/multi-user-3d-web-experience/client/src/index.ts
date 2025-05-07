@@ -97,7 +97,7 @@ const app = new Networked3dWebExperienceClient(holder, {
         thumbnailUrl: "/assets/models/thumbs/bot.jpg",
       },
       {
-        name: "Hat Bot",
+        name: "Hat Socket",
         mmlCharacterString: `
           <m-character src="/assets/models/bot.glb">
             <m-model rz="-90" sx="1.01" sy="1.01" sz="1.01" x="0.025" z="-0.01" socket="head" src="/assets/models/hat.glb"></m-model>
@@ -115,7 +115,21 @@ const app = new Networked3dWebExperienceClient(holder, {
         meshFileUrl: "/assets/models/cartoon_boy.glb",
         thumbnailUrl: "/assets/models/thumbs/cartoon_boy.jpg",
       },
+      {
+        name: "MML Parts",
+        mmlCharacterString: `
+          <m-character src="/assets/models/mml_body_male.glb">
+            <m-model src="/assets/models/mml_head_hispanic_male.glb"></m-model>
+            <m-model src="/assets/models/mml_hair_black.glb"></m-model>
+            <m-model src="/assets/models/mml_torso_hoodie.glb"></m-model>
+            <m-model src="/assets/models/mml_legs_grey_pants.glb"></m-model>
+            <m-model src="/assets/models/mml_shoes_retro_white.glb"></m-model>
+          </m-character>
+        `,
+        thumbnailUrl: "/assets/models/thumbs/mml_parts.jpg",
+      },
     ],
+    allowCustomAvatars: true,
   },
   allowCustomDisplayName: true,
   enableTweakPane: true,
