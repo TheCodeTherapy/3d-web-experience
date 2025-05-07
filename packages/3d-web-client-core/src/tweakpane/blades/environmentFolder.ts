@@ -28,7 +28,7 @@ export const envValues = {
   skyboxIntensity: 0.9, // 0.8,
   skyboxBlurriness: 0.0,
   ambientLight: {
-    ambientLightIntensity: 0.21,
+    ambientLightIntensity: 0.3,
     ambientLightColor: { r: 1, g: 1, b: 1 },
   },
   fog: {

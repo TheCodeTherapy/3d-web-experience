@@ -6,7 +6,7 @@ export const characterValues = {
   roughness: 0.8,
   emissive: { r: 1.0, g: 1.0, b: 1.0 },
   emissiveIntensity: 0.01,
-  envMapIntensity: 0.15,
+  envMapIntensity: 0.21,
 };
 
 const characterOptions = {
