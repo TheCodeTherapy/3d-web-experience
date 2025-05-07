@@ -6,7 +6,7 @@ import { Pane, FolderApi, ButtonApi } from "tweakpane";
 
 import { toastStyle, tweakPaneStyle } from "./style";
 
-const MAX_FILE_SIZE_MB = 100;
+const MAX_FILE_SIZE_MB = 500; // 500 MB
 const ALLOWED_EXTENSIONS = ["glb", "gltf"];
 
 const toastStyleElement = document.createElement("style");

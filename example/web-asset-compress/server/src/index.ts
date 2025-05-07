@@ -25,14 +25,14 @@ const optimizationApp = express();
 const optimizationPort = process.env.PORT || 8083;
 const upload = multer({
   dest: "uploads/",
-  limits: { fileSize: 210 * 1024 * 1024 }, // 210 MB
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
 });
 
 optimizationApp.use(cors());
 optimizationApp.use(express.json());
-optimizationApp.use(bodyParser.json({ limit: "210mb" }));
-optimizationApp.use(bodyParser.urlencoded({ limit: "210mb", extended: true }));
-optimizationApp.use(express.json({ limit: "210mb" }));
+optimizationApp.use(bodyParser.json({ limit: "500mb" }));
+optimizationApp.use(bodyParser.urlencoded({ limit: "500mb", extended: true }));
+optimizationApp.use(express.json({ limit: "500mb" }));
 
 optimizationApp.post(
   "/optimize",
