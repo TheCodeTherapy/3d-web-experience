@@ -130,6 +130,21 @@ const app = new Networked3dWebExperienceClient(holder, {
         `,
         thumbnailUrl: "/assets/models/thumbs/mml_parts.jpg",
       },
+      {
+        name: "Low-poly A",
+        meshFileUrl: "/assets/models/low_poly_male_a.glb",
+        thumbnailUrl: "/assets/models/thumbs/low_poly_male_a.jpg",
+      },
+      {
+        name: "Low-poly B",
+        meshFileUrl: "/assets/models/low_poly_male_b.glb",
+        thumbnailUrl: "/assets/models/thumbs/low_poly_male_b.jpg",
+      },
+      {
+        name: "Low-poly C",
+        meshFileUrl: "/assets/models/low_poly_male_c.glb",
+        thumbnailUrl: "/assets/models/thumbs/low_poly_male_c.jpg",
+      },
     ],
     allowCustomAvatars: true,
   },
