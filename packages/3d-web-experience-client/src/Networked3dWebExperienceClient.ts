@@ -572,8 +572,10 @@ export class Networked3dWebExperienceClient {
       }
     }
 
-    if (this.mmlEditorUI.isVisible === false && this.keyInputManager.isKeyPressed("e")) {
-      this.mmlEditorUI.setVisible(true);
+    if (this.mmlEditorUI.isVisible === false && this.keyInputManager.isKeyPressed("/")) {
+      if (this.mmlEditorUI.isVisible === false) {
+        this.mmlEditorUI.setVisible(true);
+      }
     }
 
     this.currentRequestAnimationFrame = requestAnimationFrame(() => {

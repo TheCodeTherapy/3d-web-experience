@@ -23,6 +23,12 @@ export class EditorUI {
     this.isVisible = this.config.visible;
     this.config.holderElement.appendChild(this.wrapper);
     this.root = createRoot(this.wrapper);
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "\\") {
+        this.setVisible(false);
+      }
+    });
   }
 
   init() {
