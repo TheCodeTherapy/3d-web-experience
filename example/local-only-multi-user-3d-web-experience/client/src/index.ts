@@ -1,3 +1,4 @@
+import { SpawnConfigurationState } from "@mml-io/3d-web-client-core";
 import { IframeWrapper, MMLScene, registerCustomElementsToWindow } from "@mml-io/mml-web";
 import {
   EditableNetworkedDOM,
@@ -8,7 +9,6 @@ import {
   StandaloneThreeJSAdapter,
   StandaloneThreeJSAdapterControlsType,
 } from "@mml-io/mml-web-threejs-standalone";
-import { Euler, Vector3 } from "three";
 
 import exampleMMLDocumentHTML from "./example-mml.html";
 import { LocalAvatarClient } from "./LocalAvatarClient";
@@ -46,24 +46,60 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Create a "local" server that the avatar clients can connect to to see each other
   const localAvatarServer = new LocalAvatarServer();
 
+  const client1SpawnConfig: SpawnConfigurationState = {
+    spawnPosition: {
+      x: -0.5,
+      y: 0.5,
+      z: 5,
+    },
+    spawnPositionVariance: {
+      x: 0,
+      y: 0,
+      z: 0,
+    },
+    respawnTrigger: {
+      minX: Number.NEGATIVE_INFINITY,
+      maxX: Number.POSITIVE_INFINITY,
+      minY: -100,
+      maxY: Number.POSITIVE_INFINITY,
+      minZ: Number.NEGATIVE_INFINITY,
+      maxZ: Number.POSITIVE_INFINITY,
+    },
+    spawnYRotation: 180,
+    enableRespawnButton: true,
+  };
+
   // Create the first avatar client and append it to the first quadrant
-  const client1 = new LocalAvatarClient(
-    localAvatarServer,
-    1,
-    new Vector3(-0.5, 0.5, 5),
-    new Euler(0, Math.PI, 0),
-  );
+  const client1 = new LocalAvatarClient(localAvatarServer, 1, client1SpawnConfig);
   client1.addDocument(networkedDOMDocument, iframeWindow, iframeBody);
   quadrant1.appendChild(client1.element);
   client1.update();
 
+  const client2SpawnConfig: SpawnConfigurationState = {
+    spawnPosition: {
+      x: 0.5,
+      y: 0.5,
+      z: 5,
+    },
+    spawnPositionVariance: {
+      x: 0,
+      y: 0,
+      z: 0,
+    },
+    spawnYRotation: 180,
+    respawnTrigger: {
+      minX: Number.NEGATIVE_INFINITY,
+      maxX: Number.POSITIVE_INFINITY,
+      minY: -100,
+      maxY: Number.POSITIVE_INFINITY,
+      minZ: Number.NEGATIVE_INFINITY,
+      maxZ: Number.POSITIVE_INFINITY,
+    },
+    enableRespawnButton: false,
+  };
+
   // Create the second avatar client and append it to the second quadrant
-  const client2 = new LocalAvatarClient(
-    localAvatarServer,
-    2,
-    new Vector3(0.5, 0.5, 5),
-    new Euler(0, Math.PI, 0),
-  );
+  const client2 = new LocalAvatarClient(localAvatarServer, 2, client2SpawnConfig);
   client2.addDocument(networkedDOMDocument, iframeWindow, iframeBody);
   quadrant2.appendChild(client2.element);
   client2.update();

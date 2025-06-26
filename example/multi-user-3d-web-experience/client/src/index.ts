@@ -159,6 +159,9 @@ const app = new Networked3dWebExperienceClient(holder, {
     title: "The 3D Web Experience",
     subtitle: "https://mml.mgz.me",
   },
+  spawnConfiguration: {
+    enableRespawnButton: true,
+  },
 });
 
 app.update();

@@ -11,7 +11,6 @@ import {
   decodeCharacterAndCamera,
   EnvironmentConfiguration,
   ErrorScreen,
-  getSpawnPositionInsideCircle,
   GroundPlane,
   Key,
   KeyInputManager,
@@ -20,6 +19,8 @@ import {
   MMLCompositionScene,
   TimeManager,
   TweakPane,
+  SpawnConfiguration,
+  SpawnConfigurationState,
   VirtualJoystick,
 } from "@mml-io/3d-web-client-core";
 import { EditorUI } from "@mml-io/3d-web-client-editor";
@@ -89,10 +90,36 @@ export type UpdatableConfig = {
   chatNetworkAddress?: string | null;
   mmlDocuments?: { [key: string]: MMLDocumentConfiguration };
   environmentConfiguration?: EnvironmentConfiguration;
+  spawnConfiguration?: SpawnConfiguration;
   avatarConfiguration?: AvatarConfiguration;
   allowCustomDisplayName?: boolean;
   enableTweakPane?: boolean;
 };
+
+function normalizeSpawnConfiguration(spawnConfig?: SpawnConfiguration): SpawnConfigurationState {
+  return {
+    spawnPosition: {
+      x: spawnConfig?.spawnPosition?.x ?? 0,
+      y: spawnConfig?.spawnPosition?.y ?? 0,
+      z: spawnConfig?.spawnPosition?.z ?? 0,
+    },
+    spawnPositionVariance: {
+      x: spawnConfig?.spawnPositionVariance?.x ?? 0,
+      y: spawnConfig?.spawnPositionVariance?.y ?? 0,
+      z: spawnConfig?.spawnPositionVariance?.z ?? 0,
+    },
+    spawnYRotation: spawnConfig?.spawnYRotation ?? 0,
+    respawnTrigger: {
+      minX: spawnConfig?.respawnTrigger?.minX ?? Number.NEGATIVE_INFINITY,
+      maxX: spawnConfig?.respawnTrigger?.maxX ?? Number.POSITIVE_INFINITY,
+      minY: spawnConfig?.respawnTrigger?.minY ?? -100,
+      maxY: spawnConfig?.respawnTrigger?.maxY ?? Number.POSITIVE_INFINITY,
+      minZ: spawnConfig?.respawnTrigger?.minZ ?? Number.NEGATIVE_INFINITY,
+      maxZ: spawnConfig?.respawnTrigger?.maxZ ?? Number.POSITIVE_INFINITY,
+    },
+    enableRespawnButton: spawnConfig?.enableRespawnButton ?? false,
+  };
+}
 
 export class Networked3dWebExperienceClient {
   private element: HTMLDivElement;
@@ -134,12 +161,15 @@ export class Networked3dWebExperienceClient {
   };
   private characterControllerPaneSet: boolean = false;
 
+  private spawnConfiguration: SpawnConfigurationState;
+
   private initialLoadCompleted = false;
   private loadingProgressManager = new LoadingProgressManager();
   private loadingScreen: LoadingScreen;
   private errorScreen?: ErrorScreen;
   private currentRequestAnimationFrame: number | null = null;
   private groundPlane: GroundPlane | null = null;
+  private respawnButton: HTMLDivElement | null = null;
 
   private handleEditorUpdate: (content: string) => void;
   private mmlEditorUI: EditorUI;
@@ -269,6 +299,8 @@ export class Networked3dWebExperienceClient {
       });
     }
 
+    this.spawnConfiguration = normalizeSpawnConfiguration(this.config.spawnConfiguration);
+
     this.characterManager = new CharacterManager({
       composer: this.composer,
       characterModelLoader: this.characterModelLoader,
@@ -283,12 +315,17 @@ export class Networked3dWebExperienceClient {
         this.networkClient.sendUpdate(characterState);
       },
       animationConfig: this.config.animationConfig,
+      spawnConfiguration: this.spawnConfiguration,
       characterResolve: (characterId: number) => {
         return this.resolveCharacterData(characterId);
       },
       updateURLLocation: this.config.updateURLLocation !== false,
     });
     this.scene.add(this.characterManager.group);
+
+    if (this.spawnConfiguration.enableRespawnButton) {
+      this.element.appendChild(this.characterManager.createRespawnButton());
+    }
 
     this.setGroundPlaneEnabled(this.config.environmentConfiguration?.groundPlane ?? true);
 
@@ -376,6 +413,19 @@ export class Networked3dWebExperienceClient {
         this.connectToTextChat();
       }
     }
+
+    this.spawnConfiguration = normalizeSpawnConfiguration(config.spawnConfiguration);
+    if (this.characterManager.localController) {
+      this.characterManager.localController.updateSpawnConfig(this.spawnConfiguration);
+    }
+    if (this.spawnConfiguration.enableRespawnButton && !this.respawnButton) {
+      this.respawnButton = this.characterManager.createRespawnButton();
+      this.element.appendChild(this.respawnButton);
+    } else if (!this.spawnConfiguration.enableRespawnButton && this.respawnButton) {
+      this.respawnButton.remove();
+      this.respawnButton = null;
+    }
+
     if (config.mmlDocuments) {
       this.setMMLDocuments(config.mmlDocuments);
     }
@@ -583,13 +633,44 @@ export class Networked3dWebExperienceClient {
     });
   }
 
+  private randomWithVariance(value: number, variance: number): number {
+    const min = value - variance;
+    const max = value + variance;
+    return Math.random() * (max - min) + min;
+  }
+
   private spawnCharacter() {
     if (this.clientId === null) {
       throw new Error("Client ID not set");
     }
-    const spawnPosition = getSpawnPositionInsideCircle(3, 30, this.clientId!, 0.4);
-    const spawnRotation = new Euler(0, 0, 0);
+
+    const spawnPosition = new Vector3();
+    spawnPosition.set(
+      this.randomWithVariance(
+        this.spawnConfiguration.spawnPosition.x,
+        this.spawnConfiguration.spawnPositionVariance.x,
+      ),
+      this.randomWithVariance(
+        this.spawnConfiguration.spawnPosition.y,
+        this.spawnConfiguration.spawnPositionVariance.y,
+      ),
+      this.randomWithVariance(
+        this.spawnConfiguration.spawnPosition!.z,
+        this.spawnConfiguration.spawnPositionVariance.z,
+      ),
+    );
+    const spawnRotation = new Euler(
+      0,
+      -this.spawnConfiguration.spawnYRotation! * (Math.PI / 180),
+      0,
+    );
+
     let cameraPosition: Vector3 | null = null;
+
+    const offset = new Vector3(0, 0, 3.3);
+    offset.applyEuler(new Euler(0, spawnRotation.y, 0));
+    cameraPosition = spawnPosition.clone().sub(offset).add(this.characterManager.headTargetOffset);
+
     if (window.location.hash && window.location.hash.length > 1) {
       const urlParams = decodeCharacterAndCamera(window.location.hash.substring(1));
       spawnPosition.copy(urlParams.character.position);

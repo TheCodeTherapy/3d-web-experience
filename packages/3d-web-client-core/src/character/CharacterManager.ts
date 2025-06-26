@@ -16,6 +16,43 @@ import { LocalController } from "./LocalController";
 import { RemoteController } from "./RemoteController";
 import { encodeCharacterAndCamera } from "./url-position";
 
+type SpawnPosition = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+type SpawnPositionVariance = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+type RespawnTrigger = {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  minZ: number;
+  maxZ: number;
+};
+
+export type SpawnConfiguration = {
+  spawnPosition?: Partial<SpawnPosition>;
+  spawnPositionVariance?: Partial<SpawnPositionVariance>;
+  spawnYRotation?: number;
+  respawnTrigger?: Partial<RespawnTrigger>;
+  enableRespawnButton?: boolean;
+};
+
+export type SpawnConfigurationState = {
+  spawnPosition: SpawnPosition;
+  spawnPositionVariance: SpawnPositionVariance;
+  spawnYRotation: number;
+  respawnTrigger: RespawnTrigger;
+  enableRespawnButton: boolean;
+};
+
 export type CharacterManagerConfig = {
   composer: Composer;
   characterModelLoader: CharacterModelLoader;
@@ -27,6 +64,7 @@ export type CharacterManagerConfig = {
   remoteUserStates: Map<number, CharacterState>;
   sendUpdate: (update: CharacterState) => void;
   animationConfig: AnimationConfig;
+  spawnConfiguration?: SpawnConfigurationState;
   characterResolve: (clientId: number) => {
     username: string;
     characterDescription: CharacterDescription;
@@ -96,11 +134,39 @@ export class CharacterManager {
       virtualJoystick: this.config.virtualJoystick,
       cameraManager: this.config.cameraManager,
       timeManager: this.config.timeManager,
+      spawnConfiguration: this.config.spawnConfiguration!,
     });
     this.localCharacter.position.set(spawnPosition.x, spawnPosition.y, spawnPosition.z);
     this.localCharacter.rotation.set(spawnRotation.x, spawnRotation.y, spawnRotation.z);
     this.group.add(character);
     this.localCharacterSpawned = true;
+  }
+
+  public createRespawnButton(): HTMLDivElement {
+    const respawnButton = document.createElement("div");
+    respawnButton.className = "respawn-button";
+    respawnButton.textContent = "RESPAWN";
+    respawnButton.addEventListener("click", () => {
+      this.localController.resetPosition();
+    });
+    respawnButton.style.position = "absolute";
+    respawnButton.style.bottom = "14px";
+    respawnButton.style.right = "8px";
+    respawnButton.style.zIndex = "102";
+    respawnButton.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+    respawnButton.style.color = "#ffffff";
+    respawnButton.style.borderRadius = "8px";
+    respawnButton.style.border = "1px solid rgba(255, 255, 255, 0.21)";
+    respawnButton.style.height = "22px";
+    respawnButton.style.padding = "8px";
+    respawnButton.style.cursor = "pointer";
+    respawnButton.style.fontSize = "12px";
+    respawnButton.style.fontFamily = "Helvetica, sans-serif";
+    respawnButton.style.userSelect = "none";
+    respawnButton.style.display = "flex";
+    respawnButton.style.alignItems = "center";
+    respawnButton.style.justifyContent = "center";
+    return respawnButton;
   }
 
   public setupTweakPane(tweakPane: TweakPane) {

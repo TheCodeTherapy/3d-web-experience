@@ -8,6 +8,7 @@ import { TimeManager } from "../time/TimeManager";
 import { characterControllerValues } from "../tweakpane/blades/characterControlsFolder";
 
 import { Character } from "./Character";
+import { SpawnConfigurationState } from "./CharacterManager";
 import { AnimationState, CharacterState } from "./CharacterState";
 
 const downVector = new Vector3(0, -1, 0);
@@ -20,6 +21,7 @@ export type LocalControllerConfig = {
   virtualJoystick?: VirtualJoystick;
   cameraManager: CameraManager;
   timeManager: TimeManager;
+  spawnConfiguration: SpawnConfigurationState;
 };
 
 export class LocalController {
@@ -96,8 +98,12 @@ export class LocalController {
   private controlState: { direction: number | null; isSprinting: boolean; jump: boolean } | null =
     null;
 
-  private respawnDiv = document.createElement("div");
-  private appHolder: HTMLDivElement | null = null;
+  private minimumX: number;
+  private maximumX: number;
+  private minimumY: number;
+  private maximumY: number;
+  private minimumZ: number;
+  private maximumZ: number;
 
   constructor(private config: LocalControllerConfig) {
     this.networkState = {
@@ -106,34 +112,62 @@ export class LocalController {
       rotation: { quaternionY: 0, quaternionW: 1 },
       state: AnimationState.idle,
     };
-    this.appHolder = document.getElementById("appHolder") as HTMLDivElement;
-    this.respawnDiv.setAttribute("id", "respawn-button");
-    this.respawnDiv.style.lineHeight = "25px";
-    this.respawnDiv.style.height = "24px";
-    this.respawnDiv.style.width = "60px";
-    this.respawnDiv.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-    this.respawnDiv.style.position = "fixed";
-    this.respawnDiv.style.bottom = "12px";
-    this.respawnDiv.style.right = "12px";
-    this.respawnDiv.style.color = "rgb(255, 255, 255)";
-    this.respawnDiv.style.textAlign = "center";
-    this.respawnDiv.style.fontSize = "12px";
-    this.respawnDiv.style.verticalAlign = "middle";
-    this.respawnDiv.style.borderRadius = "5px";
-    this.respawnDiv.style.cursor = "pointer";
-    this.respawnDiv.style.fontFamily = "monospace";
-    this.respawnDiv.style.fontWeight = "900";
-    this.respawnDiv.style.zIndex = "99999";
-    this.respawnDiv.style.border = "1px solid rgba(255, 255, 255, 0.5)";
-    this.respawnDiv.innerText = "RESPAWN";
 
-    this.respawnDiv.addEventListener("click", (event) => {
-      event.preventDefault();
-      if (event.button === 0) {
-        this.respawn();
-      }
-    });
-    this.appHolder?.appendChild(this.respawnDiv);
+    this.minimumX = this.config.spawnConfiguration.respawnTrigger.minX;
+    this.maximumX = this.config.spawnConfiguration.respawnTrigger.maxX;
+    this.minimumY = this.config.spawnConfiguration.respawnTrigger.minY;
+    this.maximumY = this.config.spawnConfiguration.respawnTrigger.maxY;
+    this.minimumZ = this.config.spawnConfiguration.respawnTrigger.minZ;
+    this.maximumZ = this.config.spawnConfiguration.respawnTrigger.maxZ;
+
+    const maxAbsSpawnX =
+      Math.abs(this.config.spawnConfiguration.spawnPosition.x) +
+      Math.abs(this.config.spawnConfiguration.spawnPositionVariance.x);
+
+    const maxAbsSpawnY =
+      Math.abs(this.config.spawnConfiguration.spawnPosition.y) +
+      Math.abs(this.config.spawnConfiguration.spawnPositionVariance.y);
+
+    const maxAbsSpawnZ =
+      Math.abs(this.config.spawnConfiguration.spawnPosition.z) +
+      Math.abs(this.config.spawnConfiguration.spawnPositionVariance.z);
+
+    if (Math.abs(this.minimumX) < maxAbsSpawnX || Math.abs(this.maximumX) < maxAbsSpawnX) {
+      // If the respawn trigger minX or maxX is out of bounds of the spawn position variance,
+      // set it to the spawn position variance +- a 1m skin to prevent a respawn infinite loop
+      // and warn the user. The same goes for all other axes.
+      this.minimumX = -maxAbsSpawnX - 1;
+      this.maximumX = maxAbsSpawnX + 1;
+      console.warn(
+        "The respawnTrigger X values are out of the bounds of the spawnPosition + spawnPositionVariance. Please check your respawnTrigger config.",
+      );
+    }
+
+    if (Math.abs(this.minimumY) < maxAbsSpawnY || Math.abs(this.maximumY) < maxAbsSpawnY) {
+      this.minimumY = -maxAbsSpawnY - 1;
+      this.maximumY = maxAbsSpawnY + 1;
+      console.warn(
+        "The respawnTrigger Y values are out of the bounds of the spawnPosition + spawnPositionVariance. Please check your respawnTrigger config.",
+      );
+    }
+
+    if (Math.abs(this.minimumZ) < maxAbsSpawnZ) {
+      this.minimumZ = -maxAbsSpawnZ - 1;
+      this.maximumZ = maxAbsSpawnZ + 1;
+      console.warn(
+        "The respawnTrigger Z values are out of the bounds of the spawnPosition + spawnPositionVariance. Please check your respawnTrigger config.",
+      );
+    }
+  }
+
+  public updateSpawnConfig(spawnConfig: SpawnConfigurationState): void {
+    this.config.spawnConfiguration = spawnConfig;
+    this.minimumX = spawnConfig.respawnTrigger.minX;
+    this.maximumX = spawnConfig.respawnTrigger.maxX;
+    this.minimumY = spawnConfig.respawnTrigger.minY;
+    this.maximumY = spawnConfig.respawnTrigger.maxY;
+    this.minimumZ = spawnConfig.respawnTrigger.minZ;
+    this.maximumZ = spawnConfig.respawnTrigger.maxZ;
   }
 
   public update(): void {
@@ -166,9 +200,15 @@ export class LocalController {
       );
     }
 
-    // Allow the user to fall far below zero before resetting
-    // TODO - Might want to make this a configurable value
-    if (this.config.character.position.y < -100) {
+    const outOfBounds =
+      this.config.character.position.x < this.minimumX || // left
+      this.config.character.position.x > this.maximumX || // right
+      this.config.character.position.z < this.minimumZ || // back
+      this.config.character.position.z > this.maximumZ || // front
+      this.config.character.position.y < this.minimumY || // down
+      this.config.character.position.y > this.maximumY; //   up
+
+    if (outOfBounds) {
       this.resetPosition();
     }
     this.updateNetworkState();
@@ -529,12 +569,39 @@ export class LocalController {
     this.jumpCounter = 0;
   }
 
-  private resetPosition(): void {
+  public resetPosition(): void {
+    const randomWithVariance = (value: number, variance: number): number => {
+      const min = value - variance;
+      const max = value + variance;
+      return Math.random() * (max - min) + min;
+    };
+
+    this.characterVelocity.x = 0;
     this.characterVelocity.y = 0;
-    this.config.character.position.y = 3;
+    this.characterVelocity.z = 0;
+
+    this.config.character.position.set(
+      randomWithVariance(
+        this.config.spawnConfiguration.spawnPosition.x,
+        this.config.spawnConfiguration.spawnPositionVariance.x,
+      ),
+      randomWithVariance(
+        this.config.spawnConfiguration.spawnPosition.y,
+        this.config.spawnConfiguration.spawnPositionVariance.y,
+      ),
+      randomWithVariance(
+        this.config.spawnConfiguration.spawnPosition.z,
+        this.config.spawnConfiguration.spawnPositionVariance.z,
+      ),
+    );
+    const respawnRotation = new Euler(
+      0,
+      -this.config.spawnConfiguration.spawnYRotation * (Math.PI / 180),
+      0,
+    );
+    this.config.character.rotation.set(respawnRotation.x, respawnRotation.y, respawnRotation.z);
     this.characterOnGround = false;
     this.doubleJumpUsed = false;
     this.jumpReleased = true;
-    this.jumpCounter = 0;
   }
 }

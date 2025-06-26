@@ -10,6 +10,7 @@ import {
   GroundPlane,
   KeyInputManager,
   MMLCompositionScene,
+  SpawnConfigurationState,
   TimeManager,
 } from "@mml-io/3d-web-client-core";
 import { MMLWebRunnerClient } from "@mml-io/mml-web-runner";
@@ -105,11 +106,12 @@ export class LocalAvatarClient {
   private documentRunnerClients = new Set<MMLWebRunnerClient>();
   private animationFrameRequest: number | null = null;
 
+  private spawnConfiguration: SpawnConfigurationState;
+
   constructor(
     private localAvatarServer: LocalAvatarServer,
     private localClientId: number,
-    spawnPosition: Vector3,
-    spawnRotation: Euler,
+    spawnConfiguration: SpawnConfigurationState,
   ) {
     this.element = document.createElement("div");
     this.element.style.position = "absolute";
@@ -160,6 +162,29 @@ export class LocalAvatarClient {
       },
     );
 
+    this.spawnConfiguration = {
+      spawnPosition: {
+        x: spawnConfiguration?.spawnPosition?.x ?? 0,
+        y: spawnConfiguration?.spawnPosition?.y ?? 0,
+        z: spawnConfiguration?.spawnPosition?.z ?? 0,
+      },
+      spawnPositionVariance: {
+        x: spawnConfiguration?.spawnPositionVariance?.x ?? 0,
+        y: spawnConfiguration?.spawnPositionVariance?.y ?? 0,
+        z: spawnConfiguration?.spawnPositionVariance?.z ?? 0,
+      },
+      spawnYRotation: spawnConfiguration?.spawnYRotation ?? 0,
+      respawnTrigger: {
+        minX: spawnConfiguration?.respawnTrigger?.minX,
+        maxX: spawnConfiguration?.respawnTrigger?.maxX,
+        minY: spawnConfiguration?.respawnTrigger?.minY ?? -100,
+        maxY: spawnConfiguration?.respawnTrigger?.maxY,
+        minZ: spawnConfiguration?.respawnTrigger?.minZ,
+        maxZ: spawnConfiguration?.respawnTrigger?.maxZ,
+      },
+      enableRespawnButton: spawnConfiguration?.enableRespawnButton ?? false,
+    };
+
     this.characterManager = new CharacterManager({
       composer: this.composer,
       characterModelLoader: this.characterModelLoader,
@@ -175,8 +200,13 @@ export class LocalAvatarClient {
       characterResolve: () => {
         return { username: "User", characterDescription };
       },
+      spawnConfiguration: this.spawnConfiguration,
     });
     this.scene.add(this.characterManager.group);
+
+    if (spawnConfiguration.enableRespawnButton) {
+      this.element.appendChild(this.characterManager.createRespawnButton());
+    }
 
     this.mmlComposition = new MMLCompositionScene({
       targetElement: this.element,
@@ -195,6 +225,16 @@ export class LocalAvatarClient {
     this.collisionsManager.addMeshesGroup(groundPlane);
     this.scene.add(groundPlane);
 
+    const spawnPosition = new Vector3(
+      this.spawnConfiguration.spawnPosition!.x,
+      this.spawnConfiguration.spawnPosition!.y,
+      this.spawnConfiguration.spawnPosition!.z,
+    );
+    const spawnRotation = new Euler(
+      0,
+      this.spawnConfiguration.spawnYRotation! * (Math.PI / 180),
+      0,
+    );
     this.characterManager.spawnLocalCharacter(
       localClientId,
       "User",
@@ -202,6 +242,19 @@ export class LocalAvatarClient {
       spawnPosition,
       spawnRotation,
     );
+
+    let cameraPosition: Vector3 | null = null;
+    const offset = new Vector3(0, 0, 3.3);
+    offset.applyEuler(new Euler(0, spawnRotation.y, 0));
+    cameraPosition = spawnPosition.clone().sub(offset).add(this.characterManager.headTargetOffset);
+
+    if (cameraPosition !== null) {
+      this.cameraManager.camera.position.copy(cameraPosition);
+      this.cameraManager.setTarget(
+        new Vector3().add(spawnPosition).add(this.characterManager.headTargetOffset),
+      );
+      this.cameraManager.reverseUpdateFromPositions();
+    }
   }
 
   public dispose() {
