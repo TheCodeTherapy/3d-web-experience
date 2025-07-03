@@ -27,12 +27,12 @@ import defaultAvatarMeshFileUrl from "../../../assets/models/bot.glb";
 
 import { LocalAvatarServer } from "./LocalAvatarServer";
 
-const animationConfig: AnimationConfig = {
-  airAnimationFileUrl,
-  idleAnimationFileUrl,
-  jogAnimationFileUrl,
-  sprintAnimationFileUrl,
-  doubleJumpAnimationFileUrl,
+const animations = {
+  airAnimationUrlOrConfig: airAnimationFileUrl,
+  idleAnimationUrlOrConfig: idleAnimationFileUrl,
+  jogAnimationUrlOrConfig: jogAnimationFileUrl,
+  sprintAnimationUrlOrConfig: sprintAnimationFileUrl,
+  doubleJumpAnimationUrlOrConfig: doubleJumpAnimationFileUrl,
 };
 
 // Specify the avatar to use here:
@@ -158,7 +158,7 @@ export class LocalAvatarClient {
       sendUpdate: (characterState: CharacterState) => {
         localAvatarServer.send(localClientId, characterState);
       },
-      animationConfig,
+      animationConfig: animations as AnimationConfig,
       characterResolve: () => {
         return { username: "User", characterDescription };
       },
