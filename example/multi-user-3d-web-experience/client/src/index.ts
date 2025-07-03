@@ -25,7 +25,7 @@ const animations = {
   idleAnimationUrlOrConfig: {
     fileUrl: idleAnimationFileUrl,
     loop: true,
-    discardNonRotationTransform: false,
+    discardNonRotationTransform: true,
     playbackSpeed: 1.0,
   },
   jogAnimationUrlOrConfig: {
