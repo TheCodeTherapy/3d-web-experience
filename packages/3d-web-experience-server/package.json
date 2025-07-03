@@ -1,6 +1,6 @@
 {
   "name": "@mml-io/3d-web-experience-server",
-  "version": "0.21.3",
+  "version": "0.22.0",
   "publishConfig": {
     "access": "public"
   },
@@ -18,12 +18,11 @@
     "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
   },
   "dependencies": {
-    "@mml-io/3d-web-client-core": "^0.21.3",
-    "@mml-io/3d-web-text-chat": "^0.21.3",
-    "@mml-io/3d-web-user-networking": "^0.21.3",
-    "@mml-io/3d-web-voice-chat": "^0.21.3",
-    "@mml-io/networked-dom-server": "0.19.6",
-    "canvas": "2.11.2",
+    "@mml-io/3d-web-client-core": "^0.22.0",
+    "@mml-io/3d-web-text-chat": "^0.22.0",
+    "@mml-io/3d-web-user-networking": "^0.22.0",
+    "@mml-io/3d-web-voice-chat": "^0.22.0",
+    "@mml-io/networked-dom-server": "0.19.7",
     "chokidar": "^4.0.3",
     "cors": "^2.8.5",
     "dotenv": "16.4.5",

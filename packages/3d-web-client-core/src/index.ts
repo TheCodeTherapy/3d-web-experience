@@ -1,5 +1,5 @@
 export { CameraManager } from "./camera/CameraManager";
-export { CharacterDescription, AnimationConfig, AnimationSettings } from "./character/Character";
+export { CharacterDescription, AnimationConfig } from "./character/Character";
 export {
   CharacterManager,
   SpawnConfiguration,

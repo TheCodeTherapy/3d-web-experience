@@ -7,7 +7,7 @@ import { Networked3dWebExperienceServer } from "@mml-io/3d-web-experience-server
 import type { CharacterDescription } from "@mml-io/3d-web-user-networking";
 import cors from "cors";
 import dotenv from "dotenv";
-import express, { Request, Response } from "express";
+import express from "express";
 import enableWs from "express-ws";
 import fetch from "node-fetch";
 
@@ -53,6 +53,7 @@ const mmlDocumentsDirectoryRoot = path.resolve(dirname, "../mml-documents");
 const mmlDocumentsWatchPath = "**/*.html";
 
 dotenv.config();
+
 const { app } = enableWs(express());
 app.enable("trust proxy");
 app.use(cors());
@@ -101,92 +102,6 @@ const networked3dWebExperienceServer = new Networked3dWebExperienceServer({
   },
 });
 networked3dWebExperienceServer.registerExpressRoutes(app);
-
-async function checkLiveStatus(): Promise<boolean> {
-  const liveCheckURL = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/stream/live_inputs/${process.env.CLOUDFLARE_LIVE_INPUT_ID}`;
-
-  const liveCheckOptions = {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Auth-Email": process.env.CLOUDFLARE_AUTH_EMAIL || "",
-      Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
-    },
-  };
-
-  try {
-    const response = await fetch(liveCheckURL, liveCheckOptions);
-    const json = await response.json();
-    if ((json as any).result && (json as any).result.status.current.state === "connected") {
-      return true;
-    } else {
-      return false;
-    }
-  } catch (err) {
-    console.error("error:" + err);
-    return false;
-  }
-}
-
-let lastLiveStatusCheck = 0;
-if (
-  process.env.CLOUDFLARE_STREAM_URL &&
-  process.env.CLOUDFLARE_AUTH_EMAIL &&
-  process.env.CLOUDFLARE_API_TOKEN &&
-  process.env.CLOUDFLARE_ACCOUNT_ID &&
-  process.env.CLOUDFLARE_LIVE_INPUT_ID
-) {
-  app.get("/live-status", async (_req: Request, res: Response) => {
-    const now = Date.now();
-    if (now - lastLiveStatusCheck < 10000) {
-      res.status(429).json({ message: "Too many requests. Try again later." });
-      return;
-    }
-    lastLiveStatusCheck = now;
-    const isLive = await checkLiveStatus();
-    if (isLive) {
-      res.status(200).json({ live: true });
-      return;
-    } else {
-      res.status(404).json({ live: false });
-      return;
-    }
-  });
-}
-
-// Native proxy to forward requests to the compressor server
-app.use("/asset-compressor/optimize", (req: Request, res: Response) => {
-  const proxyReq = http.request(
-    {
-      hostname: "localhost",
-      port: 8083,
-      path: req.originalUrl.replace("/asset-compressor", ""),
-      method: req.method,
-      headers: req.headers,
-    },
-    (proxyRes) => {
-      res.writeHead(proxyRes.statusCode || 500, proxyRes.headers);
-      proxyRes.pipe(res, { end: true });
-    },
-  );
-
-  req.pipe(proxyReq, { end: true });
-
-  proxyReq.on("error", (err) => {
-    console.error("Proxy error:", err);
-    res.status(500).send("Proxy error");
-  });
-});
-
-const assetCompressorBuildDir = path.resolve(dirname, "../../../web-asset-compress/client/build");
-
-// Serve compressor client at /asset-compressor
-app.use("/asset-compressor", express.static(assetCompressorBuildDir));
-
-// Handle direct URL access (SPA routing)
-app.get("/asset-compressor/*", (_req, res) => {
-  res.sendFile(path.join(assetCompressorBuildDir, "index.html"));
-});
 
 // Start listening
 console.log("Listening on port", PORT);

@@ -21,9 +21,6 @@ export const tweakPaneStyle = `
   --tp-label-foreground-color: hsla(0, 0%, 100%, 0.6);
   --tp-monitor-background-color: hsla(0, 0%, 0%, 0.3);
   --tp-monitor-foreground-color: hsla(0, 0%, 100%, 0.3);
-  -webkit-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
 }
 
 .tp-brkv {

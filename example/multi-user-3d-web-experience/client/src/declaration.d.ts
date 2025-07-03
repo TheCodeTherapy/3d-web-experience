@@ -13,11 +13,6 @@ declare module "*.jpg" {
   export default filePath;
 }
 
-declare module "*.webp" {
-  const filePath: string;
-  export default filePath;
-}
-
 declare module "*.glb" {
   const filePath: string;
   export default filePath;

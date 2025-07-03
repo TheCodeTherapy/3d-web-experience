@@ -26,7 +26,7 @@ export type LocalControllerConfig = {
 
 export class LocalController {
   public capsuleInfo = {
-    radius: 0.45,
+    radius: 0.4,
     segment: new Line3(new Vector3(), new Vector3(0, 1.05, 0)),
   };
 
@@ -112,7 +112,6 @@ export class LocalController {
       rotation: { quaternionY: 0, quaternionW: 1 },
       state: AnimationState.idle,
     };
-
     this.minimumX = this.config.spawnConfiguration.respawnTrigger.minX;
     this.maximumX = this.config.spawnConfiguration.respawnTrigger.maxX;
     this.minimumY = this.config.spawnConfiguration.respawnTrigger.minY;
@@ -200,6 +199,7 @@ export class LocalController {
       );
     }
 
+    // bounds check
     const outOfBounds =
       this.config.character.position.x < this.minimumX || // left
       this.config.character.position.x > this.maximumX || // right
@@ -559,16 +559,6 @@ export class LocalController {
     };
   }
 
-  private respawn(): void {
-    this.characterVelocity.y = 0;
-    this.config.character.position.set(0, 10, 0);
-    this.config.character.rotation.set(0, 0, 0);
-    this.characterOnGround = false;
-    this.doubleJumpUsed = false;
-    this.jumpReleased = true;
-    this.jumpCounter = 0;
-  }
-
   public resetPosition(): void {
     const randomWithVariance = (value: number, variance: number): number => {
       const min = value - variance;
@@ -600,8 +590,10 @@ export class LocalController {
       0,
     );
     this.config.character.rotation.set(respawnRotation.x, respawnRotation.y, respawnRotation.z);
+
     this.characterOnGround = false;
     this.doubleJumpUsed = false;
     this.jumpReleased = true;
+    this.jumpCounter = 0;
   }
 }

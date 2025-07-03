@@ -41,7 +41,6 @@ export class RemoteController {
 
   private updateFromNetwork(clientUpdate: CharacterState): void {
     const { position, rotation, state } = clientUpdate;
-
     const distanceSquared = this.config.character.position.distanceToSquared(position);
     if (distanceSquared > 5 * 5) {
       // More than 5m of movement in a tick - the character is likely teleporting rather than just moving quickly - snap to the new position
@@ -50,7 +49,6 @@ export class RemoteController {
       this.config.character.position.lerp(new Vector3(position.x, position.y, position.z), 0.15);
     }
     const rotationQuaternion = tempQuaternion.set(0, rotation.quaternionY, 0, rotation.quaternionW);
-
     this.config.character.quaternion.slerp(rotationQuaternion, 0.6);
     if (state !== this.currentAnimation) {
       this.currentAnimation = state;

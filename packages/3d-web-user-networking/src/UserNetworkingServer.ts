@@ -10,7 +10,6 @@ import {
   USER_NETWORKING_CONNECTION_LIMIT_REACHED_ERROR_TYPE,
   USER_NETWORKING_DISCONNECTED_MESSAGE_TYPE,
   USER_NETWORKING_IDENTITY_MESSAGE_TYPE,
-  USER_NETWORKING_INACTIVITY_ERROR_TYPE,
   USER_NETWORKING_PONG_MESSAGE_TYPE,
   USER_NETWORKING_SERVER_ERROR_MESSAGE_TYPE,
   USER_NETWORKING_USER_AUTHENTICATE_MESSAGE_TYPE,
@@ -28,7 +27,6 @@ export type UserNetworkingServerClient = {
   lastPong: number;
   update: UserNetworkingClientUpdate;
   authenticatedUser: UserData | null;
-  lastActiveTime: number;
 };
 
 const WebSocketOpenStatus = 1;
@@ -55,8 +53,6 @@ export class UserNetworkingServer {
   private pingClientsIntervalTimer: NodeJS.Timeout;
   private heartbeatIntervalTimer: NodeJS.Timeout;
 
-  private idleTimeout = 1000 * 60 * 10;
-
   constructor(private options: UserNetworkingServerOptions) {
     this.sendUpdatesIntervalTimer = setInterval(this.sendUpdates.bind(this), packetsUpdateRate);
     this.pingClientsIntervalTimer = setInterval(this.pingClients.bind(this), pingPongRate);
@@ -69,15 +65,6 @@ export class UserNetworkingServer {
       if (now - client.lastPong > heartBeatRate) {
         client.socket.close();
         this.handleDisconnectedClient(client);
-      }
-      if (now - client.lastActiveTime > this.idleTimeout) {
-        const serverError = JSON.stringify({
-          type: USER_NETWORKING_SERVER_ERROR_MESSAGE_TYPE,
-          errorType: USER_NETWORKING_INACTIVITY_ERROR_TYPE,
-          message: "Disconnected for inactivity",
-        } as FromUserNetworkingServerMessage);
-        client.socket.send(serverError);
-        client.socket.close();
       }
     });
   }
@@ -130,7 +117,6 @@ export class UserNetworkingServer {
         rotation: { quaternionY: 0, quaternionW: 1 },
         state: 0,
       },
-      lastActiveTime: Date.now(),
     };
     this.allClientsById.set(id, client);
 
@@ -138,7 +124,6 @@ export class UserNetworkingServer {
       if (message instanceof Buffer) {
         const arrayBuffer = new Uint8Array(message).buffer;
         const update = UserNetworkingCodec.decodeUpdate(arrayBuffer);
-        client.lastActiveTime = Date.now();
         update.id = id;
         client.update = update;
       } else {

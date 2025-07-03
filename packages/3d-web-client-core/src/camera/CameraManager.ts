@@ -32,10 +32,8 @@ export class CameraManager {
   public fov: number = this.initialFOV;
   private targetFOV: number = this.initialFOV;
 
-  public defaultMinPolarAngle: number = Math.PI * 0.05;
-  public defaultFirstPersonPolarAngle: number = Math.PI * 0.25;
-  public minPolarAngle: number = this.defaultMinPolarAngle;
-  private maxPolarAngle: number = Math.PI * 0.98;
+  public minPolarAngle: number = Math.PI * 0.25;
+  private maxPolarAngle: number = Math.PI * 0.95;
 
   public distance: number = this.initialDistance;
   public targetDistance: number = this.initialDistance;
@@ -50,6 +48,7 @@ export class CameraManager {
   private hadTarget: boolean = false;
 
   private rayCaster: Raycaster;
+
   private eventHandlerCollection: EventHandlerCollection;
 
   private finalTarget: Vector3 = new Vector3();
@@ -119,7 +118,9 @@ export class CameraManager {
   }
 
   private onPointerDown(event: PointerEvent): void {
-    if (this.isMainCameraActive && (event.button === 0 || event.button === 2)) {
+    if (event.button === 0 || event.button === 2) {
+      // Left or right mouse button
+
       const pointerInfo = { x: event.clientX, y: event.clientY };
       this.activePointers.set(event.pointerId, pointerInfo);
       document.body.style.cursor = "none";
@@ -127,13 +128,11 @@ export class CameraManager {
   }
 
   private onPointerUp(event: PointerEvent): void {
-    if (this.isMainCameraActive) {
-      const existingPointer = this.activePointers.get(event.pointerId);
-      if (existingPointer) {
-        this.activePointers.delete(event.pointerId);
-        if (this.activePointers.size === 0) {
-          document.body.style.cursor = "default";
-        }
+    const existingPointer = this.activePointers.get(event.pointerId);
+    if (existingPointer) {
+      this.activePointers.delete(event.pointerId);
+      if (this.activePointers.size === 0) {
+        document.body.style.cursor = "default";
       }
     }
   }
@@ -156,7 +155,7 @@ export class CameraManager {
   }
 
   private onPointerMove(event: PointerEvent): void {
-    if (getTweakpaneActive() || !this.isMainCameraActive) {
+    if (getTweakpaneActive()) {
       return;
     }
 
@@ -164,6 +163,7 @@ export class CameraManager {
     if (existingPointer) {
       const previous = this.getAveragePointerPositionAndSpread();
 
+      // Replace the pointer info and recalculate to determine the delta
       existingPointer.x = event.clientX;
       existingPointer.y = event.clientY;
 
@@ -188,7 +188,7 @@ export class CameraManager {
   }
 
   private onMouseWheel(event: WheelEvent): void {
-    if (getTweakpaneActive() || !this.isMainCameraActive) {
+    if (getTweakpaneActive()) {
       return;
     }
     event.preventDefault();
@@ -206,44 +206,7 @@ export class CameraManager {
   }
 
   private onContextMenu(event: PointerEvent): void {
-    if (this.isMainCameraActive) {
-      event.preventDefault();
-    }
-  }
-
-  private onKeyDown(event: KeyboardEvent): void {
-    if (event.key.toLowerCase() === "f10") {
-      this.isMainCameraActive = !this.isMainCameraActive;
-
-      if (this.orbitControls) {
-        this.orbitControls.enabled = !this.isMainCameraActive;
-      }
-
-      if (!this.isMainCameraActive) {
-        this.flyCamera.position.copy(this.camera.position);
-        this.flyCamera.rotation.copy(this.camera.rotation);
-
-        // Determine the target the main camera is looking at
-        const target = new Vector3();
-        this.camera.getWorldDirection(target);
-        target.multiplyScalar(this.targetDistance).add(this.camera.position);
-
-        // Update orbit controls to use this target as the pivot point
-        this.orbitControls?.target.copy(target);
-        this.orbitControls?.update();
-        this.eventHandlerCollection.clear();
-      } else {
-        this.eventHandlerCollection = EventHandlerCollection.create([
-          [this.targetElement, "pointerdown", this.onPointerDown.bind(this)],
-          [this.targetElement, "gesturestart", this.preventDefaultAndStopPropagation.bind(this)],
-          [document, "pointerup", this.onPointerUp.bind(this)],
-          [document, "pointercancel", this.onPointerUp.bind(this)],
-          [document, "pointermove", this.onPointerMove.bind(this)],
-          [this.targetElement, "wheel", this.onMouseWheel.bind(this)],
-          [this.targetElement, "contextmenu", this.onContextMenu.bind(this)],
-        ]);
-      }
-    }
+    event.preventDefault();
   }
 
   public setTarget(target: Vector3): void {
@@ -301,13 +264,6 @@ export class CameraManager {
     }
   }
 
-  public updateAspect(aspect: number): void {
-    this.camera.aspect = aspect;
-    this.flyCamera.aspect = aspect;
-    this.camera.updateProjectionMatrix();
-    this.flyCamera.updateProjectionMatrix();
-  }
-
   public dispose() {
     this.disposeEventHandlers();
     this.orbitControls.dispose();
@@ -316,6 +272,11 @@ export class CameraManager {
 
   private easeOutExpo(x: number): number {
     return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+  }
+
+  public updateAspect(aspect: number): void {
+    this.camera.aspect = aspect;
+    this.flyCamera.aspect = aspect;
   }
 
   public recomputeFoV(immediately: boolean = false): void {
@@ -329,6 +290,10 @@ export class CameraManager {
     if (immediately) {
       this.fov = this.targetFOV;
     }
+  }
+
+  public isFlyCameraOn(): boolean {
+    return this.isMainCameraActive === false && this.orbitControls.enabled === true;
   }
 
   public toggleFlyCamera(): void {
@@ -368,6 +333,7 @@ export class CameraManager {
     }
 
     this.distance += (this.targetDistance - this.distance) * this.zoomDamping;
+
     this.theta += (this.targetTheta - this.theta) * this.damping;
     this.phi += (this.targetPhi - this.phi) * this.damping;
 
@@ -386,10 +352,6 @@ export class CameraManager {
     if (this.isLerping && this.lerpFactor >= 1) {
       this.isLerping = false;
     }
-  }
-
-  public getActiveCamera(): PerspectiveCamera {
-    return this.isMainCameraActive ? this.camera : this.flyCamera;
   }
 
   public hasActiveInput(): boolean {

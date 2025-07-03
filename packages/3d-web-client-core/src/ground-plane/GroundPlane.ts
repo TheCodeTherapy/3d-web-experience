@@ -152,6 +152,85 @@ class TriangleGeometry extends BufferGeometry {
   }
 }
 
+type CustomPlaneGeometryOptions = {
+  planeWidth: number;
+  planeHeight: number;
+};
+
+class CustomPlaneGeometry extends BufferGeometry {
+  constructor(options?: Partial<CustomPlaneGeometryOptions>) {
+    super();
+
+    const width = options?.planeWidth || 0.021;
+    const height = options?.planeHeight || 0.5;
+    const halfWidth = width / 2;
+
+    // Two triangles forming a quad: bottom-left, bottom-right, top-left, top-right
+    // Triangle 1: bottom-left -> bottom-right -> top-left
+    // Triangle 2: bottom-right -> top-right -> top-left
+    const vertices = new Float32Array([
+      -halfWidth,
+      0.0,
+      0.0, // bottom-left
+      halfWidth,
+      0.0,
+      0.0, // bottom-right
+      -halfWidth,
+      height,
+      0.0, // top-left
+      halfWidth,
+      0.0,
+      0.0, // bottom-right
+      halfWidth,
+      height,
+      0.0, // top-right
+      -halfWidth,
+      height,
+      0.0, // top-left
+    ]);
+
+    const normals = new Float32Array([
+      0,
+      0,
+      1, // bottom-left
+      0,
+      0,
+      1, // bottom-right
+      0,
+      0,
+      1, // top-left
+      0,
+      0,
+      1, // bottom-right
+      0,
+      0,
+      1, // top-right
+      0,
+      0,
+      1, // top-left
+    ]);
+
+    const uvs = new Float32Array([
+      0,
+      0, // bottom-left
+      1,
+      0, // bottom-right
+      0,
+      1, // top-left
+      1,
+      0, // bottom-right
+      1,
+      1, // top-right
+      0,
+      1, // top-left
+    ]);
+
+    this.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+    this.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+    this.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+  }
+}
+
 type GrassOptions = {
   leavesCount: number;
   radius: number;
@@ -168,6 +247,7 @@ class Grass extends Group {
   private leafHeight: number = 0.5;
   private windForce: number = 1.2;
   private windSpeed: number = 0.9;
+  private enableBillboarding: boolean = true;
 
   private dummy = new Object3D();
 
@@ -176,7 +256,7 @@ class Grass extends Group {
   private leafFragmentShader: string;
   private grassLeafMaterial: ShaderMaterial;
 
-  private grassLeafGeometry: TriangleGeometry;
+  private grassLeafGeometry: TriangleGeometry | CustomPlaneGeometry;
   private instancedGrassMesh: InstancedMesh;
 
   constructor(options: Partial<GrassOptions>) {
@@ -216,6 +296,7 @@ varying vec2 vUv;
 uniform float time;
 uniform float windForce;
 uniform float windSpeed;
+uniform bool enableBillboarding;
 
 ${this.simpleNoiseVertexShaderChunk}
 
@@ -239,21 +320,25 @@ void main(void) {
     instancePosition = instanceMatrix * instancePosition;
   #endif
 
-  // Compute the direction vector to the camera on XZ plane
-  vec3 toCamera = normalize(vec3(cameraPosition.x, 0.0, cameraPosition.z) - vec3(instancePosition.x, 0.0, instancePosition.z));
+  vec3 rotatedVertex = position;
 
-  // Compute rotation angle around Y-axis
-  float angle = atan(toCamera.x, toCamera.z);
+  if (enableBillboarding) {
+    // Compute the direction vector to the camera on XZ plane
+    vec3 toCamera = normalize(vec3(cameraPosition.x, 0.0, cameraPosition.z) - vec3(instancePosition.x, 0.0, instancePosition.z));
 
-  // Rotate the vertex around its local Y-axis
-  mat3 rotationMatrix = mat3(
-    cos(angle), 0.0, -sin(angle),
-    0.0,        1.0,  0.0,
-    sin(angle), 0.0,  cos(angle)
-  );
+    // Compute rotation angle around Y-axis
+    float angle = atan(toCamera.x, toCamera.z);
 
-  // Rotate the leaf mesh locally
-  vec3 rotatedVertex = rotationMatrix * position;
+    // Rotate the vertex around its local Y-axis
+    mat3 rotationMatrix = mat3(
+      cos(angle), 0.0, -sin(angle),
+      0.0,        1.0,  0.0,
+      sin(angle), 0.0,  cos(angle)
+    );
+
+    // Rotate the leaf mesh locally
+    rotatedVertex = rotationMatrix * position;
+  }
 
   // Compute final world position
   worldPosition = vec4(rotatedVertex, 1.0);
@@ -265,9 +350,9 @@ void main(void) {
   float t = time * windSpeed;
   float noise = smoothNoise(worldPosition.xz * 0.5 + vec2(0.0, t));
   noise = pow(noise * 0.5 + 0.5, 2.0) * 2.0;
-  float dispPower = windForce - cos(vUv.y * 0.7);
+  float dispPower = windForce - cos(vUv.y * 0.3);
   float displacement = noise * (0.5 * dispPower);
-  worldPosition.z -= displacement;
+  worldPosition.z += displacement * 0.125;
 
   // Final transformation to camera space
   vec4 modelViewPosition = modelViewMatrix * worldPosition;
@@ -289,7 +374,7 @@ varying vec2 vUv;
 
 void main(void) {
   vec3 baseColor = vec3(0.31, 0.9, 0.4);
-  float clarity = (vUv.y * 0.7) + 0.0625;
+  float clarity = (vUv.y * 0.5) + 0.0625;
   vec3 finalColor = baseColor * clarity;
   vec3 shadowColor = vec3(0.0, 0.0, 0.0);
   float shadowPower = 0.85;
@@ -299,9 +384,14 @@ void main(void) {
 }
 `;
 
-    this.grassLeafGeometry = new TriangleGeometry({
-      triangleBaseWidth: this.leafBaseWidth,
-      triangleHeight: this.leafHeight,
+    // this.grassLeafGeometry = new TriangleGeometry({
+    //   triangleBaseWidth: this.leafBaseWidth,
+    //   triangleHeight: this.leafHeight,
+    // });
+
+    this.grassLeafGeometry = new CustomPlaneGeometry({
+      planeWidth: this.leafBaseWidth,
+      planeHeight: this.leafHeight,
     });
 
     this.grassLeafMaterial = new ShaderMaterial({
@@ -312,6 +402,7 @@ void main(void) {
           time: new Uniform(0),
           windForce: new Uniform(this.windForce),
           windSpeed: new Uniform(this.windSpeed),
+          enableBillboarding: new Uniform(this.enableBillboarding),
         },
         UniformsLib.lights,
         UniformsLib.fog,
@@ -329,7 +420,8 @@ void main(void) {
     );
     this.instancedGrassMesh.castShadow = false;
     this.instancedGrassMesh.receiveShadow = true;
-    this.distributeGrassUsingFibonacci(this.radius);
+    // this.distributeGrassUsingFibonacci(this.radius);
+    this.distributeFibonacciUneven2(this.radius);
     this.add(this.instancedGrassMesh);
   }
 
@@ -353,6 +445,110 @@ void main(void) {
       this.dummy.scale.setScalar(0.4 + Math.random() * 0.59);
       this.dummy.rotation.x = randomFloatBetween(-0.1, 0.1);
       this.dummy.rotation.z = randomFloatBetween(-0.1, 0.1);
+
+      // apply random Y rotation when billboarding is disabled
+      if (!this.enableBillboarding) {
+        this.dummy.rotation.y = randomFloatBetween(0, Math.PI * 2);
+      } else {
+        this.dummy.rotation.y = 0;
+      }
+
+      this.dummy.updateMatrix();
+      this.instancedGrassMesh.setMatrixAt(i, this.dummy.matrix);
+    }
+  }
+
+  private distributeFibonacciUneven(radius: number) {
+    const goldenRatio = (1 + Math.sqrt(5)) / 2;
+    const angleIncrement = Math.PI * 2 * goldenRatio;
+    const rndOff = 0.21;
+    const halfRndOff = rndOff / 2;
+
+    const randomFloatBetween = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    for (let i = 0; i < this.leavesCount; i++) {
+      const t = i / this.leavesCount;
+
+      // bias the distribution towards the center by using a power function
+      // this creates higher density in center, linearly decreasing to outer radius
+      const biasedT = Math.pow(t, 1.5); // effect power
+
+      const inc = Math.acos(1 - 2 * biasedT);
+      const azimuth = angleIncrement * i;
+
+      // radial distance with center bias
+      const radialDistance = radius * Math.sin(inc);
+
+      const x = radialDistance * Math.cos(azimuth) + Math.random() * rndOff - halfRndOff;
+      const z = radialDistance * Math.sin(azimuth) + Math.random() * rndOff - halfRndOff;
+      const y = 0;
+
+      this.dummy.position.set(x, y, z);
+      this.dummy.scale.setScalar(0.4 + Math.random() * 0.59);
+      this.dummy.rotation.x = randomFloatBetween(-0.1, 0.1);
+      this.dummy.rotation.z = randomFloatBetween(-0.1, 0.1);
+
+      // apply random Y rotation when billboarding is disabled
+      if (!this.enableBillboarding) {
+        this.dummy.rotation.y = randomFloatBetween(0, Math.PI * 2);
+      } else {
+        this.dummy.rotation.y = 0;
+      }
+
+      this.dummy.updateMatrix();
+      this.instancedGrassMesh.setMatrixAt(i, this.dummy.matrix);
+    }
+  }
+
+  private distributeFibonacciUneven2(radius: number) {
+    const goldenRatio = (1 + Math.sqrt(5)) / 2;
+    const angleIncrement = Math.PI * 2 * goldenRatio;
+    const rndOff = 0.21;
+    const halfRndOff = rndOff / 2;
+
+    const randomFloatBetween = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+
+    const clamps = (value: number) => clamp(value, 0.000001, 1.0);
+
+    for (let i = 0; i < this.leavesCount; i++) {
+      const t = i / this.leavesCount;
+
+      // bias the distribution towards the center with a more gradual curve
+      const biasedT = clamps(Math.pow(t, 1.5)); // original - sharp center bias
+
+      // quadratic
+      // const biasedT = clamps(t * t); // quadratic - more gradual than pow 1.5
+
+      // inverse sqrt
+      // const biasedT = clamps(1 - Math.sqrt(1 - t * t)); // inverse sqrt - gradual center bias
+
+      // sine curve
+      // const biasedT = clamps(1 - Math.cos((t * Math.PI) / 2)); // smooth center bias
+
+      const inc = Math.acos(1 - 2 * biasedT);
+      const azimuth = angleIncrement * i;
+
+      // radial distance with center bias
+      const radialDistance = radius * Math.sin(inc);
+
+      const x = radialDistance * Math.cos(azimuth) + Math.random() * rndOff - halfRndOff;
+      const z = radialDistance * Math.sin(azimuth) + Math.random() * rndOff - halfRndOff;
+      const y = 0;
+
+      this.dummy.position.set(x, y, z);
+      this.dummy.scale.setScalar(0.4 + Math.random() * 0.59);
+      this.dummy.rotation.x = randomFloatBetween(-0.1, 0.1);
+      this.dummy.rotation.z = randomFloatBetween(-0.1, 0.1);
+
+      // apply random Y rotation when billboarding is disabled
+      if (!this.enableBillboarding) {
+        this.dummy.rotation.y = randomFloatBetween(0, Math.PI * 2);
+      } else {
+        this.dummy.rotation.y = 0;
+      }
+
       this.dummy.updateMatrix();
       this.instancedGrassMesh.setMatrixAt(i, this.dummy.matrix);
     }
@@ -408,11 +604,11 @@ export class GroundPlane extends Group {
       this.add(this.floorMesh);
 
       this.grass = new Grass({
-        leavesCount: 2000000,
+        leavesCount: 1000000,
         radius: this.floorSize,
-        leafBaseWidth: 0.03,
-        leafHeight: 0.302,
-        windForce: 1.06,
+        leafBaseWidth: 0.042,
+        leafHeight: 0.2,
+        windForce: 2.06,
         windSpeed: 0.91,
       });
     }

@@ -23,7 +23,6 @@ import {
   SpawnConfigurationState,
   VirtualJoystick,
 } from "@mml-io/3d-web-client-core";
-import { EditorUI } from "@mml-io/3d-web-client-editor";
 import {
   ChatNetworkingClient,
   ChatNetworkingClientChatMessage,
@@ -43,7 +42,7 @@ import {
   UserNetworkingServerErrorType,
   WebsocketStatus,
 } from "@mml-io/3d-web-user-networking";
-import { VoiceChatManager, VoiceChatLiveKitManager } from "@mml-io/3d-web-voice-chat";
+import { VoiceChatManager } from "@mml-io/3d-web-voice-chat";
 import {
   IMMLScene,
   LoadingProgressManager,
@@ -51,10 +50,9 @@ import {
   setGlobalDocumentTimeManager,
   setGlobalMMLScene,
 } from "@mml-io/mml-web";
-import { Filter } from "bad-words";
 import { AudioListener, Euler, Scene, Vector3 } from "three";
 
-export type MMLDocumentConfiguration = {
+type MMLDocumentConfiguration = {
   url: string;
   position?: {
     x: number;
@@ -76,7 +74,6 @@ export type MMLDocumentConfiguration = {
 export type Networked3dWebExperienceClientConfig = {
   userNetworkAddress: string;
   sessionToken: string;
-  allowOrbitalCamera?: boolean;
   chatVisibleByDefault?: boolean;
   userNameToColorOptions?: StringToHslOptions;
   animationConfig: AnimationConfig;
@@ -94,6 +91,7 @@ export type UpdatableConfig = {
   avatarConfiguration?: AvatarConfiguration;
   allowCustomDisplayName?: boolean;
   enableTweakPane?: boolean;
+  allowOrbitalCamera?: boolean;
 };
 
 function normalizeSpawnConfiguration(spawnConfig?: SpawnConfiguration): SpawnConfigurationState {
@@ -155,7 +153,7 @@ export class Networked3dWebExperienceClient {
 
   private avatarSelectionUI: AvatarSelectionUI | null = null;
 
-  private voiceChatManager: VoiceChatManager | VoiceChatLiveKitManager | null = null;
+  private voiceChatManager: VoiceChatManager | null = null;
   private readonly latestCharacterObject = {
     characterState: null as null | CharacterState,
   };
@@ -170,11 +168,6 @@ export class Networked3dWebExperienceClient {
   private currentRequestAnimationFrame: number | null = null;
   private groundPlane: GroundPlane | null = null;
   private respawnButton: HTMLDivElement | null = null;
-
-  private handleEditorUpdate: (content: string) => void;
-  private mmlEditorUI: EditorUI;
-
-  private filter = new Filter();
 
   constructor(
     private holderElement: HTMLElement,
@@ -331,18 +324,7 @@ export class Networked3dWebExperienceClient {
 
     this.setupMMLScene();
 
-    this.handleEditorUpdate = (content: string) => {
-      // no-op
-    };
-    this.mmlEditorUI = new EditorUI({
-      holderElement: this.element,
-      visible: false,
-      onUpdate: this.handleEditorUpdate.bind(this),
-    });
-    this.mmlEditorUI.init();
-
     this.loadingScreen = new LoadingScreen(this.loadingProgressManager, this.config.loadingScreen);
-
     this.element.append(this.loadingScreen.element);
 
     this.loadingProgressManager.addProgressCallback(() => {
@@ -372,6 +354,9 @@ export class Networked3dWebExperienceClient {
       this.scene.add(this.groundPlane);
     } else if (!enabled && this.groundPlane !== null) {
       this.collisionsManager.removeMeshesGroup(this.groundPlane);
+      if (this.groundPlane.grass) {
+        this.scene.remove(this.groundPlane.grass);
+      }
       this.scene.remove(this.groundPlane);
       this.groundPlane = null;
     }
@@ -400,6 +385,24 @@ export class Networked3dWebExperienceClient {
         this.tweakPane = null;
       } else if (config.enableTweakPane === true && this.tweakPane === null) {
         this.setupTweakPane();
+      }
+    }
+
+    if (config.allowOrbitalCamera !== undefined) {
+      if (config.allowOrbitalCamera === false) {
+        this.keyInputManager.removeKeyBinding(Key.C);
+        if (this.cameraManager.isFlyCameraOn() === true) {
+          // Disable the fly camera if it was enabled
+          this.cameraManager.toggleFlyCamera();
+        }
+      } else if (config.allowOrbitalCamera === true) {
+        this.keyInputManager.createKeyBinding(Key.C, () => {
+          if (document.activeElement === document.body) {
+            // No input is selected - accept the key press
+            this.cameraManager.toggleFlyCamera();
+            this.composer.fitContainer();
+          }
+        });
       }
     }
 
@@ -436,11 +439,9 @@ export class Networked3dWebExperienceClient {
     document.body.style.overflow = "hidden";
 
     const holder = document.createElement("div");
-    holder.setAttribute("id", "appHolder");
     holder.style.position = "absolute";
     holder.style.width = "100%";
     holder.style.height = "100%";
-    holder.style.zIndex = "1";
     holder.style.overflow = "hidden";
     document.body.appendChild(holder);
     return holder;
@@ -495,7 +496,7 @@ export class Networked3dWebExperienceClient {
     if (this.clientId === null) return;
 
     if (this.voiceChatManager === null && this.config.voiceChatAddress) {
-      this.voiceChatManager = new VoiceChatLiveKitManager({
+      this.voiceChatManager = new VoiceChatManager({
         url: this.config.voiceChatAddress,
         holderElement: this.element,
         userId: this.clientId,
@@ -510,12 +511,7 @@ export class Networked3dWebExperienceClient {
     if (this.tweakPane) {
       return;
     }
-    this.tweakPane = new TweakPane(
-      this.element,
-      this.composer.renderer,
-      this.scene,
-      this.composer.effectComposer,
-    );
+    this.tweakPane = new TweakPane(this.element, this.composer.renderer, this.scene, this.composer);
     this.cameraManager.setupTweakPane(this.tweakPane);
     this.composer.setupTweakPane(this.tweakPane);
   }
@@ -608,7 +604,6 @@ export class Networked3dWebExperienceClient {
     this.cameraManager.update();
     this.composer.sun?.updateCharacterPosition(this.characterManager.localCharacter?.position);
     this.composer.render(this.timeManager);
-
     if (this.tweakPane?.guiVisible) {
       this.tweakPane.updateStats(this.timeManager);
       this.tweakPane.updateCameraData(this.cameraManager);
@@ -621,13 +616,6 @@ export class Networked3dWebExperienceClient {
         }
       }
     }
-
-    if (this.mmlEditorUI.isVisible === false && this.keyInputManager.isKeyPressed("/")) {
-      if (this.mmlEditorUI.isVisible === false) {
-        this.mmlEditorUI.setVisible(true);
-      }
-    }
-
     this.currentRequestAnimationFrame = requestAnimationFrame(() => {
       this.update();
     });
@@ -643,7 +631,6 @@ export class Networked3dWebExperienceClient {
     if (this.clientId === null) {
       throw new Error("Client ID not set");
     }
-
     const spawnPosition = new Vector3();
     spawnPosition.set(
       this.randomWithVariance(
@@ -666,7 +653,6 @@ export class Networked3dWebExperienceClient {
     );
 
     let cameraPosition: Vector3 | null = null;
-
     const offset = new Vector3(0, 0, 3.3);
     offset.applyEuler(new Euler(0, spawnRotation.y, 0));
     cameraPosition = spawnPosition.clone().sub(offset).add(this.characterManager.headTargetOffset);

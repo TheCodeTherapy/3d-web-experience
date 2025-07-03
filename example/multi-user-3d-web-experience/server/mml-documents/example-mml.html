@@ -4,21 +4,17 @@
   const stairs = document.getElementById("stairs");
 
   function getHexForCurrentTime(lightness) {
-    const hue = ((Date.now() % 2000) / 2000) * 360;
+    const hue = ((Date.now() % 2000)/2000) * 360;
     const saturation = 1.0;
     const alpha = saturation * Math.min(lightness, 1 - lightness);
-    const getF = (number) => {
+    const getF = number => {
       const k = (number + hue / 30) % 12;
-      return lightness - alpha * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+      return lightness - alpha * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)))
     };
     const red = Math.round(255 * getF(0));
     const green = Math.round(255 * getF(8));
     const blue = Math.round(255 * getF(4));
-    const hex =
-      "#" +
-      red.toString(16).padStart(2, "0") +
-      green.toString(16).padStart(2, "0") +
-      blue.toString(16).padStart(2, "0");
+    const hex = "#"+(red.toString(16).padStart(2, "0"))+(green.toString(16).padStart(2, "0"))+(blue.toString(16).padStart(2, "0"));
     return hex;
   }
 
@@ -30,7 +26,7 @@
     stair.setAttribute("height", 0.2);
     stair.setAttribute("depth", 0.5);
     stair.setAttribute("color", "blue");
-    stair.setAttribute("collision-interval", "1000");
+    stair.setAttribute("collision-interval","1000");
     stair.addEventListener("collisionstart", () => {
       stair.setAttribute("color", "white");
     });

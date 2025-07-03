@@ -1,12 +1,12 @@
 import { BladeController, View } from "@tweakpane/core";
 import { EffectPass } from "postprocessing";
-import { Scene, ShadowMapType, ToneMapping, WebGLRenderer } from "three";
+import { ShadowMapType, ToneMapping, WebGLRenderer } from "three";
 import { BladeApi, FolderApi, TpChangeEvent } from "tweakpane";
 
 export const rendererValues = {
   shadowMap: 2,
   toneMapping: 5,
-  exposure: 1.7,
+  exposure: 2.1,
 };
 
 const rendererOptions = {
@@ -64,7 +64,7 @@ export class RendererFolder {
   public setupChangeEvent(
     renderer: WebGLRenderer,
     toneMappingFolder: FolderApi,
-    toneMappingPass: EffectPass,
+    toneMappingPass: EffectPass | any,
   ): void {
     this.folder.on("change", (e: TpChangeEvent<unknown, BladeApi<BladeController<View>>>) => {
       const target = (e.target as any).key;
@@ -77,7 +77,6 @@ export class RendererFolder {
           break;
         }
         case "toneMapping":
-          // eslint-disable-next-line no-case-declarations
           const value = e.value as ToneMapping;
           toneMappingFolder.hidden = e.value !== 5;
           toneMappingPass.enabled = e.value === 5 ? true : false;

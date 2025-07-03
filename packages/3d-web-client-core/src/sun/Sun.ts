@@ -79,10 +79,12 @@ export class Sun extends Group {
   private setSunPosition(azimuthalAngle: number, polarAngle: number) {
     if (!this.target) return;
     const distance = this.sunOffset.z;
+    // add 90° offset to align coordinate system with player facing +Z
+    const adjustedAzimuthalAngle = -azimuthalAngle + Math.PI / 2;
     const sphericalPosition = new Vector3(
-      distance * Math.sin(polarAngle) * Math.cos(azimuthalAngle),
+      distance * Math.sin(polarAngle) * Math.cos(adjustedAzimuthalAngle),
       distance * Math.cos(polarAngle),
-      distance * Math.sin(polarAngle) * Math.sin(azimuthalAngle),
+      distance * Math.sin(polarAngle) * Math.sin(adjustedAzimuthalAngle),
     );
     const newSunPosition = this.target.clone().add(sphericalPosition);
     this.directionalLight.position.set(newSunPosition.x, newSunPosition.y, newSunPosition.z);

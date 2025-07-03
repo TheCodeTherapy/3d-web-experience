@@ -1,6 +1,6 @@
 {
   "name": "@mml-io/3d-web-voice-chat",
-  "version": "0.21.3",
+  "version": "0.22.0",
   "publishConfig": {
     "access": "public"
   },
@@ -18,9 +18,8 @@
     "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
   },
   "dependencies": {
-    "@mml-io/3d-web-client-core": "^0.21.3",
+    "@mml-io/3d-web-client-core": "^0.22.0",
     "@voxeet/voxeet-web-sdk": "3.11.1",
-    "livekit-client": "2.4.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "ws": "^8.18.0"

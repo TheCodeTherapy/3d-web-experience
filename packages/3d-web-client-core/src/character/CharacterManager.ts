@@ -1,4 +1,4 @@
-import { PositionAndRotation } from "@mml-io/mml-web";
+import { PositionAndRotation, radToDeg } from "@mml-io/mml-web";
 import { Euler, Group, Quaternion, Vector3 } from "three";
 
 import { CameraManager } from "../camera/CameraManager";
@@ -64,7 +64,7 @@ export type CharacterManagerConfig = {
   remoteUserStates: Map<number, CharacterState>;
   sendUpdate: (update: CharacterState) => void;
   animationConfig: AnimationConfig;
-  spawnConfiguration?: SpawnConfigurationState;
+  spawnConfiguration: SpawnConfigurationState;
   characterResolve: (clientId: number) => {
     username: string;
     characterDescription: CharacterDescription;
@@ -134,7 +134,7 @@ export class CharacterManager {
       virtualJoystick: this.config.virtualJoystick,
       cameraManager: this.config.cameraManager,
       timeManager: this.config.timeManager,
-      spawnConfiguration: this.config.spawnConfiguration!,
+      spawnConfiguration: this.config.spawnConfiguration,
     });
     this.localCharacter.position.set(spawnPosition.x, spawnPosition.y, spawnPosition.z);
     this.localCharacter.rotation.set(spawnRotation.x, spawnRotation.y, spawnRotation.z);
@@ -204,9 +204,14 @@ export class CharacterManager {
 
   public getLocalCharacterPositionAndRotation(): PositionAndRotation {
     if (this.localCharacter && this.localCharacter && this.localCharacter) {
+      const rotation = this.localCharacter.rotation;
       return {
         position: this.localCharacter.position,
-        rotation: this.localCharacter.rotation,
+        rotation: {
+          x: radToDeg(rotation.x),
+          y: radToDeg(rotation.y),
+          z: radToDeg(rotation.z),
+        },
       };
     }
     return {

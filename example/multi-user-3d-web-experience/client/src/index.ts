@@ -1,13 +1,9 @@
-import { AnimationConfig, AnimationSettings } from "@mml-io/3d-web-client-core";
 import { Networked3dWebExperienceClient } from "@mml-io/3d-web-experience-client";
 
-import hdrNightJpgUrl from "../../../assets/hdr/moonless_golf_8k.jpg";
 import hdrJpgUrl from "../../../assets/hdr/puresky_2k.jpg";
-import loadingBackground from "../../../assets/images/3d-web-experience.webp";
+import loadingBackground from "../../../assets/images/loading-bg.jpg";
 import airAnimationFileUrl from "../../../assets/models/anim_air.glb";
-import altFrontFlipFileUrl from "../../../assets/models/anim_alt_frontflip.glb";
-import backFlipFileUrl from "../../../assets/models/anim_backflip.glb";
-import frontFlipFileUrl from "../../../assets/models/anim_frontflip.glb";
+import doubleJumpAnimationFileUrl from "../../../assets/models/anim_backflip.glb";
 import idleAnimationFileUrl from "../../../assets/models/anim_idle.glb";
 import jogAnimationFileUrl from "../../../assets/models/anim_jog.glb";
 import sprintAnimationFileUrl from "../../../assets/models/anim_run.glb";
@@ -16,59 +12,40 @@ const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 const host = window.location.host;
 const userNetworkAddress = `${protocol}//${host}/network`;
 const chatNetworkAddress = `${protocol}//${host}/chat-network`;
-const voiceNetworkAddress = `${window.location.protocol}//${host}/livekit-voice-token`;
 
-const useBackFlip = true;
-const useAltFrontFlip = false;
-const useNight = false;
+const shouldUseSkybox = false;
 
-const doubleJumpAnimationFileUrl = useBackFlip
-  ? backFlipFileUrl
-  : useAltFrontFlip
-    ? altFrontFlipFileUrl
-    : frontFlipFileUrl;
-
-const idleAnimationSettings: AnimationSettings = {
-  fileUrl: idleAnimationFileUrl,
-  loop: true,
-  discardNonRotationTransform: false,
-  playbackSpeed: 1.0,
-};
-
-const jogAnimationSettings: AnimationSettings = {
-  fileUrl: jogAnimationFileUrl,
-  loop: true,
-  discardNonRotationTransform: false,
-  playbackSpeed: 1.0,
-};
-
-const sprintAnimationSettings: AnimationSettings = {
-  fileUrl: sprintAnimationFileUrl,
-  loop: true,
-  discardNonRotationTransform: false,
-  playbackSpeed: 1.0,
-};
-
-const airAnimationSettings: AnimationSettings = {
-  fileUrl: airAnimationFileUrl,
-  loop: true,
-  discardNonRotationTransform: true,
-  playbackSpeed: 1.0,
-};
-
-const doubleJumpAnimationSettings: AnimationSettings = {
-  fileUrl: doubleJumpAnimationFileUrl,
-  loop: false,
-  discardNonRotationTransform: true,
-  playbackSpeed: 1.42,
-};
-
-const animationConfig: AnimationConfig = {
-  idleAnimation: idleAnimationSettings,
-  jogAnimation: jogAnimationSettings,
-  sprintAnimation: sprintAnimationSettings,
-  airAnimation: airAnimationSettings,
-  doubleJumpAnimation: doubleJumpAnimationSettings,
+const animations = {
+  airAnimationUrlOrConfig: {
+    fileUrl: airAnimationFileUrl,
+    loop: true,
+    discardNonRotationTransform: false,
+    playbackSpeed: 1.0,
+  },
+  idleAnimationUrlOrConfig: {
+    fileUrl: idleAnimationFileUrl,
+    loop: true,
+    discardNonRotationTransform: false,
+    playbackSpeed: 1.0,
+  },
+  jogAnimationUrlOrConfig: {
+    fileUrl: jogAnimationFileUrl,
+    loop: true,
+    discardNonRotationTransform: false,
+    playbackSpeed: 1.0,
+  },
+  sprintAnimationUrlOrConfig: {
+    fileUrl: sprintAnimationFileUrl,
+    loop: true,
+    discardNonRotationTransform: false,
+    playbackSpeed: 1.0,
+  },
+  doubleJumpAnimationUrlOrConfig: {
+    fileUrl: doubleJumpAnimationFileUrl,
+    loop: false,
+    discardNonRotationTransform: true,
+    playbackSpeed: 1.453, // 1.45
+  },
 };
 
 const holder = Networked3dWebExperienceClient.createFullscreenHolder();
@@ -76,20 +53,16 @@ const app = new Networked3dWebExperienceClient(holder, {
   sessionToken: (window as any).SESSION_TOKEN,
   userNetworkAddress,
   chatNetworkAddress,
-  voiceChatAddress: voiceNetworkAddress,
-  animationConfig,
+  animationConfig: animations,
   mmlDocuments: { example: { url: `${protocol}//${host}/mml-documents/playground.html` } },
   environmentConfiguration: {
-    skybox: {
-      hdrJpgUrl: useNight ? hdrNightJpgUrl : hdrJpgUrl,
-    },
-    fog: {
-      fogNear: 12,
-      fogFar: 180,
-      fogColor: { r: 0.6, g: 0.6, b: 0.6 },
-    },
     groundPlane: true,
-    groundPlaneType: "grass",
+    groundPlaneType: "grass", // "grass" or "neutral"
+    skybox: shouldUseSkybox
+      ? {
+          hdrJpgUrl: hdrJpgUrl,
+        }
+      : undefined,
   },
   avatarConfiguration: {
     availableAvatars: [

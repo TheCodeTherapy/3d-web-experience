@@ -57,9 +57,9 @@ export class MMLCompositionScene {
       getRootContainer: () => {
         return this.group;
       },
-      interactionShouldShowDistance(
+      interactionShouldShowDistance: (
         interaction: Interaction<ThreeJSGraphicsAdapter>,
-      ): number | null {
+      ): number | null => {
         return ThreeJSInteractionAdapter.interactionShouldShowDistance(
           interaction,
           this.config.camera,

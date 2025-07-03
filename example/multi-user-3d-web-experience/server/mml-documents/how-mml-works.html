@@ -109,8 +109,8 @@
       ></m-image>
       <m-attr-anim
         attr="y"
-        start="1.55"
-        end="1.65"
+        start="0.5"
+        end="0.6"
         loop="true"
         ping-pong="true"
         easing="easeInOutQuad"
@@ -125,20 +125,6 @@
       debug="false"
     ></m-position-probe>
 
-    <m-group x="-2.5" y="0.9" z="-2.75">
-      <m-cube width="5.2" height="1.7" depth="0.01" z="-0.02" color="black"></m-cube>
-      <m-video
-        id="video-track"
-        class="not-playing"
-        src="/assets/playground/how_mml_works.mp4"
-        loop="false"
-        start-time="-81000"
-        pause-time="0"
-        width="5"
-        volume="0"
-        emissive="2.5"
-      ></m-video>
-    </m-group>
     <m-model
       id="connection-blue"
       src="/assets/playground/light_ball.glb"
@@ -163,7 +149,7 @@
   </m-group>
 </m-group>
 <script>
-  const videoDuration = 80.2 * 1000;
+  const audioDuration = 80.2 * 1000;
   const unmutedAudioVolume = 5;
 
   const demoGroup = document.getElementById("demo-group");
@@ -180,7 +166,6 @@
   const connectionGreen = document.getElementById("connection-green");
 
   const demoTrigger = document.getElementById("demo-trigger");
-  const videoTrack = document.getElementById("video-track");
 
   const audioTrackURL = "/assets/playground/how_mml_works.mp3";
   const audioTrack = createAudio(audioTrackURL, -81000, 0, 0, 21, 0, 90, 45, 100, false);
@@ -194,8 +179,7 @@
 
   const playersInProbe = new Set();
 
-  let videoPlaying = false;
-  let videoFinished = false;
+  let audioFinished = false;
   let demoResetting = false;
   const demoResetTimeout = 2000;
 
@@ -484,7 +468,7 @@
 
   function handlePlayButton() {
     if (playersInProbe.size > 0) {
-      if (videoFinished === true && demoResetting === false) {
+      if (audioFinished === true && demoResetting === false) {
         resetDemo();
       }
     } else {
@@ -671,13 +655,13 @@
     animate(connectionBlue, "sy", 0.001, connSize, 500, "easeInOutQuint");
     animate(connectionBlue, "sz", 0.001, connSize, 500, "easeInOutQuint");
     animate(connectionBlue, "x", 0.393, -2, 1500, "easeInOutQuint");
-    animate(connectionBlue, "y", 0.7, 2.25, 1500, "easeInOutQuint");
+    animate(connectionBlue, "y", 0.7, 1.25, 1500, "easeInOutQuint");
     setTimeout(() => {
       connectionGreen.setAttribute("sx", 1);
       connectionGreen.setAttribute("sy", 1);
       connectionGreen.setAttribute("sz", 1);
       connectionGreen.setAttribute("x", -2);
-      connectionGreen.setAttribute("y", 2.25);
+      connectionGreen.setAttribute("y", 1.25);
     }, 1500);
   }
 
@@ -686,13 +670,13 @@
     animate(connectionGreen, "sy", 0.001, connSize, 500, "easeInOutQuint");
     animate(connectionGreen, "sz", 0.001, connSize, 500, "easeInOutQuint");
     animate(connectionGreen, "x", 0.393, -2, 1500, "easeInOutQuint");
-    animate(connectionGreen, "y", 2, 2.25, 1500, "easeInOutQuint");
+    animate(connectionGreen, "y", 2, 1.25, 1500, "easeInOutQuint");
     setTimeout(() => {
       connectionBlue.setAttribute("sx", 1);
       connectionBlue.setAttribute("sy", 1);
       connectionBlue.setAttribute("sz", 1);
       connectionBlue.setAttribute("x", -2);
-      connectionBlue.setAttribute("y", 2.25);
+      connectionBlue.setAttribute("y", 1.25);
     }, 1500);
   }
 
@@ -712,11 +696,9 @@
   }
 
   function playVideo() {
-    videoTrack.setAttribute("class", "is-playing");
-    videoTrack.setAttribute("start-time", document.timeline.currentTime);
-    videoTrack.setAttribute("pause-time", document.timeline.currentTime + videoDuration);
+    audioTrack.setAttribute("class", "is-playing");
     audioTrack.setAttribute("start-time", document.timeline.currentTime);
-    audioTrack.setAttribute("pause-time", document.timeline.currentTime + videoDuration);
+    audioTrack.setAttribute("pause-time", document.timeline.currentTime + audioDuration);
     audioTrack.setAttribute("volume", unmutedAudioVolume);
 
     setTimeout(() => showMDocument(), 1000);
@@ -743,15 +725,13 @@
     setTimeout(() => {
       resetCubes();
       hideDocumentCode();
-      videoFinished = true;
-    }, videoDuration);
+      audioFinished = true;
+    }, audioDuration);
   }
 
   function stopVideo() {
-    videoTrack.setAttribute("class", "not-playing");
-    videoTrack.setAttribute("start-time", -videoDuration);
-    videoTrack.setAttribute("pause-time", document.timeline.currentTime);
-    audioTrack.setAttribute("start-time", -videoDuration);
+    audioTrack.setAttribute("class", "not-playing");
+    audioTrack.setAttribute("start-time", -audioDuration);
     audioTrack.setAttribute("pause-time", document.timeline.currentTime);
   }
 
@@ -781,7 +761,7 @@
 
   function resetDemo() {
     demoResetting = true;
-    videoFinished = false;
+    audioFinished = false;
     stopVideo();
     hideMDocument();
     hideClients();
@@ -794,20 +774,20 @@
   }
 
   setInterval(() => {
-    const videoPlaying = videoTrack.getAttribute("class") === "is-playing";
+    const audioPlaying = audioTrack.getAttribute("class") === "is-playing";
     const hasPlayers = playersInProbe.size > 0;
 
-    if (playButton && (videoFinished === true || videoPlaying === false) && !demoResetting) {
+    if (playButton && (audioFinished === true || audioPlaying === false) && !demoResetting) {
       playButton.turnOn();
     } else {
       playButton.turnOff();
     }
 
-    if (hasPlayers && !videoPlaying && !demoResetting) {
+    if (hasPlayers && !audioPlaying && !demoResetting) {
       playVideo();
     }
 
-    if (!hasPlayers && videoPlaying && videoFinished === true) {
+    if (!hasPlayers && audioPlaying && audioFinished === true) {
       resetDemo();
     }
   }, 1000 / 3);

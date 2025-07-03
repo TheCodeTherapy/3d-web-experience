@@ -17,11 +17,11 @@ export type AnimationSettings = {
 };
 
 export type AnimationConfig = {
-  idleAnimation: AnimationSettings;
-  jogAnimation: AnimationSettings;
-  sprintAnimation: AnimationSettings;
-  airAnimation: AnimationSettings;
-  doubleJumpAnimation: AnimationSettings;
+  idleAnimationUrlOrConfig: string | AnimationSettings;
+  jogAnimationUrlOrConfig: string | AnimationSettings;
+  sprintAnimationUrlOrConfig: string | AnimationSettings;
+  airAnimationUrlOrConfig: string | AnimationSettings;
+  doubleJumpAnimationUrlOrConfig: string | AnimationSettings;
 };
 
 export type CharacterDescription =

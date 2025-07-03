@@ -1,6 +1,6 @@
 {
   "name": "@mml-io/3d-web-standalone-avatar-editor",
-  "version": "0.21.3",
+  "version": "0.22.0",
   "publishConfig": {
     "access": "public"
   },
@@ -19,10 +19,10 @@
     "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
   },
   "dependencies": {
-    "@mml-io/3d-web-avatar": "^0.21.3",
-    "@mml-io/3d-web-avatar-editor-ui": "^0.21.3",
-    "@mml-io/3d-web-client-core": "^0.21.3",
-    "@mml-io/model-loader": "0.19.6",
+    "@mml-io/3d-web-avatar": "^0.22.0",
+    "@mml-io/3d-web-avatar-editor-ui": "^0.22.0",
+    "@mml-io/3d-web-client-core": "^0.22.0",
+    "@mml-io/model-loader": "0.19.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "0.163.0"

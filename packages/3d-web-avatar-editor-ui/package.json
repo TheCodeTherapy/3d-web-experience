@@ -1,6 +1,6 @@
 {
   "name": "@mml-io/3d-web-avatar-editor-ui",
-  "version": "0.21.3",
+  "version": "0.22.0",
   "publishConfig": {
     "access": "public"
   },
@@ -20,7 +20,7 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "dependencies": {
-    "@mml-io/3d-web-avatar": "^0.21.3",
+    "@mml-io/3d-web-avatar": "^0.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

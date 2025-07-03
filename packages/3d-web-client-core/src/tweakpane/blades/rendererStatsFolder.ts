@@ -53,7 +53,8 @@ export class RendererStatsFolder {
     this.statsData.geometries = geometries.toString();
     this.statsData.textures = textures.toString();
     this.statsData.shaders = renderer.info.programs!.length.toString();
-    this.statsData.postPasses = composer.passes.length.toString();
+    this.statsData.postPasses =
+      composer.passes.length === 1 ? "0" : composer.passes.length.toString();
     this.statsData.drawCalls = calls.toString();
     this.statsData.rawDeltaTime = (
       Math.round(timeManager.rawDeltaTime * 100000) / 100000

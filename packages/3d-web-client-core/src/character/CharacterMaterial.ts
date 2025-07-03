@@ -37,7 +37,7 @@ export class CharacterMaterial extends MeshStandardMaterial {
 
     this.color = this.config.colorOverride || this.colorsCube216[this.config.characterId];
     this.envMapIntensity = characterValues.envMapIntensity;
-    this.transparent = false;
+    this.transparent = true;
     this.side = this.config.originalMaterial.side;
 
     this.onBeforeCompile = (shader) => {
@@ -106,7 +106,7 @@ export class CharacterMaterial extends MeshStandardMaterial {
 
   private generateColorCube() {
     const saturation = 1.0;
-    const lightness = 0.8;
+    const lightness = 0.9;
     const goldenRatioConjugate = 0.618033988749895;
     let hue = 0;
 
@@ -124,12 +124,11 @@ export class CharacterMaterial extends MeshStandardMaterial {
       this.currentAlpha += ease(this.targetAlpha, this.currentAlpha, 0.07);
       if (this.currentAlpha > 0.999) {
         this.currentAlpha = 1;
-        this.config.cameraManager.minPolarAngle = this.config.cameraManager.defaultMinPolarAngle;
+        this.config.cameraManager.minPolarAngle = Math.PI * 0.25;
       }
       if (this.currentAlpha < 0.001) {
         this.currentAlpha = 0;
-        this.config.cameraManager.minPolarAngle =
-          this.config.cameraManager.defaultFirstPersonPolarAngle;
+        this.config.cameraManager.minPolarAngle = Math.PI * 0.35;
       }
       this.uniforms.discardAll.value = this.currentAlpha === 0 ? 1 : 0;
       if (this.currentAlpha !== this.opacity) {

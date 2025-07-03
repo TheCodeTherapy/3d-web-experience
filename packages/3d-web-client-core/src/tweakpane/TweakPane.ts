@@ -1,35 +1,30 @@
 import * as EssentialsPlugin from "@tweakpane/plugin-essentials";
-import {
-  BloomEffect,
-  EffectComposer,
-  EffectPass,
-  NormalPass,
-  SSAOEffect,
-  ToneMappingEffect,
-} from "postprocessing";
+import { BloomEffect, EffectComposer, EffectPass, ToneMappingEffect } from "postprocessing";
 import { Scene, WebGLRenderer } from "three";
 import { FolderApi, Pane } from "tweakpane";
 
 import { CameraManager } from "../camera/CameraManager";
 import { LocalController } from "../character/LocalController";
 import { EventHandlerCollection } from "../input/EventHandlerCollection";
+import type { Composer } from "../rendering/composer";
 import { BrightnessContrastSaturation } from "../rendering/post-effects/bright-contrast-sat";
-import { DenoiseEffect } from "../rendering/post-effects/denoiose";
 import { GaussGrainEffect } from "../rendering/post-effects/gauss-grain";
-import { Sun } from "../sun/Sun";
+import { PostProcessingManager } from "../rendering/PostProcessingManager";
 import { TimeManager } from "../time/TimeManager";
 
-import { BrightnessContrastSaturationFolder } from "./blades/bcsFolder";
 import { CameraFolder } from "./blades/cameraFolder";
 import { CharacterControlsFolder } from "./blades/characterControlsFolder";
 import { CharacterFolder } from "./blades/characterFolder";
-import { DenoiseFolder } from "./blades/denoiseFolder";
+// post processing effects ===================================================
+import { BrightnessContrastSaturationFolder } from "./blades/effects/bcsFolder";
+import { BloomAndGrainFolder } from "./blades/effects/bloomAndGrain";
+import { SSAOFolder } from "./blades/effects/ssaoFolder";
+import { ToneMappingFolder } from "./blades/effects/toneMappingFolder";
+// end post processing effects ===============================================
 import { EnvironmentFolder } from "./blades/environmentFolder";
-import { PostExtrasFolder } from "./blades/postExtrasFolder";
+import { PostProcessingFolder } from "./blades/postProcessingFolder";
 import { RendererFolder, rendererValues } from "./blades/rendererFolder";
 import { RendererStatsFolder } from "./blades/rendererStatsFolder";
-import { SSAOFolder } from "./blades/ssaoFolder";
-import { ToneMappingFolder } from "./blades/toneMappingFolder";
 import { setTweakpaneActive } from "./tweakPaneActivity";
 import { tweakPaneStyle } from "./tweakPaneStyle";
 
@@ -38,12 +33,14 @@ export class TweakPane {
 
   private renderStatsFolder: RendererStatsFolder;
   private rendererFolder: RendererFolder;
+  private postProcessingFolder: PostProcessingFolder;
+  private postProcessingSettingsFolder: FolderApi;
+  // post processing effects
   private toneMappingFolder: ToneMappingFolder;
   private ssaoFolder: SSAOFolder;
   private bcsFolder: BrightnessContrastSaturationFolder;
-  private postExtrasFolder: PostExtrasFolder;
-  private denoiseFolder: DenoiseFolder;
-  // @ts-ignore
+  private bloomAndGrainFolder: BloomAndGrainFolder;
+  //
   private character: CharacterFolder;
   private environment: EnvironmentFolder;
   private camera: CameraFolder;
@@ -60,7 +57,7 @@ export class TweakPane {
     private holderElement: HTMLElement,
     private renderer: WebGLRenderer,
     private scene: Scene,
-    private composer: EffectComposer,
+    private composer: Composer,
   ) {
     this.tweakPaneWrapper = document.createElement("div");
     this.tweakPaneWrapper.style.position = "fixed";
@@ -97,15 +94,24 @@ export class TweakPane {
 
     this.renderStatsFolder = new RendererStatsFolder(this.gui, true);
     this.rendererFolder = new RendererFolder(this.gui, false);
-    this.toneMappingFolder = new ToneMappingFolder(this.gui, false);
-    this.ssaoFolder = new SSAOFolder(this.gui, false);
-    this.bcsFolder = new BrightnessContrastSaturationFolder(this.gui, false);
-    this.postExtrasFolder = new PostExtrasFolder(this.gui, false);
-    this.denoiseFolder = new DenoiseFolder(this.gui, false);
-    this.character = new CharacterFolder(this.gui, false);
+
     this.environment = new EnvironmentFolder(this.gui, false);
     this.camera = new CameraFolder(this.gui, false);
     this.characterControls = new CharacterControlsFolder(this.gui, false);
+
+    this.postProcessingFolder = new PostProcessingFolder(this.gui, false);
+    this.postProcessingSettingsFolder = this.gui.addFolder({
+      title: "postProcessingSettings",
+      expanded: false,
+    });
+    this.toneMappingFolder = new ToneMappingFolder(this.postProcessingSettingsFolder, false);
+    this.ssaoFolder = new SSAOFolder(this.postProcessingSettingsFolder, false);
+    this.bcsFolder = new BrightnessContrastSaturationFolder(
+      this.postProcessingSettingsFolder,
+      false,
+    );
+    this.bloomAndGrainFolder = new BloomAndGrainFolder(this.postProcessingSettingsFolder, false);
+    this.character = new CharacterFolder(this.gui, false);
 
     this.toneMappingFolder.folder.hidden = rendererValues.toneMapping === 5 ? false : true;
 
@@ -136,25 +142,21 @@ export class TweakPane {
 
   public setupRenderPane(
     composer: EffectComposer,
-    normalPass: NormalPass,
-    ppssaoEffect: SSAOEffect,
-    ppssaoPass: EffectPass,
     n8aopass: any,
     toneMappingEffect: ToneMappingEffect,
     toneMappingPass: EffectPass,
     brightnessContrastSaturation: typeof BrightnessContrastSaturation,
     bloomEffect: BloomEffect,
     gaussGrainEffect: typeof GaussGrainEffect,
-    denoiseEffect: typeof DenoiseEffect,
     hasLighting: boolean,
-    sun: Sun | null,
+    updateSunValues: () => void,
     setHDR: () => void,
     setSkyboxAzimuthalAngle: (azimuthalAngle: number) => void,
     setSkyboxPolarAngle: (azimuthalAngle: number) => void,
     setAmbientLight: () => void,
     setFog: () => void,
+    setSkyShaderValues: () => void,
   ): void {
-    // RenderOptions
     this.rendererFolder.setupChangeEvent(
       this.renderer,
       this.toneMappingFolder.folder,
@@ -162,10 +164,9 @@ export class TweakPane {
     );
 
     this.toneMappingFolder.setupChangeEvent(toneMappingEffect);
-    this.ssaoFolder.setupChangeEvent(composer, normalPass, ppssaoEffect, ppssaoPass, n8aopass);
+    this.ssaoFolder.setupChangeEvent(composer, n8aopass);
     this.bcsFolder.setupChangeEvent(brightnessContrastSaturation);
-    this.postExtrasFolder.setupChangeEvent(bloomEffect, gaussGrainEffect);
-    this.denoiseFolder.setupChangeEvent(denoiseEffect);
+    this.bloomAndGrainFolder.setupChangeEvent(bloomEffect, gaussGrainEffect);
     this.environment.setupChangeEvent(
       this.scene,
       setHDR,
@@ -173,9 +174,10 @@ export class TweakPane {
       setSkyboxPolarAngle,
       setAmbientLight,
       setFog,
-      sun,
+      setSkyShaderValues,
+      updateSunValues,
     );
-    this.environment.folder.hidden = hasLighting === false || sun === null;
+    this.environment.folder.hidden = hasLighting === false;
 
     const exportButton = this.export.addButton({ title: "export" });
     exportButton.on("click", () => {
@@ -203,8 +205,24 @@ export class TweakPane {
     this.characterControls.setupChangeEvent(localController);
   }
 
+  public setupPostProcessingPane(postProcessingManager: PostProcessingManager): void {
+    this.postProcessingFolder.setupChangeEvent(postProcessingManager);
+  }
+
   public updateStats(timeManager: TimeManager): void {
-    this.renderStatsFolder.update(this.renderer, this.composer, timeManager);
+    const postProcessingManager = (this.composer as any).postProcessingManager;
+    if (postProcessingManager?.effectComposer) {
+      this.renderStatsFolder.update(
+        this.renderer,
+        postProcessingManager.effectComposer,
+        timeManager,
+      );
+    }
+
+    // record frame time for benchmark if running
+    if (this.postProcessingFolder.isBenchmarkRunning()) {
+      this.postProcessingFolder.recordFrameTime();
+    }
   }
 
   public updateCameraData(cameraManager: CameraManager) {

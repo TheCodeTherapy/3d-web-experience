@@ -17,7 +17,6 @@ type BindingsType = Map<Key, KeyCallback>;
 export class KeyInputManager {
   private keys = new Map<string, boolean>();
   private eventHandlerCollection = new EventHandlerCollection();
-  private isFullScreen = false;
   private bindings: BindingsType = new Map();
 
   constructor(private shouldCaptureKeyPress: () => boolean = () => true) {
@@ -46,13 +45,6 @@ export class KeyInputManager {
   }
 
   private onKeyUp(event: KeyboardEvent): void {
-    if (event.key.toLowerCase() === "f11") {
-      if (this.isFullScreen) {
-        document.exitFullscreen();
-      } else {
-        document.body.requestFullscreen();
-      }
-    }
     this.keys.set(event.key.toLowerCase(), false);
     if (this.bindings.has(event.key.toLowerCase() as Key)) {
       this.bindings.get(event.key.toLowerCase() as Key)!();
@@ -64,7 +56,17 @@ export class KeyInputManager {
   }
 
   public createKeyBinding(key: Key, callback: () => void): void {
+    if (this.bindings.has(key)) {
+      return;
+    }
     this.bindings.set(key, callback);
+  }
+
+  public removeKeyBinding(key: Key): void {
+    if (!this.bindings.has(key)) {
+      return;
+    }
+    this.bindings.delete(key);
   }
 
   public isMovementKeyPressed(): boolean {
