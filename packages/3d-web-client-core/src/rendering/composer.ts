@@ -21,6 +21,7 @@ import {
   HalfFloatType,
   LinearMipmapLinearFilter,
   WebGLRenderer,
+  PerspectiveCamera,
 } from "three";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
@@ -94,6 +95,7 @@ export class Composer {
   public readonly renderer: WebGLRenderer;
 
   private postProcessingManager: PostProcessingManager;
+  private currentCamera: PerspectiveCamera; // Track current camera
 
   private ambientLight: AmbientLight | null = null;
   private environmentConfiguration?: EnvironmentConfiguration;
@@ -136,10 +138,11 @@ export class Composer {
 
     this.environmentConfiguration = environmentConfiguration;
 
+    this.currentCamera = this.cameraManager.activeCamera;
     this.postProcessingManager = new PostProcessingManager(
       this.renderer,
       this.scene,
-      this.cameraManager.activeCamera,
+      this.currentCamera,
       this.width,
       this.height,
       {
@@ -284,6 +287,13 @@ export class Composer {
     if (!this.renderer || !this.scene || !this.cameraManager.activeCamera) {
       return;
     }
+
+    // check if camera has changed and update PostProcessingManager
+    if (this.currentCamera !== this.cameraManager.activeCamera) {
+      this.currentCamera = this.cameraManager.activeCamera;
+      this.postProcessingManager.updateCamera(this.currentCamera);
+    }
+
     this.renderer.info.reset();
     if (this.sky && this.skyCubeCamera && this.skyRenderTarget) {
       this.skyCubeCamera?.update(this.renderer, this.sky);

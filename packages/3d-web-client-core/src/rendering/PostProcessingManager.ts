@@ -296,6 +296,15 @@ export class PostProcessingManager {
     }
   }
 
+  public updateCamera(camera: PerspectiveCamera): void {
+    this.camera = camera;
+    // remove old render pass and create new one with updated camera
+    this.effectComposer.removePass(this.renderPass);
+    this.renderPass = new RenderPass(this.scene, camera);
+    this.effectComposer.addPass(this.renderPass, 0); // Add at beginning
+    this.rebuildPipeline();
+  }
+
   public resizeActiveEffects(width: number, height: number) {
     this.width = width;
     this.height = height;
