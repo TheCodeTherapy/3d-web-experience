@@ -164,6 +164,7 @@ class CustomPlaneGeometry extends BufferGeometry {
     const width = options?.planeWidth || 0.021;
     const height = options?.planeHeight || 0.5;
     const halfWidth = width / 2;
+    const topHalfWidth = halfWidth * 0.5;
 
     // Two triangles forming a quad: bottom-left, bottom-right, top-left, top-right
     // Triangle 1: bottom-left -> bottom-right -> top-left
@@ -175,16 +176,16 @@ class CustomPlaneGeometry extends BufferGeometry {
       halfWidth,
       0.0,
       0.0, // bottom-right
-      -halfWidth,
+      -topHalfWidth,
       height,
       0.0, // top-left
       halfWidth,
       0.0,
       0.0, // bottom-right
-      halfWidth,
+      topHalfWidth,
       height,
       0.0, // top-right
-      -halfWidth,
+      -topHalfWidth,
       height,
       0.0, // top-left
     ]);
@@ -346,15 +347,24 @@ void main(void) {
     worldPosition = instanceMatrix * worldPosition;
   #endif
 
-  // Apply wind animation after billboard rotation
+  // apply wind animation after billboard rotation
   float t = time * windSpeed;
-  float noise = smoothNoise(worldPosition.xz * 0.5 + vec2(0.0, t));
-  noise = pow(noise * 0.5 + 0.5, 2.0) * 2.0;
-  float dispPower = windForce - cos(vUv.y * 0.3);
-  float displacement = noise * (0.5 * dispPower);
-  worldPosition.z += displacement * 0.125;
+  float noise = smoothNoise(worldPosition.xz * 0.25 + vec2(0.0, t));
 
-  // Final transformation to camera space
+  // quadratic curve
+  float bendAmount = vUv.y * vUv.y;
+  float windStrength = windForce * 0.05;
+  
+  // apply horizontal displacement for bending (X and Z directions)
+  vec2 windDirection = vec2(cos(noise * PI * 2.0), sin(noise * PI * 2.0));
+  worldPosition.x += windDirection.x * bendAmount * windStrength * noise;
+  worldPosition.z += windDirection.y * bendAmount * windStrength * noise;
+  
+  // slight vertical compression when bending heavily
+  float bendCompressionFactor = 1.0 - (bendAmount * abs(noise) * 0.25);
+  worldPosition.y *= bendCompressionFactor;
+
+  // final transformation to camera space
   vec4 modelViewPosition = modelViewMatrix * worldPosition;
   gl_Position = projectionMatrix * modelViewPosition;
 }
@@ -374,7 +384,7 @@ varying vec2 vUv;
 
 void main(void) {
   vec3 baseColor = vec3(0.31, 0.9, 0.4);
-  float clarity = (vUv.y * 0.5) + 0.0625;
+  float clarity = (vUv.y * 0.5) + 0.12;
   vec3 finalColor = baseColor * clarity;
   vec3 shadowColor = vec3(0.0, 0.0, 0.0);
   float shadowPower = 0.85;
@@ -515,17 +525,7 @@ void main(void) {
     for (let i = 0; i < this.leavesCount; i++) {
       const t = i / this.leavesCount;
 
-      // bias the distribution towards the center with a more gradual curve
-      const biasedT = clamps(Math.pow(t, 1.5)); // original - sharp center bias
-
-      // quadratic
-      // const biasedT = clamps(t * t); // quadratic - more gradual than pow 1.5
-
-      // inverse sqrt
-      // const biasedT = clamps(1 - Math.sqrt(1 - t * t)); // inverse sqrt - gradual center bias
-
-      // sine curve
-      // const biasedT = clamps(1 - Math.cos((t * Math.PI) / 2)); // smooth center bias
+      const biasedT = clamps(Math.pow(t, 1.5));
 
       const inc = Math.acos(1 - 2 * biasedT);
       const azimuth = angleIncrement * i;
@@ -596,7 +596,7 @@ export class GroundPlane extends Group {
       this.floorSize = 50;
       this.floorGeometry = new CircleGeometry(this.floorSize, 32);
       this.floorMaterial = new TexturedMaterial(20.0, {
-        color: new Color(0x77bb99),
+        color: new Color(0x559977),
       });
       this.floorMesh = new Mesh(this.floorGeometry, this.floorMaterial);
       this.floorMesh.receiveShadow = true;
@@ -606,8 +606,8 @@ export class GroundPlane extends Group {
       this.grass = new Grass({
         leavesCount: 1000000,
         radius: this.floorSize,
-        leafBaseWidth: 0.021,
-        leafHeight: 0.27,
+        leafBaseWidth: 0.05,
+        leafHeight: 0.3,
         windForce: 2.06,
         windSpeed: 0.91,
       });
