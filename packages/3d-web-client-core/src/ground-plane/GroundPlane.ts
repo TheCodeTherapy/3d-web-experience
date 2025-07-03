@@ -607,7 +607,7 @@ export class GroundPlane extends Group {
         leavesCount: 1000000,
         radius: this.floorSize,
         leafBaseWidth: 0.021,
-        leafHeight: 0.3,
+        leafHeight: 0.27,
         windForce: 2.06,
         windSpeed: 0.91,
       });
