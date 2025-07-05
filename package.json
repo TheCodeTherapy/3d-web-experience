@@ -7,7 +7,7 @@
   },
   "scripts": {
     "build": "lerna run --stream build",
-    "start": "concurrently \"npm run start -w @apps/3d-web-experience-server\" \"npm run start -w @mml-io/3d-web-asset-compress-server\"",
+    "start": "concurrently \"npm run start -w @apps/3d-web-experience-server-advanced\" \"npm run start -w @mml-io/3d-web-asset-compress-server\"",
     "iterate": "npm run build && lerna run --parallel --stream iterate",
     "type-check-all": "lerna run --stream --no-bail type-check",
     "test-all": "lerna run --parallel --stream --no-bail test",
