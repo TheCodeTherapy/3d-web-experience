@@ -7,7 +7,7 @@
   },
   "scripts": {
     "build": "lerna run --stream build",
-    "start": "concurrently \"npm run start -w @example/multi-user-3d-web-experience-server\" \"npm run start -w @mml-io/3d-web-asset-compress-server\"",
+    "start": "concurrently \"npm run start -w @apps/3d-web-experience-server\" \"npm run start -w @mml-io/3d-web-asset-compress-server\"",
     "iterate": "npm run build && lerna run --parallel --stream iterate",
     "type-check-all": "lerna run --stream --no-bail type-check",
     "test-all": "lerna run --parallel --stream --no-bail test",
@@ -19,12 +19,13 @@
     "update-imports": "node update-references.js && node update-imports.js && npm install && npm run build && npm run lint-fix-all"
   },
   "workspaces": [
-    "packages/*",
-    "example/**"
+    "apps/**",
+    "packages/*"
   ],
   "devDependencies": {
     "@types/jest": "29.5.14",
     "@types/jju": "^1.4.5",
+    "@types/node": "^24.0.10",
     "@types/tmp": "^0.2.6",
     "@typescript-eslint/eslint-plugin": "^8.23.0",
     "@typescript-eslint/parser": "^8.23.0",

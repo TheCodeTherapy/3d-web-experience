@@ -1,0 +1,25 @@
+{
+  "name": "@apps/react-mml-documents",
+  "version": "0.22.0",
+  "private": true,
+  "scripts": {
+    "build": "tsx ./build.ts --build",
+    "iterate": "tsx ./build.ts --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint \"./src/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
+    "lint:fix": "eslint \"./src/**/*.{js,jsx,ts,tsx}\" --fix"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d": "^0.13.0",
+    "@mml-io/mml-react-types": "0.19.3",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "esbuild-plugin-wasm": "^1.1.0",
+    "tsx": "^4.19.1"
+  }
+}

@@ -25,6 +25,9 @@ import {
   UniformsUtils,
 } from "three";
 
+import { leafFragmentShader } from "./shader-chunks/leaf-fragment-shader";
+import { leafVertexShader } from "./shader-chunks/leaf-vertex-shader";
+
 // Create a simple 2x2 checkerboard image
 const canvas = document.createElement("canvas");
 canvas.width = 2;
@@ -37,8 +40,6 @@ ctx.fillRect(0, 0, 1, 1);
 ctx.fillRect(1, 1, 1, 1);
 
 class TexturedMaterial extends MeshStandardMaterial {
-  private rotateTiles: boolean = false;
-
   constructor(tileRepeat: number, options = {}) {
     super(options);
     this.initTextures("/assets/textures", tileRepeat);
@@ -72,62 +73,6 @@ class TexturedMaterial extends MeshStandardMaterial {
       this.normalMap = normalMap;
       this.needsUpdate = true;
     });
-
-    if (this.rotateTiles) {
-      this.onBeforeCompile = (shader) => {
-        shader.uniforms.map = { value: this.map };
-
-        shader.vertexShader = `
-  varying vec2 vUv;
-  ${shader.vertexShader}
-        `;
-
-        shader.vertexShader = shader.vertexShader.replace(
-          "#include <fog_vertex>",
-          "#include <fog_vertex>\nvUv = uv;",
-        );
-
-        shader.fragmentShader = shader.fragmentShader.replace(
-          "#include <common>",
-          /* glsl */ `
-  varying vec2 vUv;
-  #include <common>
-  float rand(vec2 co, float seed) {
-    float a = 12.9898;
-    float b = 78.233;
-    float c = 43758.5453;
-    float dt= dot(co.xy ,vec2(a,b));
-    float sn= mod(dt, 3.14);
-    return fract(sin(sn + seed) * c);
-  }
-  
-  vec2 rotateUV(vec2 uv, float rotation, vec2 mid) {
-    return vec2(
-      cos(rotation) * (uv.x - mid.x) + sin(rotation) * (uv.y - mid.y) + mid.x,
-      cos(rotation) * (uv.y - mid.y) - sin(rotation) * (uv.x - mid.x) + mid.y
-    );
-  }
-  `,
-        );
-
-        const fragmentMain = /* glsl */ `
-          vec2 uv = vUv;
-          vec2 tile = (uv * ${tileRepeat.toFixed(1)});
-          vec2 center = tile + vec2(0.5, 0.5);
-          vec2 randomRotatedTileUV = rotateUV(uv, rand(tile, 2.0) * 200.0, center);
-          vec4 rotatedTexture = texture2D(map, randomRotatedTileUV);
-          gl_FragColor *= rotatedTexture;
-        `;
-
-        shader.fragmentShader = shader.fragmentShader.replace(
-          "#include <dithering_fragment>",
-          `
-  ${fragmentMain}
-  #include <dithering_fragment>
-  `,
-        );
-      };
-    }
   }
 }
 
@@ -169,61 +114,35 @@ class CustomPlaneGeometry extends BufferGeometry {
     // Two triangles forming a quad: bottom-left, bottom-right, top-left, top-right
     // Triangle 1: bottom-left -> bottom-right -> top-left
     // Triangle 2: bottom-right -> top-right -> top-left
+
+    // prettier-ignore
     const vertices = new Float32Array([
-      -halfWidth,
-      0.0,
-      0.0, // bottom-left
-      halfWidth,
-      0.0,
-      0.0, // bottom-right
-      -topHalfWidth,
-      height,
-      0.0, // top-left
-      halfWidth,
-      0.0,
-      0.0, // bottom-right
-      topHalfWidth,
-      height,
-      0.0, // top-right
-      -topHalfWidth,
-      height,
-      0.0, // top-left
+      -halfWidth,    0.0,    0.0, // bottom-left
+      +halfWidth,    0.0,    0.0, // bottom-right
+      -topHalfWidth, height, 0.0, // top-left
+      +halfWidth,    0.0,    0.0, // bottom-right
+      +topHalfWidth, height, 0.0, // top-right
+      -topHalfWidth, height, 0.0, // top-left
     ]);
 
+    // prettier-ignore
     const normals = new Float32Array([
-      0,
-      0,
-      1, // bottom-left
-      0,
-      0,
-      1, // bottom-right
-      0,
-      0,
-      1, // top-left
-      0,
-      0,
-      1, // bottom-right
-      0,
-      0,
-      1, // top-right
-      0,
-      0,
-      1, // top-left
+      0, 0, 1, // bottom-left
+      0, 0, 1, // bottom-right
+      0, 0, 1, // top-left
+      0, 0, 1, // bottom-right
+      0, 0, 1, // top-right
+      0, 0, 1, // top-left
     ]);
 
+    // prettier-ignore
     const uvs = new Float32Array([
-      0,
-      0, // bottom-left
-      1,
-      0, // bottom-right
-      0,
-      1, // top-left
-      1,
-      0, // bottom-right
-      1,
-      1, // top-right
-      0,
-      1, // top-left
+      0, 0, // bottom-left
+      1, 0, // bottom-right
+      0, 1, // top-left
+      1, 0, // bottom-right
+      1, 1, // top-right
+      0, 1, // top-left
     ]);
 
     this.setAttribute("position", new Float32BufferAttribute(vertices, 3));
@@ -252,7 +171,6 @@ class Grass extends Group {
 
   private dummy = new Object3D();
 
-  private simpleNoiseVertexShaderChunk: string;
   private leafVertexShader: string;
   private leafFragmentShader: string;
   private grassLeafMaterial: ShaderMaterial;
@@ -269,130 +187,8 @@ class Grass extends Group {
     this.windForce = options.windForce || this.windForce;
     this.windSpeed = options.windSpeed || this.windSpeed;
 
-    this.simpleNoiseVertexShaderChunk = /* glsl */ `
-float N (vec2 st) {
-  return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
-}
-
-float smoothNoise (vec2 ip) {
-  vec2 lv = fract(ip);
-  vec2 id = floor(ip);
-  lv = lv * lv * (3.0 - 2.0 * lv);
-  float bl = N(id);
-  float br = N(id + vec2(1.0, 0.0));
-  float b = mix(bl, br, lv.x);
-  float tl = N(id + vec2(0.0, 1.0));
-  float tr = N(id + vec2(1.0, 1.0));
-  float t = mix(tl, tr, lv.x);
-  return mix(b, t, lv.y);
-}
-`;
-
-    this.leafVertexShader = /* glsl */ `
-#include <common>
-#include <fog_pars_vertex>
-#include <shadowmap_pars_vertex>
-
-varying vec2 vUv;
-uniform float time;
-uniform float windForce;
-uniform float windSpeed;
-uniform bool enableBillboarding;
-
-${this.simpleNoiseVertexShaderChunk}
-
-const float ATHIRD = 1.0 / 3.0;
-const float THIRDPI = PI * ATHIRD;
-
-void main(void) {
-  #include <begin_vertex>
-  #include <beginnormal_vertex>
-  #include <project_vertex>
-  #include <worldpos_vertex>
-  #include <defaultnormal_vertex>
-  #include <shadowmap_vertex>
-  #include <fog_vertex>
-
-  vUv = uv;
-
-  // Compute world position of the instance
-  vec4 instancePosition = vec4(0.0, 0.0, 0.0, 1.0);
-  #ifdef USE_INSTANCING
-    instancePosition = instanceMatrix * instancePosition;
-  #endif
-
-  vec3 rotatedVertex = position;
-
-  if (enableBillboarding) {
-    // Compute the direction vector to the camera on XZ plane
-    vec3 toCamera = normalize(vec3(cameraPosition.x, 0.0, cameraPosition.z) - vec3(instancePosition.x, 0.0, instancePosition.z));
-
-    // Compute rotation angle around Y-axis
-    float angle = atan(toCamera.x, toCamera.z);
-
-    // Rotate the vertex around its local Y-axis
-    mat3 rotationMatrix = mat3(
-      cos(angle), 0.0, -sin(angle),
-      0.0,        1.0,  0.0,
-      sin(angle), 0.0,  cos(angle)
-    );
-
-    // Rotate the leaf mesh locally
-    rotatedVertex = rotationMatrix * position;
-  }
-
-  // Compute final world position
-  worldPosition = vec4(rotatedVertex, 1.0);
-  #ifdef USE_INSTANCING
-    worldPosition = instanceMatrix * worldPosition;
-  #endif
-
-  // apply wind animation after billboard rotation
-  float t = time * windSpeed;
-  float noise = smoothNoise(worldPosition.xz * 0.25 + vec2(0.0, t));
-
-  // quadratic curve
-  float bendAmount = vUv.y * vUv.y;
-  float windStrength = windForce * 0.05;
-  
-  // apply horizontal displacement for bending (X and Z directions)
-  vec2 windDirection = vec2(cos(noise * PI * 2.0), sin(noise * PI * 2.0));
-  worldPosition.x += windDirection.x * bendAmount * windStrength * noise;
-  worldPosition.z += windDirection.y * bendAmount * windStrength * noise;
-  
-  // slight vertical compression when bending heavily
-  float bendCompressionFactor = 1.0 - (bendAmount * abs(noise) * 0.25);
-  worldPosition.y *= bendCompressionFactor;
-
-  // final transformation to camera space
-  vec4 modelViewPosition = modelViewMatrix * worldPosition;
-  gl_Position = projectionMatrix * modelViewPosition;
-}
-`;
-
-    this.leafFragmentShader = /* glsl */ `
-varying vec2 vUv;
-
-#include <common>
-#include <packing>
-#include <fog_pars_fragment>
-#include <bsdfs>
-#include <lights_pars_begin>
-#include <shadowmap_pars_fragment>
-#include <shadowmask_pars_fragment>
-#include <dithering_pars_fragment>
-
-void main(void) {
-  vec3 baseColor = vec3(0.31, 0.9, 0.4);
-  float clarity = (vUv.y * 0.5) + 0.12;
-  vec3 finalColor = baseColor * clarity;
-  vec3 shadowColor = vec3(0.0, 0.0, 0.0);
-  float shadowPower = 0.85;
-  gl_FragColor = vec4(mix(finalColor, shadowColor, (1.0 - getShadowMask()) * shadowPower), 1.0);
-  #include <fog_fragment>
-  #include <dithering_fragment>
-}
-`;
+    this.leafVertexShader = leafVertexShader;
+    this.leafFragmentShader = leafFragmentShader;
 
     // this.grassLeafGeometry = new TriangleGeometry({
     //   triangleBaseWidth: this.leafBaseWidth,
@@ -567,7 +363,14 @@ export class GroundPlane extends Group {
   private floorMaterial: MeshStandardMaterial;
   private floorMesh: Mesh | null = null;
 
+  private useExtraFloor = true;
+  private floorGeometryExtra: CircleGeometry | null = null;
+  private floorMaterialExtra: MeshStandardMaterial | null = null;
+  private floorMeshExtra: Mesh | null = null;
+  private floorTextureExtra: Texture | null = null;
+
   public grass: Grass | null = null;
+  private textureRepeat = 1.5;
 
   constructor(groundPlaneType?: "neutral" | "grass" | undefined) {
     super();
@@ -589,19 +392,49 @@ export class GroundPlane extends Group {
       this.floorTexture!.wrapT = RepeatWrapping;
       this.floorTexture!.magFilter = NearestFilter;
       this.floorTexture!.minFilter = LinearMipMapLinearFilter;
-      this.floorTexture!.repeat.set(this.floorSize / 1.5, this.floorSize / 1.5);
+      this.floorTexture!.repeat.set(
+        this.floorSize / this.textureRepeat,
+        this.floorSize / this.textureRepeat,
+      );
       this.floorMaterial.map = this.floorTexture;
       this.floorMaterial.needsUpdate = true;
     } else if (groundPlaneType === "grass") {
       this.floorSize = 50;
       this.floorGeometry = new CircleGeometry(this.floorSize, 32);
       this.floorMaterial = new TexturedMaterial(20.0, {
-        color: new Color(0x559977),
+        color: new Color(0x66bb88),
       });
       this.floorMesh = new Mesh(this.floorGeometry, this.floorMaterial);
       this.floorMesh.receiveShadow = true;
       this.floorMesh.rotation.x = Math.PI * -0.5;
       this.add(this.floorMesh);
+
+      if (this.useExtraFloor && groundPlaneType === "grass") {
+        const extraSizeMultiplier = 10.0;
+        this.floorGeometryExtra = new CircleGeometry(this.floorSize * extraSizeMultiplier, 128);
+        this.floorMaterialExtra = new MeshStandardMaterial({
+          color: 0xffffff,
+          side: FrontSide,
+          metalness: 0.05,
+          roughness: 0.95,
+        });
+        this.floorMeshExtra = new Mesh(this.floorGeometryExtra, this.floorMaterialExtra);
+        this.floorMeshExtra.receiveShadow = true;
+        this.floorTextureExtra = new CanvasTexture(canvas);
+        this.floorTextureExtra.wrapS = RepeatWrapping;
+        this.floorTextureExtra.wrapT = RepeatWrapping;
+        this.floorTextureExtra.magFilter = NearestFilter;
+        this.floorTextureExtra.minFilter = LinearMipMapLinearFilter;
+        this.floorTextureExtra.repeat.set(
+          this.floorSize / (this.textureRepeat / extraSizeMultiplier),
+          this.floorSize / (this.textureRepeat / extraSizeMultiplier),
+        );
+        this.floorMaterialExtra.map = this.floorTextureExtra;
+        this.floorMaterialExtra.needsUpdate = true;
+        this.floorMeshExtra.rotation.x = Math.PI * -0.5;
+        this.floorMeshExtra.position.y = -0.01; // slightly below the main floor
+        this.add(this.floorMeshExtra);
+      }
 
       this.grass = new Grass({
         leavesCount: 1000000,

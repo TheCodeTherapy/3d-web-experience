@@ -1,0 +1,4404 @@
+<!-- MML Chess by Marco Gomez (@TheCodeTherapy) 2025 -->
+<!-- https://github.com/thecodetherapy -->
+
+<m-group id="wrapper">
+  <m-group id="pvp-wrapper" x="976.5" y="0" z="1000">
+    <m-model src="/assets/playground/dome.glb" cast-shadows="true" collide="true"></m-model>
+    <m-cylinder radius="300" height="0.01" color="#5050aa" cast-shadows="false"></m-cylinder>
+  </m-group>
+</m-group>
+<script>
+  // TODO: 2d board should have possible moves highlight
+  // TODO: cleanup match browser properly
+  // TODO: create a "selecting match" indicator when the prompt is active
+
+  function createTeleporter(parentElement, startX, startY, startZ, endX, endY, endZ) {
+    const transporterYOffset = -0.047;
+    const transporterAnimTravel = 0.047;
+    const transporterAnimDuration = 1200;
+
+    const usersColliding = new Set();
+    let telerportingStarted = false;
+
+    const animate = (element, attr, start, end, duration, easing, cb) => {
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("start-time", document.timeline.currentTime);
+      anim.setAttribute("end-time", document.timeline.currentTime + duration);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("easing", easing);
+      anim.setAttribute("loop", false);
+      element.appendChild(anim);
+      setTimeout(() => {
+        element.setAttribute(attr, end);
+        element.removeChild(anim);
+        cb();
+      }, duration);
+    };
+
+    const teleporterStart = document.createElement("m-model");
+    teleporterStart.setAttribute("src", "/assets/playground/base_plinth.glb");
+    teleporterStart.setAttribute("ry", 180);
+    teleporterStart.setAttribute("x", startX);
+    teleporterStart.setAttribute("y", startY);
+    teleporterStart.setAttribute("z", startZ);
+
+    const transporter = document.createElement("m-model");
+    transporter.setAttribute("src", "/assets/playground/base_plinth_platform.glb");
+    transporter.setAttribute("x", startX);
+    transporter.setAttribute("y", startY + transporterYOffset);
+    transporter.setAttribute("z", startZ);
+    parentElement.appendChild(transporter);
+
+    const teleporterEnd = document.createElement("m-model");
+    teleporterEnd.setAttribute("src", "/assets/playground/base_plinth.glb");
+    teleporterEnd.setAttribute("ry", 180);
+    teleporterEnd.setAttribute("x", endX);
+    teleporterEnd.setAttribute("y", endY);
+    teleporterEnd.setAttribute("z", endZ);
+    parentElement.appendChild(teleporterEnd);
+
+    const teleporterProbe = document.createElement("m-position-probe");
+    teleporterProbe.setAttribute("debug", false);
+    teleporterProbe.setAttribute("range", 1.32);
+    teleporterProbe.setAttribute("interval", 500);
+    teleporterProbe.setAttribute("x", startX);
+    teleporterProbe.setAttribute("y", startY + 0.3);
+    teleporterProbe.setAttribute("z", startZ);
+    parentElement.appendChild(teleporterProbe);
+
+    teleporterProbe.addEventListener("positionenter", (e) => {
+      teleport();
+    });
+    teleporterProbe.addEventListener("positionmove", (e) => {
+      teleport();
+    });
+
+    const createAudio = (src) => {
+      const sfx = document.createElement("m-audio");
+      sfx.setAttribute("loop", false);
+      sfx.setAttribute("volume", 0);
+      sfx.setAttribute("start-time", document.timeline.currentTime - 4000);
+      sfx.setAttribute("pause-time", document.timeline.currentTime - 100);
+      sfx.setAttribute("src", src);
+      sfx.setAttribute("y", 15);
+      sfx.setAttribute("rx", 90);
+      sfx.setAttribute("cone-angle", 45);
+      sfx.setAttribute("cone-falloff-angle", 100);
+      sfx.setAttribute("debug", false);
+      return sfx;
+    };
+
+    const sfxStart = createAudio("/assets/playground/charge.mp3");
+    const sfxEnd = createAudio("/assets/playground/charge.mp3");
+    teleporterStart.appendChild(sfxStart);
+    teleporterEnd.appendChild(sfxEnd);
+
+    const stopSFX = () => {
+      sfxStart.setAttribute("volume", 0);
+      sfxStart.setAttribute("start-time", document.timeline.currentTime - 4000);
+      sfxStart.setAttribute("pause-time", document.timeline.currentTime - 100);
+      sfxEnd.setAttribute("volume", 0);
+      sfxEnd.setAttribute("start-time", document.timeline.currentTime - 4000);
+      sfxEnd.setAttribute("pause-time", document.timeline.currentTime - 100);
+    };
+
+    const playSFX = () => {
+      sfxStart.setAttribute("volume", 6);
+      sfxStart.setAttribute("start-time", document.timeline.currentTime);
+      sfxStart.setAttribute("pause-time", document.timeline.currentTime + 4000);
+      sfxEnd.setAttribute("volume", 6);
+      sfxEnd.setAttribute("start-time", document.timeline.currentTime);
+      sfxEnd.setAttribute("pause-time", document.timeline.currentTime + 4000);
+      setTimeout(() => {
+        stopSFX();
+      }, 3100);
+    };
+
+    const teleport = () => {
+      if (telerportingStarted) {
+        return;
+      }
+      telerportingStarted = true;
+      playSFX();
+      animate(
+        transporter,
+        "y",
+        startY + transporterYOffset,
+        startY + transporterYOffset + transporterAnimTravel,
+        transporterAnimDuration,
+        "EaseInOutCubic",
+        () => {
+          transporter.setAttribute("y", endY + 5000);
+          transporter.setAttribute("x", endX);
+          transporter.setAttribute("z", endZ);
+          transporter.setAttribute("y", endY - 0.003);
+          animate(
+            transporter,
+            "y",
+            endY + transporterYOffset + transporterAnimTravel,
+            endY + transporterYOffset,
+            transporterAnimDuration,
+            "EaseInOutCubuc",
+            () => {
+              transporter.setAttribute("x", startX);
+              transporter.setAttribute("y", startY + transporterYOffset);
+              transporter.setAttribute("z", startZ);
+              telerportingStarted = false;
+            },
+          );
+        },
+      );
+    };
+
+    parentElement.appendChild(teleporterStart);
+
+    const randomFloatBetween = (a, b) => {
+      return Math.random() * (b - a) + a;
+    };
+
+    const createParticles = (parentElement, maxParticles, radius) => {
+      const particles = new Map();
+      const goldenRatio = (1 + Math.sqrt(5)) / 2;
+      const angleIncrement = Math.PI * 2 * goldenRatio;
+      for (let i = 0; i < maxParticles; i++) {
+        const t = i / maxParticles;
+        const inc = Math.acos(1 - 2 * t);
+        const azimuth = angleIncrement * i;
+        const x = radius * Math.sin(inc) * Math.cos(azimuth);
+        const z = radius * Math.sin(inc) * Math.sin(azimuth);
+        const image = document.createElement("m-image");
+        image.setAttribute("src", "/assets/playground/particle.png");
+        image.setAttribute("emissive", 200);
+        image.setAttribute("x", x);
+        image.setAttribute("y", -Math.random() * 4);
+        image.setAttribute("z", z);
+        image.setAttribute("rx", randomFloatBetween(-45, 45));
+        image.setAttribute("ry", randomFloatBetween(-180, 180));
+        image.setAttribute("rz", randomFloatBetween(-45, 45));
+        image.setAttribute("width", randomFloatBetween(0.03, 0.08));
+        image.setAttribute("collide", false);
+        image.setAttribute("cast-shadows", false);
+        const anim = document.createElement("m-attr-anim");
+        anim.setAttribute("attr", "y");
+        anim.setAttribute("start", 0);
+        anim.setAttribute("end", 3 + Math.random() * 2);
+        anim.setAttribute("duration", 3000 + Math.random() * 3000);
+        anim.setAttribute("start-time", document.timeline.currentTime - Math.random() * 2000);
+        image.appendChild(anim);
+        particles.set(i, image);
+        parentElement.appendChild(image);
+      }
+    };
+    createParticles(teleporterStart, 12, 1);
+  }
+
+  function createChessEngine(fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
+    const WHITE = "w";
+    const BLACK = "b";
+    const PAWN = "p";
+    const KNIGHT = "n";
+    const BISHOP = "b";
+    const ROOK = "r";
+    const QUEEN = "q";
+    const KING = "k";
+    const DEFAULT_POSITION = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+    class Move {
+      color;
+      from;
+      to;
+      piece;
+      captured;
+      promotion;
+      /**
+       * @deprecated This field is deprecated and will be removed in version 2.0.0.
+       * Please use move descriptor functions instead: `isCapture`, `isPromotion`,
+       * `isEnPassant`, `isKingsideCastle`, `isQueensideCastle`, `isCastle`, and
+       * `isBigPawn`
+       */
+      flags;
+      san;
+      lan;
+      before;
+      after;
+      constructor(chess, internal) {
+        const { color, piece, from, to, flags, captured, promotion } = internal;
+        const fromAlgebraic = algebraic(from);
+        const toAlgebraic = algebraic(to);
+        this.color = color;
+        this.piece = piece;
+        this.from = fromAlgebraic;
+        this.to = toAlgebraic;
+        /*
+         * HACK: The chess['_method']() calls below invoke private methods in the
+         * Chess class to generate SAN and FEN. It's a bit of a hack, but makes the
+         * code cleaner elsewhere.
+         */
+        this.san = chess["_moveToSan"](internal, chess["_moves"]({ legal: true }));
+        this.lan = fromAlgebraic + toAlgebraic;
+        this.before = chess.fen();
+        // Generate the FEN for the 'after' key
+        chess["_makeMove"](internal);
+        this.after = chess.fen();
+        chess["_undoMove"]();
+        // Build the text representation of the move flags
+        this.flags = "";
+        for (const flag in BITS) {
+          if (BITS[flag] & flags) {
+            this.flags += FLAGS[flag];
+          }
+        }
+        if (captured) {
+          this.captured = captured;
+        }
+        if (promotion) {
+          this.promotion = promotion;
+          this.lan += promotion;
+        }
+      }
+      isCapture() {
+        return this.flags.indexOf(FLAGS["CAPTURE"]) > -1;
+      }
+      isPromotion() {
+        return this.flags.indexOf(FLAGS["PROMOTION"]) > -1;
+      }
+      isEnPassant() {
+        return this.flags.indexOf(FLAGS["EP_CAPTURE"]) > -1;
+      }
+      isKingsideCastle() {
+        return this.flags.indexOf(FLAGS["KSIDE_CASTLE"]) > -1;
+      }
+      isQueensideCastle() {
+        return this.flags.indexOf(FLAGS["QSIDE_CASTLE"]) > -1;
+      }
+      isBigPawn() {
+        return this.flags.indexOf(FLAGS["BIG_PAWN"]) > -1;
+      }
+    }
+
+    const EMPTY = -1;
+
+    const FLAGS = {
+      NORMAL: "n",
+      CAPTURE: "c",
+      BIG_PAWN: "b",
+      EP_CAPTURE: "e",
+      PROMOTION: "p",
+      KSIDE_CASTLE: "k",
+      QSIDE_CASTLE: "q",
+    };
+
+    // prettier-ignore
+    // eslint-disable-next-line
+    const SQUARES = [
+      'a8', 'b8', 'c8', 'd8', 'e8', 'f8', 'g8', 'h8',
+      'a7', 'b7', 'c7', 'd7', 'e7', 'f7', 'g7', 'h7',
+      'a6', 'b6', 'c6', 'd6', 'e6', 'f6', 'g6', 'h6',
+      'a5', 'b5', 'c5', 'd5', 'e5', 'f5', 'g5', 'h5',
+      'a4', 'b4', 'c4', 'd4', 'e4', 'f4', 'g4', 'h4',
+      'a3', 'b3', 'c3', 'd3', 'e3', 'f3', 'g3', 'h3',
+      'a2', 'b2', 'c2', 'd2', 'e2', 'f2', 'g2', 'h2',
+      'a1', 'b1', 'c1', 'd1', 'e1', 'f1', 'g1', 'h1'
+    ];
+
+    const BITS = {
+      NORMAL: 1,
+      CAPTURE: 2,
+      BIG_PAWN: 4,
+      EP_CAPTURE: 8,
+      PROMOTION: 16,
+      KSIDE_CASTLE: 32,
+      QSIDE_CASTLE: 64,
+    };
+
+    // prettier-ignore
+    // eslint-disable-next-line
+    const Ox88 = {
+      a8: 0,   b8: 1,   c8: 2,   d8: 3,   e8: 4,   f8: 5,   g8: 6,   h8: 7,
+      a7: 16,  b7: 17,  c7: 18,  d7: 19,  e7: 20,  f7: 21,  g7: 22,  h7: 23,
+      a6: 32,  b6: 33,  c6: 34,  d6: 35,  e6: 36,  f6: 37,  g6: 38,  h6: 39,
+      a5: 48,  b5: 49,  c5: 50,  d5: 51,  e5: 52,  f5: 53,  g5: 54,  h5: 55,
+      a4: 64,  b4: 65,  c4: 66,  d4: 67,  e4: 68,  f4: 69,  g4: 70,  h4: 71,
+      a3: 80,  b3: 81,  c3: 82,  d3: 83,  e3: 84,  f3: 85,  g3: 86,  h3: 87,
+      a2: 96,  b2: 97,  c2: 98,  d2: 99,  e2: 100, f2: 101, g2: 102, h2: 103,
+      a1: 112, b1: 113, c1: 114, d1: 115, e1: 116, f1: 117, g1: 118, h1: 119
+    };
+
+    const PAWN_OFFSETS = {
+      b: [16, 32, 17, 15],
+      w: [-16, -32, -17, -15],
+    };
+
+    // prettier-ignore
+    // eslint-disable-next-line
+    const PIECE_OFFSETS = {
+      n: [ -18, -33, -31, -14,  18,  33,  31,  14 ],
+      b: [ -17, -15,  17,  15                     ],
+      r: [ -16,   1,  16,  -1                     ],
+      q: [ -17, -16, -15,   1,  17,  16,  15,  -1 ],
+      k: [ -17, -16, -15,   1,  17,  16,  15,  -1 ],
+    };
+
+    // prettier-ignore
+    // eslint-disable-next-line
+    const ATTACKS = [
+      20,  0,  0,  0,  0,  0,  0, 24,  0,  0,  0,  0,  0,  0, 20,  0,
+       0, 20,  0,  0,  0,  0,  0, 24,  0,  0,  0,  0,  0, 20,  0,  0,
+       0,  0, 20,  0,  0,  0,  0, 24,  0,  0,  0,  0, 20,  0,  0,  0,
+       0,  0,  0, 20,  0,  0,  0, 24,  0,  0,  0, 20,  0,  0,  0,  0,
+       0,  0,  0,  0, 20,  0,  0, 24,  0,  0, 20,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0, 20,  2, 24,  2, 20,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  2, 53, 56, 53,  2,  0,  0,  0,  0,  0,  0,
+      24, 24, 24, 24, 24, 24, 56,  0, 56, 24, 24, 24, 24, 24, 24,  0,
+       0,  0,  0,  0,  0,  2, 53, 56, 53,  2,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0, 20,  2, 24,  2, 20,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0, 20,  0,  0, 24,  0,  0, 20,  0,  0,  0,  0,  0,
+       0,  0,  0, 20,  0,  0,  0, 24,  0,  0,  0, 20,  0,  0,  0,  0,
+       0,  0, 20,  0,  0,  0,  0, 24,  0,  0,  0,  0, 20,  0,  0,  0,
+       0, 20,  0,  0,  0,  0,  0, 24,  0,  0,  0,  0,  0, 20,  0,  0,
+      20,  0,  0,  0,  0,  0,  0, 24,  0,  0,  0,  0,  0,  0, 20
+    ];
+
+    // prettier-ignore
+    // eslint-disable-next-line
+    const RAYS = [
+       17,  0,  0,  0,  0,  0,  0, 16,  0,  0,  0,  0,  0,  0, 15,  0,
+        0, 17,  0,  0,  0,  0,  0, 16,  0,  0,  0,  0,  0, 15,  0,  0,
+        0,  0, 17,  0,  0,  0,  0, 16,  0,  0,  0,  0, 15,  0,  0,  0,
+        0,  0,  0, 17,  0,  0,  0, 16,  0,  0,  0, 15,  0,  0,  0,  0,
+        0,  0,  0,  0, 17,  0,  0, 16,  0,  0, 15,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0, 17,  0, 16,  0, 15,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,  0, 17, 16, 15,  0,  0,  0,  0,  0,  0,  0,
+        1,  1,  1,  1,  1,  1,  1,  0, -1, -1, -1, -1, -1, -1, -1,  0,
+        0,  0,  0,  0,  0,  0,-15,-16,-17,  0,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,  0,-15,  0,-16,  0,-17,  0,  0,  0,  0,  0,  0,
+        0,  0,  0,  0,-15,  0,  0,-16,  0,  0,-17,  0,  0,  0,  0,  0,
+        0,  0,  0,-15,  0,  0,  0,-16,  0,  0,  0,-17,  0,  0,  0,  0,
+        0,  0,-15,  0,  0,  0,  0,-16,  0,  0,  0,  0,-17,  0,  0,  0,
+        0,-15,  0,  0,  0,  0,  0,-16,  0,  0,  0,  0,  0,-17,  0,  0,
+      -15,  0,  0,  0,  0,  0,  0,-16,  0,  0,  0,  0,  0,  0,-17
+    ];
+
+    const PIECE_MASKS = { p: 0x1, n: 0x2, b: 0x4, r: 0x8, q: 0x10, k: 0x20 };
+    const SYMBOLS = "pnbrqkPNBRQK";
+    const PROMOTIONS = [KNIGHT, BISHOP, ROOK, QUEEN];
+
+    const RANK_1 = 7;
+    const RANK_2 = 6;
+    /*
+     * const RANK_3 = 5
+     * const RANK_4 = 4
+     * const RANK_5 = 3
+     * const RANK_6 = 2
+     */
+    const RANK_7 = 1;
+    const RANK_8 = 0;
+
+    const SIDES = {
+      [KING]: BITS.KSIDE_CASTLE,
+      [QUEEN]: BITS.QSIDE_CASTLE,
+    };
+
+    const ROOKS = {
+      w: [
+        { square: Ox88.a1, flag: BITS.QSIDE_CASTLE },
+        { square: Ox88.h1, flag: BITS.KSIDE_CASTLE },
+      ],
+      b: [
+        { square: Ox88.a8, flag: BITS.QSIDE_CASTLE },
+        { square: Ox88.h8, flag: BITS.KSIDE_CASTLE },
+      ],
+    };
+
+    const SECOND_RANK = { b: RANK_7, w: RANK_2 };
+
+    const TERMINATION_MARKERS = ["1-0", "0-1", "1/2-1/2", "*"];
+
+    // Extracts the zero-based rank of an 0x88 square.
+    function rank(square) {
+      return square >> 4;
+    }
+
+    // Extracts the zero-based file of an 0x88 square.
+    function file(square) {
+      return square & 0xf;
+    }
+
+    function isDigit(c) {
+      return "0123456789".indexOf(c) !== -1;
+    }
+
+    // Converts a 0x88 square to algebraic notation.
+    function algebraic(square) {
+      const f = file(square);
+      const r = rank(square);
+      return "abcdefgh".substring(f, f + 1) + "87654321".substring(r, r + 1);
+    }
+
+    function swapColor(color) {
+      return color === WHITE ? BLACK : WHITE;
+    }
+
+    function validateFen(fen) {
+      // 1st criterion: 6 space-seperated fields?
+      const tokens = fen.split(/\s+/);
+      if (tokens.length !== 6) {
+        return {
+          ok: false,
+          error: "Invalid FEN: must contain six space-delimited fields",
+        };
+      }
+      // 2nd criterion: move number field is a integer value > 0?
+      const moveNumber = parseInt(tokens[5], 10);
+      if (isNaN(moveNumber) || moveNumber <= 0) {
+        return {
+          ok: false,
+          error: "Invalid FEN: move number must be a positive integer",
+        };
+      }
+      // 3rd criterion: half move counter is an integer >= 0?
+      const halfMoves = parseInt(tokens[4], 10);
+      if (isNaN(halfMoves) || halfMoves < 0) {
+        return {
+          ok: false,
+          error: "Invalid FEN: half move counter number must be a non-negative integer",
+        };
+      }
+      // 4th criterion: 4th field is a valid e.p.-string?
+      if (!/^(-|[abcdefgh][36])$/.test(tokens[3])) {
+        return { ok: false, error: "Invalid FEN: en-passant square is invalid" };
+      }
+      // 5th criterion: 3th field is a valid castle-string?
+      if (/[^kKqQ-]/.test(tokens[2])) {
+        return { ok: false, error: "Invalid FEN: castling availability is invalid" };
+      }
+      // 6th criterion: 2nd field is "w" (white) or "b" (black)?
+      if (!/^(w|b)$/.test(tokens[1])) {
+        return { ok: false, error: "Invalid FEN: side-to-move is invalid" };
+      }
+      // 7th criterion: 1st field contains 8 rows?
+      const rows = tokens[0].split("/");
+      if (rows.length !== 8) {
+        return {
+          ok: false,
+          error: "Invalid FEN: piece data does not contain 8 '/'-delimited rows",
+        };
+      }
+      // 8th criterion: every row is valid?
+      for (let i = 0; i < rows.length; i++) {
+        // check for right sum of fields AND not two numbers in succession
+        let sumFields = 0;
+        let previousWasNumber = false;
+        for (let k = 0; k < rows[i].length; k++) {
+          if (isDigit(rows[i][k])) {
+            if (previousWasNumber) {
+              return {
+                ok: false,
+                error: "Invalid FEN: piece data is invalid (consecutive number)",
+              };
+            }
+            sumFields += parseInt(rows[i][k], 10);
+            previousWasNumber = true;
+          } else {
+            if (!/^[prnbqkPRNBQK]$/.test(rows[i][k])) {
+              return {
+                ok: false,
+                error: "Invalid FEN: piece data is invalid (invalid piece)",
+              };
+            }
+            sumFields += 1;
+            previousWasNumber = false;
+          }
+        }
+        if (sumFields !== 8) {
+          return {
+            ok: false,
+            error: "Invalid FEN: piece data is invalid (too many squares in rank)",
+          };
+        }
+      }
+      // 9th criterion: is en-passant square legal?
+      if ((tokens[3][1] == "3" && tokens[1] == "w") || (tokens[3][1] == "6" && tokens[1] == "b")) {
+        return { ok: false, error: "Invalid FEN: illegal en-passant square" };
+      }
+      // 10th criterion: does chess position contain exact two kings?
+      const kings = [
+        { color: "white", regex: /K/g },
+        { color: "black", regex: /k/g },
+      ];
+      for (const { color, regex } of kings) {
+        if (!regex.test(tokens[0])) {
+          return { ok: false, error: `Invalid FEN: missing ${color} king` };
+        }
+        if ((tokens[0].match(regex) || []).length > 1) {
+          return { ok: false, error: `Invalid FEN: too many ${color} kings` };
+        }
+      }
+      // 11th criterion: are any pawns on the first or eighth rows?
+      if (Array.from(rows[0] + rows[7]).some((char) => char.toUpperCase() === "P")) {
+        return {
+          ok: false,
+          error: "Invalid FEN: some pawns are on the edge rows",
+        };
+      }
+      return { ok: true };
+    }
+
+    // this function is used to uniquely identify ambiguous moves
+    function getDisambiguator(move, moves) {
+      const from = move.from;
+      const to = move.to;
+      const piece = move.piece;
+      let ambiguities = 0;
+      let sameRank = 0;
+      let sameFile = 0;
+      for (let i = 0, len = moves.length; i < len; i++) {
+        const ambigFrom = moves[i].from;
+        const ambigTo = moves[i].to;
+        const ambigPiece = moves[i].piece;
+        /*
+         * if a move of the same piece type ends on the same to square, we'll need
+         * to add a disambiguator to the algebraic notation
+         */
+        if (piece === ambigPiece && from !== ambigFrom && to === ambigTo) {
+          ambiguities++;
+          if (rank(from) === rank(ambigFrom)) {
+            sameRank++;
+          }
+          if (file(from) === file(ambigFrom)) {
+            sameFile++;
+          }
+        }
+      }
+      if (ambiguities > 0) {
+        if (sameRank > 0 && sameFile > 0) {
+          /*
+           * if there exists a similar moving piece on the same rank and file as
+           * the move in question, use the square as the disambiguator
+           */
+          return algebraic(from);
+        } else if (sameFile > 0) {
+          /*
+           * if the moving piece rests on the same file, use the rank symbol as the
+           * disambiguator
+           */
+          return algebraic(from).charAt(1);
+        } else {
+          // else use the file symbol
+          return algebraic(from).charAt(0);
+        }
+      }
+      return "";
+    }
+
+    function addMove(moves, color, from, to, piece, captured = undefined, flags = BITS.NORMAL) {
+      const r = rank(to);
+      if (piece === PAWN && (r === RANK_1 || r === RANK_8)) {
+        for (let i = 0; i < PROMOTIONS.length; i++) {
+          const promotion = PROMOTIONS[i];
+          moves.push({
+            color,
+            from,
+            to,
+            piece,
+            captured,
+            promotion,
+            flags: flags | BITS.PROMOTION,
+          });
+        }
+      } else {
+        moves.push({
+          color,
+          from,
+          to,
+          piece,
+          captured,
+          flags,
+        });
+      }
+    }
+
+    function inferPieceType(san) {
+      let pieceType = san.charAt(0);
+      if (pieceType >= "a" && pieceType <= "h") {
+        const matches = san.match(/[a-h]\d.*[a-h]\d/);
+        if (matches) {
+          return undefined;
+        }
+        return PAWN;
+      }
+      pieceType = pieceType.toLowerCase();
+      if (pieceType === "o") {
+        return KING;
+      }
+      return pieceType;
+    }
+
+    // parses all of the decorators out of a SAN string
+    function strippedSan(move) {
+      return move.replace(/=/, "").replace(/[+#]?[?!]*$/, "");
+    }
+
+    function trimFen(fen) {
+      /*
+       * remove last two fields in FEN string as they're not needed when checking
+       * for repetition
+       */
+      return fen.split(" ").slice(0, 4).join(" ");
+    }
+
+    class Chess {
+      // This game uses chess.js, which is licensed under the BSD-2-Clause license below:
+
+      /** ====================================================================
+       * Copyright (c) 2025, Jeff Hlywa (jhlywa@gmail.com)
+       * All rights reserved.
+       *
+       * Redistribution and use in source and binary forms, with or without
+       * modification, are permitted provided that the following conditions are met:
+       *
+       * 1. Redistributions of source code must retain the above copyright notice,
+       * this list of conditions and the following disclaimer.
+       *
+       * 2. Redistributions in binary form must reproduce the above copyright notice,
+       * this list of conditions and the following disclaimer in the documentation
+       * and/or other materials provided with the distribution.
+       *
+       * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+       * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+       * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+       * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+       * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+       * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+       * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+       * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+       * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+       * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+       * OSSIBILITY OF SUCH DAMAGE.
+       * ================================================================== */
+
+      _board = new Array(128);
+      _turn = WHITE;
+      _header = {};
+      _kings = { w: EMPTY, b: EMPTY };
+      _epSquare = -1;
+      _halfMoves = 0;
+      _moveNumber = 0;
+      _history = [];
+      _comments = {};
+      _castling = { w: 0, b: 0 };
+      // tracks number of times a position has been seen for repetition checking
+      _positionCount = {};
+
+      constructor(fen = DEFAULT_POSITION) {
+        this.load(fen);
+      }
+
+      validateSequenceOfMoves(engineInstance, moves, debug = false) {
+        let invalidMoves = [];
+
+        for (let i = 0; i < moves.length; i++) {
+          const currentMove = moves[i];
+
+          // **Ignore game results (e.g., "0-1", "1-0", "1/2-1/2")**
+          if (["1-0", "0-1", "1/2-1/2"].includes(currentMove)) {
+            if (debug === true) {
+              console.log(`Skipping game result: ${currentMove}`);
+              console.log(`Result: ${currentMove}`);
+            }
+            break;
+          }
+
+          if (debug === true) {
+            console.log(`move ${i}: ${currentMove}`);
+            console.log(`\n${engineInstance.ascii()}\n`);
+          }
+
+          if (engineInstance.isGameOver()) {
+            if (debug === true) {
+              console.log(`Game is over at move ${i}. Skipping remaining moves.`);
+            }
+            break;
+          }
+
+          const moveObject = engineInstance.move(currentMove);
+          if (!moveObject) {
+            console.error(`❌ Invalid move at index ${i}: ${currentMove}`);
+            invalidMoves.push(currentMove);
+            break;
+          }
+        }
+
+        if (invalidMoves.length === 0) {
+          if (debug === true) {
+            console.log("✅ All moves validated! The match is legal.");
+          }
+          return true;
+        } else {
+          if (debug === true) {
+            console.log("❌ Some moves were invalid:", invalidMoves);
+          }
+          return false;
+        }
+      }
+
+      clear({ preserveHeaders = false } = {}) {
+        this._board = new Array(128);
+        this._kings = { w: EMPTY, b: EMPTY };
+        this._turn = WHITE;
+        this._castling = { w: 0, b: 0 };
+        this._epSquare = EMPTY;
+        this._halfMoves = 0;
+        this._moveNumber = 1;
+        this._history = [];
+        this._comments = {};
+        this._header = preserveHeaders ? this._header : {};
+        this._positionCount = {};
+        /*
+         * Delete the SetUp and FEN headers (if preserved), the board is empty and
+         * these headers don't make sense in this state. They'll get added later
+         * via .load() or .put()
+         */
+        delete this._header["SetUp"];
+        delete this._header["FEN"];
+      }
+
+      load(fen, { skipValidation = false, preserveHeaders = false } = {}) {
+        let tokens = fen.split(/\s+/);
+        // append commonly omitted fen tokens
+        if (tokens.length >= 2 && tokens.length < 6) {
+          const adjustments = ["-", "-", "0", "1"];
+          fen = tokens.concat(adjustments.slice(-(6 - tokens.length))).join(" ");
+        }
+        tokens = fen.split(/\s+/);
+        if (!skipValidation) {
+          const { ok, error } = validateFen(fen);
+          if (!ok) {
+            throw new Error(error);
+          }
+        }
+        const position = tokens[0];
+        let square = 0;
+        this.clear({ preserveHeaders });
+        for (let i = 0; i < position.length; i++) {
+          const piece = position.charAt(i);
+          if (piece === "/") {
+            square += 8;
+          } else if (isDigit(piece)) {
+            square += parseInt(piece, 10);
+          } else {
+            const color = piece < "a" ? WHITE : BLACK;
+            this._put({ type: piece.toLowerCase(), color }, algebraic(square));
+            square++;
+          }
+        }
+        this._turn = tokens[1];
+        if (tokens[2].indexOf("K") > -1) {
+          this._castling.w |= BITS.KSIDE_CASTLE;
+        }
+        if (tokens[2].indexOf("Q") > -1) {
+          this._castling.w |= BITS.QSIDE_CASTLE;
+        }
+        if (tokens[2].indexOf("k") > -1) {
+          this._castling.b |= BITS.KSIDE_CASTLE;
+        }
+        if (tokens[2].indexOf("q") > -1) {
+          this._castling.b |= BITS.QSIDE_CASTLE;
+        }
+        this._epSquare = tokens[3] === "-" ? EMPTY : Ox88[tokens[3]];
+        this._halfMoves = parseInt(tokens[4], 10);
+        this._moveNumber = parseInt(tokens[5], 10);
+        this._updateSetup(fen);
+        this._incPositionCount(fen);
+      }
+
+      fen() {
+        let empty = 0;
+        let fen = "";
+        for (let i = Ox88.a8; i <= Ox88.h1; i++) {
+          if (this._board[i]) {
+            if (empty > 0) {
+              fen += empty;
+              empty = 0;
+            }
+            const { color, type: piece } = this._board[i];
+            fen += color === WHITE ? piece.toUpperCase() : piece.toLowerCase();
+          } else {
+            empty++;
+          }
+          if ((i + 1) & 0x88) {
+            if (empty > 0) {
+              fen += empty;
+            }
+            if (i !== Ox88.h1) {
+              fen += "/";
+            }
+            empty = 0;
+            i += 8;
+          }
+        }
+        let castling = "";
+        if (this._castling[WHITE] & BITS.KSIDE_CASTLE) {
+          castling += "K";
+        }
+        if (this._castling[WHITE] & BITS.QSIDE_CASTLE) {
+          castling += "Q";
+        }
+        if (this._castling[BLACK] & BITS.KSIDE_CASTLE) {
+          castling += "k";
+        }
+        if (this._castling[BLACK] & BITS.QSIDE_CASTLE) {
+          castling += "q";
+        }
+        // do we have an empty castling flag?
+        castling = castling || "-";
+        let epSquare = "-";
+        /*
+         * only print the ep square if en passant is a valid move (pawn is present
+         * and ep capture is not pinned)
+         */
+        if (this._epSquare !== EMPTY) {
+          const bigPawnSquare = this._epSquare + (this._turn === WHITE ? 16 : -16);
+          const squares = [bigPawnSquare + 1, bigPawnSquare - 1];
+          for (const square of squares) {
+            // is the square off the board?
+            if (square & 0x88) {
+              continue;
+            }
+            const color = this._turn;
+            // is there a pawn that can capture the epSquare?
+            if (this._board[square]?.color === color && this._board[square]?.type === PAWN) {
+              // if the pawn makes an ep capture, does it leave it's king in check?
+              this._makeMove({
+                color,
+                from: square,
+                to: this._epSquare,
+                piece: PAWN,
+                captured: PAWN,
+                flags: BITS.EP_CAPTURE,
+              });
+              const isLegal = !this._isKingAttacked(color);
+              this._undoMove();
+              // if ep is legal, break and set the ep square in the FEN output
+              if (isLegal) {
+                epSquare = algebraic(this._epSquare);
+                break;
+              }
+            }
+          }
+        }
+        return [fen, this._turn, castling, epSquare, this._halfMoves, this._moveNumber].join(" ");
+      }
+
+      /*
+       * Called when the initial board setup is changed with put() or remove().
+       * modifies the SetUp and FEN properties of the header object. If the FEN
+       * is equal to the default position, the SetUp and FEN are deleted the setup
+       * is only updated if history.length is zero, ie moves haven't been made.
+       */
+      _updateSetup(fen) {
+        if (this._history.length > 0) return;
+        if (fen !== DEFAULT_POSITION) {
+          this._header["SetUp"] = "1";
+          this._header["FEN"] = fen;
+        } else {
+          delete this._header["SetUp"];
+          delete this._header["FEN"];
+        }
+      }
+
+      reset() {
+        this.load(DEFAULT_POSITION);
+      }
+
+      get(square) {
+        return this._board[Ox88[square]];
+      }
+
+      put({ type, color }, square) {
+        if (this._put({ type, color }, square)) {
+          this._updateCastlingRights();
+          this._updateEnPassantSquare();
+          this._updateSetup(this.fen());
+          return true;
+        }
+        return false;
+      }
+
+      _put({ type, color }, square) {
+        // check for piece
+        if (SYMBOLS.indexOf(type.toLowerCase()) === -1) {
+          return false;
+        }
+        // check for valid square
+        if (!(square in Ox88)) {
+          return false;
+        }
+        const sq = Ox88[square];
+        // don't let the user place more than one king
+        if (type == KING && !(this._kings[color] == EMPTY || this._kings[color] == sq)) {
+          return false;
+        }
+        const currentPieceOnSquare = this._board[sq];
+        // if one of the kings will be replaced by the piece from args, set the `_kings` respective entry to `EMPTY`
+        if (currentPieceOnSquare && currentPieceOnSquare.type === KING) {
+          this._kings[currentPieceOnSquare.color] = EMPTY;
+        }
+        this._board[sq] = { type: type, color: color };
+        if (type === KING) {
+          this._kings[color] = sq;
+        }
+        return true;
+      }
+
+      remove(square) {
+        const piece = this.get(square);
+        delete this._board[Ox88[square]];
+        if (piece && piece.type === KING) {
+          this._kings[piece.color] = EMPTY;
+        }
+        this._updateCastlingRights();
+        this._updateEnPassantSquare();
+        this._updateSetup(this.fen());
+        return piece;
+      }
+
+      _updateCastlingRights() {
+        const whiteKingInPlace =
+          this._board[Ox88.e1]?.type === KING && this._board[Ox88.e1]?.color === WHITE;
+        const blackKingInPlace =
+          this._board[Ox88.e8]?.type === KING && this._board[Ox88.e8]?.color === BLACK;
+        if (
+          !whiteKingInPlace ||
+          this._board[Ox88.a1]?.type !== ROOK ||
+          this._board[Ox88.a1]?.color !== WHITE
+        ) {
+          this._castling.w &= ~BITS.QSIDE_CASTLE;
+        }
+        if (
+          !whiteKingInPlace ||
+          this._board[Ox88.h1]?.type !== ROOK ||
+          this._board[Ox88.h1]?.color !== WHITE
+        ) {
+          this._castling.w &= ~BITS.KSIDE_CASTLE;
+        }
+        if (
+          !blackKingInPlace ||
+          this._board[Ox88.a8]?.type !== ROOK ||
+          this._board[Ox88.a8]?.color !== BLACK
+        ) {
+          this._castling.b &= ~BITS.QSIDE_CASTLE;
+        }
+        if (
+          !blackKingInPlace ||
+          this._board[Ox88.h8]?.type !== ROOK ||
+          this._board[Ox88.h8]?.color !== BLACK
+        ) {
+          this._castling.b &= ~BITS.KSIDE_CASTLE;
+        }
+      }
+
+      _updateEnPassantSquare() {
+        if (this._epSquare === EMPTY) {
+          return;
+        }
+        const startSquare = this._epSquare + (this._turn === WHITE ? -16 : 16);
+        const currentSquare = this._epSquare + (this._turn === WHITE ? 16 : -16);
+        const attackers = [currentSquare + 1, currentSquare - 1];
+        if (
+          this._board[startSquare] !== null ||
+          this._board[this._epSquare] !== null ||
+          this._board[currentSquare]?.color !== swapColor(this._turn) ||
+          this._board[currentSquare]?.type !== PAWN
+        ) {
+          this._epSquare = EMPTY;
+          return;
+        }
+        const canCapture = (square) =>
+          !(square & 0x88) &&
+          this._board[square]?.color === this._turn &&
+          this._board[square]?.type === PAWN;
+        if (!attackers.some(canCapture)) {
+          this._epSquare = EMPTY;
+        }
+      }
+
+      _attacked(color, square, verbose) {
+        const attackers = [];
+        for (let i = Ox88.a8; i <= Ox88.h1; i++) {
+          // did we run off the end of the board
+          if (i & 0x88) {
+            i += 7;
+            continue;
+          }
+          // if empty square or wrong color
+          if (this._board[i] === undefined || this._board[i].color !== color) {
+            continue;
+          }
+          const piece = this._board[i];
+          const difference = i - square;
+          // skip - to/from square are the same
+          if (difference === 0) {
+            continue;
+          }
+          const index = difference + 119;
+          if (ATTACKS[index] & PIECE_MASKS[piece.type]) {
+            if (piece.type === PAWN) {
+              if (
+                (difference > 0 && piece.color === WHITE) ||
+                (difference <= 0 && piece.color === BLACK)
+              ) {
+                if (!verbose) {
+                  return true;
+                } else {
+                  attackers.push(algebraic(i));
+                }
+              }
+              continue;
+            }
+            // if the piece is a knight or a king
+            if (piece.type === "n" || piece.type === "k") {
+              if (!verbose) {
+                return true;
+              } else {
+                attackers.push(algebraic(i));
+                continue;
+              }
+            }
+            const offset = RAYS[index];
+            let j = i + offset;
+            let blocked = false;
+            while (j !== square) {
+              if (this._board[j] != null) {
+                blocked = true;
+                break;
+              }
+              j += offset;
+            }
+            if (!blocked) {
+              if (!verbose) {
+                return true;
+              } else {
+                attackers.push(algebraic(i));
+                continue;
+              }
+            }
+          }
+        }
+        if (verbose) {
+          return attackers;
+        } else {
+          return false;
+        }
+      }
+
+      attackers(square, attackedBy) {
+        if (!attackedBy) {
+          return this._attacked(this._turn, Ox88[square], true);
+        } else {
+          return this._attacked(attackedBy, Ox88[square], true);
+        }
+      }
+
+      _isKingAttacked(color) {
+        const square = this._kings[color];
+        return square === -1 ? false : this._attacked(swapColor(color), square);
+      }
+
+      isAttacked(square, attackedBy) {
+        return this._attacked(attackedBy, Ox88[square]);
+      }
+
+      isCheck() {
+        return this._isKingAttacked(this._turn);
+      }
+
+      inCheck() {
+        return this.isCheck();
+      }
+
+      isCheckmate() {
+        return this.isCheck() && this._moves().length === 0;
+      }
+
+      isStalemate() {
+        return !this.isCheck() && this._moves().length === 0;
+      }
+
+      isInsufficientMaterial() {
+        /*
+         * k.b. vs k.b. (of opposite colors) with mate in 1:
+         * 8/8/8/8/1b6/8/B1k5/K7 b - - 0 1
+         *
+         * k.b. vs k.n. with mate in 1:
+         * 8/8/8/8/1n6/8/B7/K1k5 b - - 2 1
+         */
+        const pieces = {
+          b: 0,
+          n: 0,
+          r: 0,
+          q: 0,
+          k: 0,
+          p: 0,
+        };
+        const bishops = [];
+        let numPieces = 0;
+        let squareColor = 0;
+        for (let i = Ox88.a8; i <= Ox88.h1; i++) {
+          squareColor = (squareColor + 1) % 2;
+          if (i & 0x88) {
+            i += 7;
+            continue;
+          }
+          const piece = this._board[i];
+          if (piece) {
+            pieces[piece.type] = piece.type in pieces ? pieces[piece.type] + 1 : 1;
+            if (piece.type === BISHOP) {
+              bishops.push(squareColor);
+            }
+            numPieces++;
+          }
+        }
+        // k vs. k
+        if (numPieces === 2) {
+          return true;
+        } else if (
+          // k vs. kn .... or .... k vs. kb
+          numPieces === 3 &&
+          (pieces[BISHOP] === 1 || pieces[KNIGHT] === 1)
+        ) {
+          return true;
+        } else if (numPieces === pieces[BISHOP] + 2) {
+          // kb vs. kb where any number of bishops are all on the same color
+          let sum = 0;
+          const len = bishops.length;
+          for (let i = 0; i < len; i++) {
+            sum += bishops[i];
+          }
+          if (sum === 0 || sum === len) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      isThreefoldRepetition() {
+        return this._getPositionCount(this.fen()) >= 3;
+      }
+
+      isDrawByFiftyMoves() {
+        return this._halfMoves >= 100; // 50 moves per side = 100 half moves
+      }
+
+      isDraw() {
+        return (
+          this.isDrawByFiftyMoves() ||
+          this.isStalemate() ||
+          this.isInsufficientMaterial() ||
+          this.isThreefoldRepetition()
+        );
+      }
+
+      isGameOver() {
+        return this.isCheckmate() || this.isStalemate() || this.isDraw();
+      }
+
+      moves({ verbose = false, square = undefined, piece = undefined } = {}) {
+        const moves = this._moves({ square, piece });
+        if (verbose) {
+          return moves.map((move) => new Move(this, move));
+        } else {
+          return moves.map((move) => this._moveToSan(move, moves));
+        }
+      }
+
+      _moves({ legal = true, piece = undefined, square = undefined } = {}) {
+        const forSquare = square ? square.toLowerCase() : undefined;
+        const forPiece = piece?.toLowerCase();
+        const moves = [];
+        const us = this._turn;
+        const them = swapColor(us);
+        let firstSquare = Ox88.a8;
+        let lastSquare = Ox88.h1;
+        let singleSquare = false;
+        // are we generating moves for a single square?
+        if (forSquare) {
+          // illegal square, return empty moves
+          if (!(forSquare in Ox88)) {
+            return [];
+          } else {
+            firstSquare = lastSquare = Ox88[forSquare];
+            singleSquare = true;
+          }
+        }
+        for (let from = firstSquare; from <= lastSquare; from++) {
+          // did we run off the end of the board
+          if (from & 0x88) {
+            from += 7;
+            continue;
+          }
+          // empty square or opponent, skip
+          if (!this._board[from] || this._board[from].color === them) {
+            continue;
+          }
+          const { type } = this._board[from];
+          let to;
+          if (type === PAWN) {
+            if (forPiece && forPiece !== type) continue;
+            // single square, non-capturing
+            to = from + PAWN_OFFSETS[us][0];
+            if (!this._board[to]) {
+              addMove(moves, us, from, to, PAWN);
+              // double square
+              to = from + PAWN_OFFSETS[us][1];
+              if (SECOND_RANK[us] === rank(from) && !this._board[to]) {
+                addMove(moves, us, from, to, PAWN, undefined, BITS.BIG_PAWN);
+              }
+            }
+            // pawn captures
+            for (let j = 2; j < 4; j++) {
+              to = from + PAWN_OFFSETS[us][j];
+              if (to & 0x88) continue;
+              if (this._board[to]?.color === them) {
+                addMove(moves, us, from, to, PAWN, this._board[to].type, BITS.CAPTURE);
+              } else if (to === this._epSquare) {
+                addMove(moves, us, from, to, PAWN, PAWN, BITS.EP_CAPTURE);
+              }
+            }
+          } else {
+            if (forPiece && forPiece !== type) continue;
+            for (let j = 0, len = PIECE_OFFSETS[type].length; j < len; j++) {
+              const offset = PIECE_OFFSETS[type][j];
+              to = from;
+              while (true) {
+                to += offset;
+                if (to & 0x88) break;
+                if (!this._board[to]) {
+                  addMove(moves, us, from, to, type);
+                } else {
+                  // own color, stop loop
+                  if (this._board[to].color === us) break;
+                  addMove(moves, us, from, to, type, this._board[to].type, BITS.CAPTURE);
+                  break;
+                }
+                /* break, if knight or king */
+                if (type === KNIGHT || type === KING) break;
+              }
+            }
+          }
+        }
+        /*
+         * check for castling if we're:
+         *   a) generating all moves, or
+         *   b) doing single square move generation on the king's square
+         */
+        if (forPiece === undefined || forPiece === KING) {
+          if (!singleSquare || lastSquare === this._kings[us]) {
+            // king-side castling
+            if (this._castling[us] & BITS.KSIDE_CASTLE) {
+              const castlingFrom = this._kings[us];
+              const castlingTo = castlingFrom + 2;
+              if (
+                !this._board[castlingFrom + 1] &&
+                !this._board[castlingTo] &&
+                !this._attacked(them, this._kings[us]) &&
+                !this._attacked(them, castlingFrom + 1) &&
+                !this._attacked(them, castlingTo)
+              ) {
+                addMove(moves, us, this._kings[us], castlingTo, KING, undefined, BITS.KSIDE_CASTLE);
+              }
+            }
+            // queen-side castling
+            if (this._castling[us] & BITS.QSIDE_CASTLE) {
+              const castlingFrom = this._kings[us];
+              const castlingTo = castlingFrom - 2;
+              if (
+                !this._board[castlingFrom - 1] &&
+                !this._board[castlingFrom - 2] &&
+                !this._board[castlingFrom - 3] &&
+                !this._attacked(them, this._kings[us]) &&
+                !this._attacked(them, castlingFrom - 1) &&
+                !this._attacked(them, castlingTo)
+              ) {
+                addMove(moves, us, this._kings[us], castlingTo, KING, undefined, BITS.QSIDE_CASTLE);
+              }
+            }
+          }
+        }
+        /*
+         * return all pseudo-legal moves (this includes moves that allow the king
+         * to be captured)
+         */
+        if (!legal || this._kings[us] === -1) {
+          return moves;
+        }
+        // filter out illegal moves
+        const legalMoves = [];
+        for (let i = 0, len = moves.length; i < len; i++) {
+          this._makeMove(moves[i]);
+          if (!this._isKingAttacked(us)) {
+            legalMoves.push(moves[i]);
+          }
+          this._undoMove();
+        }
+        return legalMoves;
+      }
+
+      move(move, { strict = false } = {}) {
+        /*
+         * The move function can be called with in the following parameters:
+         *
+         * .move('Nxb7')       <- argument is a case-sensitive SAN string
+         *
+         * .move({ from: 'h7', <- argument is a move object
+         *         to :'h8',
+         *         promotion: 'q' })
+         *
+         *
+         * An optional strict argument may be supplied to tell chess.js to
+         * strictly follow the SAN specification.
+         */
+        let moveObj = null;
+        if (typeof move === "string") {
+          moveObj = this._moveFromSan(move, strict);
+        } else if (typeof move === "object") {
+          const moves = this._moves();
+          // convert the pretty move object to an ugly move object
+          for (let i = 0, len = moves.length; i < len; i++) {
+            if (
+              move.from === algebraic(moves[i].from) &&
+              move.to === algebraic(moves[i].to) &&
+              (!("promotion" in moves[i]) || move.promotion === moves[i].promotion)
+            ) {
+              moveObj = moves[i];
+              break;
+            }
+          }
+        }
+        // failed to find move
+        if (!moveObj) {
+          if (typeof move === "string") {
+            throw new Error(`Invalid move: ${move}`);
+          } else {
+            throw new Error(`Invalid move: ${JSON.stringify(move)}`);
+          }
+        }
+        /*
+         * need to make a copy of move because we can't generate SAN after the move
+         * is made
+         */
+        const prettyMove = new Move(this, moveObj);
+        this._makeMove(moveObj);
+        this._incPositionCount(prettyMove.after);
+        return prettyMove;
+      }
+
+      _push(move) {
+        this._history.push({
+          move,
+          kings: { b: this._kings.b, w: this._kings.w },
+          turn: this._turn,
+          castling: { b: this._castling.b, w: this._castling.w },
+          epSquare: this._epSquare,
+          halfMoves: this._halfMoves,
+          moveNumber: this._moveNumber,
+        });
+      }
+
+      _makeMove(move) {
+        const us = this._turn;
+        const them = swapColor(us);
+        this._push(move);
+        this._board[move.to] = this._board[move.from];
+        delete this._board[move.from];
+        // if ep capture, remove the captured pawn
+        if (move.flags & BITS.EP_CAPTURE) {
+          if (this._turn === BLACK) {
+            delete this._board[move.to - 16];
+          } else {
+            delete this._board[move.to + 16];
+          }
+        }
+        // if pawn promotion, replace with new piece
+        if (move.promotion) {
+          this._board[move.to] = { type: move.promotion, color: us };
+        }
+        // if we moved the king
+        if (this._board[move.to].type === KING) {
+          this._kings[us] = move.to;
+          // if we castled, move the rook next to the king
+          if (move.flags & BITS.KSIDE_CASTLE) {
+            const castlingTo = move.to - 1;
+            const castlingFrom = move.to + 1;
+            this._board[castlingTo] = this._board[castlingFrom];
+            delete this._board[castlingFrom];
+          } else if (move.flags & BITS.QSIDE_CASTLE) {
+            const castlingTo = move.to + 1;
+            const castlingFrom = move.to - 2;
+            this._board[castlingTo] = this._board[castlingFrom];
+            delete this._board[castlingFrom];
+          }
+          // turn off castling
+          this._castling[us] = 0;
+        }
+        // turn off castling if we move a rook
+        if (this._castling[us]) {
+          for (let i = 0, len = ROOKS[us].length; i < len; i++) {
+            if (move.from === ROOKS[us][i].square && this._castling[us] & ROOKS[us][i].flag) {
+              this._castling[us] ^= ROOKS[us][i].flag;
+              break;
+            }
+          }
+        }
+        // turn off castling if we capture a rook
+        if (this._castling[them]) {
+          for (let i = 0, len = ROOKS[them].length; i < len; i++) {
+            if (move.to === ROOKS[them][i].square && this._castling[them] & ROOKS[them][i].flag) {
+              this._castling[them] ^= ROOKS[them][i].flag;
+              break;
+            }
+          }
+        }
+        // if big pawn move, update the en passant square
+        if (move.flags & BITS.BIG_PAWN) {
+          if (us === BLACK) {
+            this._epSquare = move.to - 16;
+          } else {
+            this._epSquare = move.to + 16;
+          }
+        } else {
+          this._epSquare = EMPTY;
+        }
+        // reset the 50 move counter if a pawn is moved or a piece is captured
+        if (move.piece === PAWN) {
+          this._halfMoves = 0;
+        } else if (move.flags & (BITS.CAPTURE | BITS.EP_CAPTURE)) {
+          this._halfMoves = 0;
+        } else {
+          this._halfMoves++;
+        }
+        if (us === BLACK) {
+          this._moveNumber++;
+        }
+        this._turn = them;
+      }
+
+      undo() {
+        const move = this._undoMove();
+        if (move) {
+          const prettyMove = new Move(this, move);
+          this._decPositionCount(prettyMove.after);
+          return prettyMove;
+        }
+        return null;
+      }
+
+      _undoMove() {
+        const old = this._history.pop();
+        if (old === undefined) {
+          return null;
+        }
+        const move = old.move;
+        this._kings = old.kings;
+        this._turn = old.turn;
+        this._castling = old.castling;
+        this._epSquare = old.epSquare;
+        this._halfMoves = old.halfMoves;
+        this._moveNumber = old.moveNumber;
+        const us = this._turn;
+        const them = swapColor(us);
+        this._board[move.from] = this._board[move.to];
+        this._board[move.from].type = move.piece; // to undo any promotions
+        delete this._board[move.to];
+        if (move.captured) {
+          if (move.flags & BITS.EP_CAPTURE) {
+            // en passant capture
+            let index;
+            if (us === BLACK) {
+              index = move.to - 16;
+            } else {
+              index = move.to + 16;
+            }
+            this._board[index] = { type: PAWN, color: them };
+          } else {
+            // regular capture
+            this._board[move.to] = { type: move.captured, color: them };
+          }
+        }
+        if (move.flags & (BITS.KSIDE_CASTLE | BITS.QSIDE_CASTLE)) {
+          let castlingTo, castlingFrom;
+          if (move.flags & BITS.KSIDE_CASTLE) {
+            castlingTo = move.to + 1;
+            castlingFrom = move.to - 1;
+          } else {
+            castlingTo = move.to - 2;
+            castlingFrom = move.to + 1;
+          }
+          this._board[castlingTo] = this._board[castlingFrom];
+          delete this._board[castlingFrom];
+        }
+        return move;
+      }
+
+      pgn({ newline = "\n", maxWidth = 0 } = {}) {
+        /*
+         * using the specification from http://www.chessclub.com/help/PGN-spec
+         * example for html usage: .pgn({ max_width: 72, newline_char: "<br />" })
+         */
+        const result = [];
+        let headerExists = false;
+        /* add the PGN header information */
+        for (const i in this._header) {
+          /*
+           * TODO: order of enumerated properties in header object is not
+           * guaranteed, see ECMA-262 spec (section 12.6.4)
+           */
+          result.push("[" + i + ' "' + this._header[i] + '"]' + newline);
+          headerExists = true;
+        }
+        if (headerExists && this._history.length) {
+          result.push(newline);
+        }
+        const appendComment = (moveString) => {
+          const comment = this._comments[this.fen()];
+          if (typeof comment !== "undefined") {
+            const delimiter = moveString.length > 0 ? " " : "";
+            moveString = `${moveString}${delimiter}{${comment}}`;
+          }
+          return moveString;
+        };
+        // pop all of history onto reversed_history
+        const reversedHistory = [];
+        while (this._history.length > 0) {
+          reversedHistory.push(this._undoMove());
+        }
+        const moves = [];
+        let moveString = "";
+        // special case of a commented starting position with no moves
+        if (reversedHistory.length === 0) {
+          moves.push(appendComment(""));
+        }
+        // build the list of moves.  a move_string looks like: "3. e3 e6"
+        while (reversedHistory.length > 0) {
+          moveString = appendComment(moveString);
+          const move = reversedHistory.pop();
+          // make TypeScript stop complaining about move being undefined
+          if (!move) {
+            break;
+          }
+          // if the position started with black to move, start PGN with #. ...
+          if (!this._history.length && move.color === "b") {
+            const prefix = `${this._moveNumber}. ...`;
+            // is there a comment preceding the first move?
+            moveString = moveString ? `${moveString} ${prefix}` : prefix;
+          } else if (move.color === "w") {
+            // store the previous generated move_string if we have one
+            if (moveString.length) {
+              moves.push(moveString);
+            }
+            moveString = this._moveNumber + ".";
+          }
+          moveString = moveString + " " + this._moveToSan(move, this._moves({ legal: true }));
+          this._makeMove(move);
+        }
+        // are there any other leftover moves?
+        if (moveString.length) {
+          moves.push(appendComment(moveString));
+        }
+        // is there a result?
+        if (typeof this._header.Result !== "undefined") {
+          moves.push(this._header.Result);
+        }
+        /*
+         * history should be back to what it was before we started generating PGN,
+         * so join together moves
+         */
+        if (maxWidth === 0) {
+          return result.join("") + moves.join(" ");
+        }
+        // TODO (jah): huh?
+        const strip = function () {
+          if (result.length > 0 && result[result.length - 1] === " ") {
+            result.pop();
+            return true;
+          }
+          return false;
+        };
+        // NB: this does not preserve comment whitespace.
+        const wrapComment = function (width, move) {
+          for (const token of move.split(" ")) {
+            if (!token) {
+              continue;
+            }
+            if (width + token.length > maxWidth) {
+              while (strip()) {
+                width--;
+              }
+              result.push(newline);
+              width = 0;
+            }
+            result.push(token);
+            width += token.length;
+            result.push(" ");
+            width++;
+          }
+          if (strip()) {
+            width--;
+          }
+          return width;
+        };
+        // wrap the PGN output at max_width
+        let currentWidth = 0;
+        for (let i = 0; i < moves.length; i++) {
+          if (currentWidth + moves[i].length > maxWidth) {
+            if (moves[i].includes("{")) {
+              currentWidth = wrapComment(currentWidth, moves[i]);
+              continue;
+            }
+          }
+          // if the current move will push past max_width
+          if (currentWidth + moves[i].length > maxWidth && i !== 0) {
+            // don't end the line with whitespace
+            if (result[result.length - 1] === " ") {
+              result.pop();
+            }
+            result.push(newline);
+            currentWidth = 0;
+          } else if (i !== 0) {
+            result.push(" ");
+            currentWidth++;
+          }
+          result.push(moves[i]);
+          currentWidth += moves[i].length;
+        }
+        return result.join("");
+      }
+
+      /*
+       * @deprecated Use `setHeader` and `getHeaders` instead.
+       */
+      header(...args) {
+        for (let i = 0; i < args.length; i += 2) {
+          if (typeof args[i] === "string" && typeof args[i + 1] === "string") {
+            this._header[args[i]] = args[i + 1];
+          }
+        }
+        return this._header;
+      }
+
+      setHeader(key, value) {
+        this._header[key] = value;
+        return this._header;
+      }
+
+      removeHeader(key) {
+        if (key in this._header) {
+          delete this._header[key];
+          return true;
+        }
+        return false;
+      }
+
+      getHeaders() {
+        return this._header;
+      }
+
+      loadPgn(pgn, { strict = false, newlineChar = "\r?\n" } = {}) {
+        function mask(str) {
+          return str.replace(/\\/g, "\\");
+        }
+        function parsePgnHeader(header) {
+          const headerObj = {};
+          const headers = header.split(new RegExp(mask(newlineChar)));
+          let key = "";
+          let value = "";
+          for (let i = 0; i < headers.length; i++) {
+            const regex = /^\s*\[\s*([A-Za-z]+)\s*"(.*)"\s*\]\s*$/;
+            key = headers[i].replace(regex, "$1");
+            value = headers[i].replace(regex, "$2");
+            if (key.trim().length > 0) {
+              headerObj[key] = value;
+            }
+          }
+          return headerObj;
+        }
+        // strip whitespace from head/tail of PGN block
+        pgn = pgn.trim();
+        /*
+         * RegExp to split header. Takes advantage of the fact that header and movetext
+         * will always have a blank line between them (ie, two newline_char's). Handles
+         * case where movetext is empty by matching newlineChar until end of string is
+         * matched - effectively trimming from the end extra newlineChar.
+         *
+         * With default newline_char, will equal:
+         * /^(\[((?:\r?\n)|.)*\])((?:\s*\r?\n){2}|(?:\s*\r?\n)*$)/
+         */
+        const headerRegex = new RegExp(
+          "^(\\[((?:" +
+            mask(newlineChar) +
+            ")|.)*\\])" +
+            "((?:\\s*" +
+            mask(newlineChar) +
+            "){2}|(?:\\s*" +
+            mask(newlineChar) +
+            ")*$)",
+        );
+        // If no header given, begin with moves.
+        const headerRegexResults = headerRegex.exec(pgn);
+        const headerString = headerRegexResults
+          ? headerRegexResults.length >= 2
+            ? headerRegexResults[1]
+            : ""
+          : "";
+        // Put the board in the starting position
+        this.reset();
+        // parse PGN header
+        const headers = parsePgnHeader(headerString);
+        let fen = "";
+        for (const key in headers) {
+          // check to see user is including fen (possibly with wrong tag case)
+          if (key.toLowerCase() === "fen") {
+            fen = headers[key];
+          }
+          this.header(key, headers[key]);
+        }
+        /*
+         * the permissive parser should attempt to load a fen tag, even if it's the
+         * wrong case and doesn't include a corresponding [SetUp "1"] tag
+         */
+        if (!strict) {
+          if (fen) {
+            this.load(fen, { preserveHeaders: true });
+          }
+        } else {
+          /*
+           * strict parser - load the starting position indicated by [Setup '1']
+           * and [FEN position]
+           */
+          if (headers["SetUp"] === "1") {
+            if (!("FEN" in headers)) {
+              throw new Error("Invalid PGN: FEN tag must be supplied with SetUp tag");
+            }
+            // don't clear the headers when loading
+            this.load(headers["FEN"], { preserveHeaders: true });
+          }
+        }
+        /*
+         * NB: the regexes below that delete move numbers, recursive annotations,
+         * and numeric annotation glyphs may also match text in comments. To
+         * prevent this, we transform comments by hex-encoding them in place and
+         * decoding them again after the other tokens have been deleted.
+         *
+         * While the spec states that PGN files should be ASCII encoded, we use
+         * {en,de}codeURIComponent here to support arbitrary UTF8 as a convenience
+         * for modern users
+         */
+        function toHex(s) {
+          return Array.from(s)
+            .map(function (c) {
+              /*
+               * encodeURI doesn't transform most ASCII characters, so we handle
+               * these ourselves
+               */
+              return c.charCodeAt(0) < 128
+                ? c.charCodeAt(0).toString(16)
+                : encodeURIComponent(c).replace(/%/g, "").toLowerCase();
+            })
+            .join("");
+        }
+        function fromHex(s) {
+          return s.length == 0
+            ? ""
+            : decodeURIComponent("%" + (s.match(/.{1,2}/g) || []).join("%"));
+        }
+        const encodeComment = function (s) {
+          s = s.replace(new RegExp(mask(newlineChar), "g"), " ");
+          return `{${toHex(s.slice(1, s.length - 1))}}`;
+        };
+        const decodeComment = function (s) {
+          if (s.startsWith("{") && s.endsWith("}")) {
+            return fromHex(s.slice(1, s.length - 1));
+          }
+        };
+        // delete header to get the moves
+        let ms = pgn
+          .replace(headerString, "")
+          .replace(
+            // encode comments so they don't get deleted below
+            new RegExp(`({[^}]*})+?|;([^${mask(newlineChar)}]*)`, "g"),
+            function (_match, bracket, semicolon) {
+              return bracket !== undefined
+                ? encodeComment(bracket)
+                : " " + encodeComment(`{${semicolon.slice(1)}}`);
+            },
+          )
+          .replace(new RegExp(mask(newlineChar), "g"), " ");
+        // delete recursive annotation variations
+        const ravRegex = /(\([^()]+\))+?/g;
+        while (ravRegex.test(ms)) {
+          ms = ms.replace(ravRegex, "");
+        }
+        // delete move numbers
+        ms = ms.replace(/\d+\.(\.\.)?/g, "");
+        // delete ... indicating black to move
+        ms = ms.replace(/\.\.\./g, "");
+        /* delete numeric annotation glyphs */
+        ms = ms.replace(/\$\d+/g, "");
+        // trim and get array of moves
+        let moves = ms.trim().split(new RegExp(/\s+/));
+        // delete empty entries
+        moves = moves.filter((move) => move !== "");
+        let result = "";
+        for (let halfMove = 0; halfMove < moves.length; halfMove++) {
+          const comment = decodeComment(moves[halfMove]);
+          if (comment !== undefined) {
+            this._comments[this.fen()] = comment;
+            continue;
+          }
+          const move = this._moveFromSan(moves[halfMove], strict);
+          // invalid move
+          if (move == null) {
+            // was the move an end of game marker
+            if (TERMINATION_MARKERS.indexOf(moves[halfMove]) > -1) {
+              result = moves[halfMove];
+            } else {
+              throw new Error(`Invalid move in PGN: ${moves[halfMove]}`);
+            }
+          } else {
+            // reset the end of game marker if making a valid move
+            result = "";
+            this._makeMove(move);
+            this._incPositionCount(this.fen());
+          }
+        }
+        /*
+         * Per section 8.2.6 of the PGN spec, the Result tag pair must match match
+         * the termination marker. Only do this when headers are present, but the
+         * result tag is missing
+         */
+        if (result && Object.keys(this._header).length && !this._header["Result"]) {
+          this.header("Result", result);
+        }
+      }
+
+      /*
+       * Convert a move from 0x88 coordinates to Standard Algebraic Notation
+       * (SAN)
+       *
+       * @param {boolean} strict Use the strict SAN parser. It will throw errors
+       * on overly disambiguated moves (see below):
+       *
+       * r1bqkbnr/ppp2ppp/2n5/1B1pP3/4P3/8/PPPP2PP/RNBQK1NR b KQkq - 2 4
+       * 4. ... Nge7 is overly disambiguated because the knight on c6 is pinned
+       * 4. ... Ne7 is technically the valid SAN
+       */
+      _moveToSan(move, moves) {
+        let output = "";
+        if (move.flags & BITS.KSIDE_CASTLE) {
+          output = "O-O";
+        } else if (move.flags & BITS.QSIDE_CASTLE) {
+          output = "O-O-O";
+        } else {
+          if (move.piece !== PAWN) {
+            const disambiguator = getDisambiguator(move, moves);
+            output += move.piece.toUpperCase() + disambiguator;
+          }
+          if (move.flags & (BITS.CAPTURE | BITS.EP_CAPTURE)) {
+            if (move.piece === PAWN) {
+              output += algebraic(move.from)[0];
+            }
+            output += "x";
+          }
+          output += algebraic(move.to);
+          if (move.promotion) {
+            output += "=" + move.promotion.toUpperCase();
+          }
+        }
+        this._makeMove(move);
+        if (this.isCheck()) {
+          if (this.isCheckmate()) {
+            output += "#";
+          } else {
+            output += "+";
+          }
+        }
+        this._undoMove();
+        return output;
+      }
+
+      // convert a move from Standard Algebraic Notation (SAN) to 0x88 coordinates
+      _moveFromSan(move, strict = false) {
+        // strip off any move decorations: e.g Nf3+?! becomes Nf3
+        const cleanMove = strippedSan(move);
+        let pieceType = inferPieceType(cleanMove);
+        let moves = this._moves({ legal: true, piece: pieceType });
+        // strict parser
+        for (let i = 0, len = moves.length; i < len; i++) {
+          if (cleanMove === strippedSan(this._moveToSan(moves[i], moves))) {
+            return moves[i];
+          }
+        }
+        // the strict parser failed
+        if (strict) {
+          return null;
+        }
+        let piece = undefined;
+        let matches = undefined;
+        let from = undefined;
+        let to = undefined;
+        let promotion = undefined;
+        /*
+         * The default permissive (non-strict) parser allows the user to parse
+         * non-standard chess notations. This parser is only run after the strict
+         * Standard Algebraic Notation (SAN) parser has failed.
+         *
+         * When running the permissive parser, we'll run a regex to grab the piece, the
+         * to/from square, and an optional promotion piece. This regex will
+         * parse common non-standard notation like: Pe2-e4, Rc1c4, Qf3xf7,
+         * f7f8q, b1c3
+         *
+         * NOTE: Some positions and moves may be ambiguous when using the permissive
+         * parser. For example, in this position: 6k1/8/8/B7/8/8/8/BN4K1 w - - 0 1,
+         * the move b1c3 may be interpreted as Nc3 or B1c3 (a disambiguated bishop
+         * move). In these cases, the permissive parser will default to the most
+         * basic interpretation (which is b1c3 parsing to Nc3).
+         */
+        let overlyDisambiguated = false;
+        matches = cleanMove.match(/([pnbrqkPNBRQK])?([a-h][1-8])x?-?([a-h][1-8])([qrbnQRBN])?/);
+        if (matches) {
+          piece = matches[1];
+          from = matches[2];
+          to = matches[3];
+          promotion = matches[4];
+          if (from.length == 1) {
+            overlyDisambiguated = true;
+          }
+        } else {
+          /*
+           * The [a-h]?[1-8]? portion of the regex below handles moves that may be
+           * overly disambiguated (e.g. Nge7 is unnecessary and non-standard when
+           * there is one legal knight move to e7). In this case, the value of
+           * 'from' variable will be a rank or file, not a square.
+           */
+          matches = cleanMove.match(/([pnbrqkPNBRQK])?([a-h]?[1-8]?)x?-?([a-h][1-8])([qrbnQRBN])?/);
+          if (matches) {
+            piece = matches[1];
+            from = matches[2];
+            to = matches[3];
+            promotion = matches[4];
+            Q;
+            if (from.length == 1) {
+              overlyDisambiguated = true;
+            }
+          }
+        }
+        pieceType = inferPieceType(cleanMove);
+        moves = this._moves({
+          legal: true,
+          piece: piece ? piece : pieceType,
+        });
+        if (!to) {
+          return null;
+        }
+        for (let i = 0, len = moves.length; i < len; i++) {
+          if (!from) {
+            // if there is no from square, it could be just 'x' missing from a capture
+            if (cleanMove === strippedSan(this._moveToSan(moves[i], moves)).replace("x", "")) {
+              return moves[i];
+            }
+            // hand-compare move properties with the results from our permissive regex
+          } else if (
+            (!piece || piece.toLowerCase() == moves[i].piece) &&
+            Ox88[from] == moves[i].from &&
+            Ox88[to] == moves[i].to &&
+            (!promotion || promotion.toLowerCase() == moves[i].promotion)
+          ) {
+            return moves[i];
+          } else if (overlyDisambiguated) {
+            /*
+             * SPECIAL CASE: we parsed a move string that may have an unneeded
+             * rank/file disambiguator (e.g. Nge7).  The 'from' variable will
+             */
+            const square = algebraic(moves[i].from);
+            if (
+              (!piece || piece.toLowerCase() == moves[i].piece) &&
+              Ox88[to] == moves[i].to &&
+              (from == square[0] || from == square[1]) &&
+              (!promotion || promotion.toLowerCase() == moves[i].promotion)
+            ) {
+              return moves[i];
+            }
+          }
+        }
+        return null;
+      }
+
+      ascii() {
+        let s = "   +------------------------+\n";
+        for (let i = Ox88.a8; i <= Ox88.h1; i++) {
+          // display the rank
+          if (file(i) === 0) {
+            s += " " + "87654321"[rank(i)] + " |";
+          }
+          if (this._board[i]) {
+            const piece = this._board[i].type;
+            const color = this._board[i].color;
+            const symbol = color === WHITE ? piece.toUpperCase() : piece.toLowerCase();
+            s += " " + symbol + " ";
+          } else {
+            s += " . ";
+          }
+          if ((i + 1) & 0x88) {
+            s += "|\n";
+            i += 8;
+          }
+        }
+        s += "   +------------------------+\n";
+        s += "     a  b  c  d  e  f  g  h";
+        return s;
+      }
+
+      perft(depth) {
+        const moves = this._moves({ legal: false });
+        let nodes = 0;
+        const color = this._turn;
+        for (let i = 0, len = moves.length; i < len; i++) {
+          this._makeMove(moves[i]);
+          if (!this._isKingAttacked(color)) {
+            if (depth - 1 > 0) {
+              nodes += this.perft(depth - 1);
+            } else {
+              nodes++;
+            }
+          }
+          this._undoMove();
+        }
+        return nodes;
+      }
+
+      turn() {
+        return this._turn;
+      }
+
+      board() {
+        const output = [];
+        let row = [];
+        for (let i = Ox88.a8; i <= Ox88.h1; i++) {
+          if (this._board[i] == null) {
+            row.push(null);
+          } else {
+            row.push({
+              square: algebraic(i),
+              type: this._board[i].type,
+              color: this._board[i].color,
+            });
+          }
+          if ((i + 1) & 0x88) {
+            output.push(row);
+            row = [];
+            i += 8;
+          }
+        }
+        return output;
+      }
+
+      squareColor(square) {
+        if (square in Ox88) {
+          const sq = Ox88[square];
+          return (rank(sq) + file(sq)) % 2 === 0 ? "light" : "dark";
+        }
+        return null;
+      }
+
+      history({ verbose = false } = {}) {
+        const reversedHistory = [];
+        const moveHistory = [];
+        while (this._history.length > 0) {
+          reversedHistory.push(this._undoMove());
+        }
+        while (true) {
+          const move = reversedHistory.pop();
+          if (!move) {
+            break;
+          }
+          if (verbose) {
+            moveHistory.push(new Move(this, move));
+          } else {
+            moveHistory.push(this._moveToSan(move, this._moves()));
+          }
+          this._makeMove(move);
+        }
+        return moveHistory;
+      }
+
+      /*
+       * Keeps track of position occurrence counts for the purpose of repetition
+       * checking. All three methods (`_inc`, `_dec`, and `_get`) trim the
+       * irrelevent information from the fen, initialising new positions, and
+       * removing old positions from the record if their counts are reduced to 0.
+       */
+      _getPositionCount(fen) {
+        const trimmedFen = trimFen(fen);
+        return this._positionCount[trimmedFen] || 0;
+      }
+
+      _incPositionCount(fen) {
+        const trimmedFen = trimFen(fen);
+        if (this._positionCount[trimmedFen] === undefined) {
+          this._positionCount[trimmedFen] = 0;
+        }
+        this._positionCount[trimmedFen] += 1;
+      }
+
+      _decPositionCount(fen) {
+        const trimmedFen = trimFen(fen);
+        if (this._positionCount[trimmedFen] === 1) {
+          delete this._positionCount[trimmedFen];
+        } else {
+          this._positionCount[trimmedFen] -= 1;
+        }
+      }
+
+      _pruneComments() {
+        const reversedHistory = [];
+        const currentComments = {};
+        const copyComment = (fen) => {
+          if (fen in this._comments) {
+            currentComments[fen] = this._comments[fen];
+          }
+        };
+        while (this._history.length > 0) {
+          reversedHistory.push(this._undoMove());
+        }
+        copyComment(this.fen());
+        while (true) {
+          const move = reversedHistory.pop();
+          if (!move) {
+            break;
+          }
+          this._makeMove(move);
+          copyComment(this.fen());
+        }
+        this._comments = currentComments;
+      }
+
+      getComment() {
+        return this._comments[this.fen()];
+      }
+
+      setComment(comment) {
+        this._comments[this.fen()] = comment.replace("{", "[").replace("}", "]");
+      }
+      /**
+       * @deprecated Renamed to `removeComment` for consistency
+       */
+
+      deleteComment() {
+        return this.removeComment();
+      }
+
+      removeComment() {
+        const comment = this._comments[this.fen()];
+        delete this._comments[this.fen()];
+        return comment;
+      }
+
+      getComments() {
+        this._pruneComments();
+        return Object.keys(this._comments).map((fen) => {
+          return { fen: fen, comment: this._comments[fen] };
+        });
+      }
+
+      /**
+       * @deprecated Renamed to `removeComments` for consistency
+       */
+      deleteComments() {
+        return this.removeComments();
+      }
+
+      removeComments() {
+        this._pruneComments();
+        return Object.keys(this._comments).map((fen) => {
+          const comment = this._comments[fen];
+          delete this._comments[fen];
+          return { fen: fen, comment: comment };
+        });
+      }
+
+      setCastlingRights(color, rights) {
+        for (const side of [KING, QUEEN]) {
+          if (rights[side] !== undefined) {
+            if (rights[side]) {
+              this._castling[color] |= SIDES[side];
+            } else {
+              this._castling[color] &= ~SIDES[side];
+            }
+          }
+        }
+        this._updateCastlingRights();
+        const result = this.getCastlingRights(color);
+        return (
+          (rights[KING] === undefined || rights[KING] === result[KING]) &&
+          (rights[QUEEN] === undefined || rights[QUEEN] === result[QUEEN])
+        );
+      }
+
+      getCastlingRights(color) {
+        return {
+          [KING]: (this._castling[color] & SIDES[KING]) !== 0,
+          [QUEEN]: (this._castling[color] & SIDES[QUEEN]) !== 0,
+        };
+      }
+
+      moveNumber() {
+        return this._moveNumber;
+      }
+    }
+
+    return new Chess(fen);
+  }
+
+  class InteractionButton {
+    baseModelURL = "/assets/playground/interaction_button_base.glb";
+    playButtonOnModelURL = "/assets/playground/interaction_play_button_on.glb";
+    playButtonOffModelURL = "/assets/playground/interaction_play_button_off.glb";
+    questionButtonOnModelURL = "/assets/playground/interaction_question_button_on.glb";
+    questionButtonOffModelURL = "/assets/playground/interaction_question_button_off.glb";
+    buttonSoundURL = "/assets/playground/interaction_button_sfx.mp3";
+
+    animDuration = 210;
+    buttonSoundDuration = 1200;
+    offset = 0.03;
+    easing = "easeInOutCubic";
+
+    infoSound = null;
+    infoSoundDuration = 0;
+    infoSoundCanPlay = true;
+    buttonSoundCanPlay = true;
+
+    group = document.createElement("m-group");
+    base = document.createElement("m-model");
+    buttonOn = document.createElement("m-model");
+    buttonOff = document.createElement("m-model");
+    buttonSound = document.createElement("m-audio");
+
+    constructor(x, y, z, yRotation, parentGroup) {
+      this.base.setAttribute("src", this.baseModelURL);
+      this.transform(this.group, x, y, z, yRotation);
+      this.group.appendChild(this.base);
+      parentGroup.appendChild(this.group);
+      this.setupButtonSound();
+      return this;
+    }
+
+    setupPlay(callBackFunction) {
+      this.buttonOn.setAttribute("src", this.playButtonOnModelURL);
+      this.buttonOff.setAttribute("src", this.playButtonOffModelURL);
+      this.group.appendChild(this.buttonOn);
+      this.group.appendChild(this.buttonOff);
+      this.scale(this.buttonOff, 0.001);
+
+      this.buttonOn.addEventListener("click", () => {
+        this.pushButtonAnim();
+        setTimeout(() => {
+          this.releaseButtonAnim();
+          setTimeout(() => {
+            this.turnOff();
+            callBackFunction();
+          }, this.animDuration + 20);
+        }, this.animDuration + 20);
+
+        this.playButtonSound();
+      });
+    }
+
+    loopAnim(element, attr, start, end, duration, pingPong, easing = undefined) {
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("loop", true);
+      anim.setAttribute("ping-pong", pingPong);
+      if (easing) {
+        anim.setAttribute("easing", easing);
+      }
+      element.appendChild(anim);
+    }
+
+    animateLabel(element, attr, start, end, duration, easing) {
+      animating = true;
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("start-time", document.timeline.currentTime);
+      anim.setAttribute("end-time", document.timeline.currentTime + duration);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("easing", easing);
+      anim.setAttribute("loop", false);
+      element.appendChild(anim);
+      setTimeout(() => {
+        element.setAttribute(attr, end);
+        element.removeChild(anim);
+        animating = false;
+      }, duration + 50);
+    }
+
+    setupInfo(infoSoundURL, infoSoundDuration, infoSoundVolume) {
+      this.buttonOn.setAttribute("src", this.questionButtonOnModelURL);
+      this.buttonOff.setAttribute("src", this.questionButtonOffModelURL);
+      this.group.appendChild(this.buttonOn);
+      this.group.appendChild(this.buttonOff);
+      this.scale(this.buttonOff, 0.001);
+
+      this.infoSound = document.createElement("m-audio");
+      this.infoSound.setAttribute("y", 15);
+      this.infoSound.setAttribute("rx", 90);
+      this.infoSound.setAttribute("cone-angle", 45);
+      this.infoSound.setAttribute("cone-falloff-angle", 100);
+      this.infoSound.setAttribute("loop", false);
+      this.infoSound.setAttribute("debug", false);
+      this.infoSound.setAttribute("src", infoSoundURL);
+      this.infoSound.setAttribute("volume", 0);
+      this.infoSound.setAttribute("start-time", document.timeline.currentTime - infoSoundDuration);
+      this.infoSound.setAttribute("pause-time", document.timeline.currentTime);
+      this.group.appendChild(this.infoSound);
+
+      const clickForInfoLabel = document.createElement("m-image");
+      clickForInfoLabel.setAttribute("src", "/assets/playground/click_for_info.png");
+      clickForInfoLabel.setAttribute("width", 0.65);
+      clickForInfoLabel.setAttribute("sx", 0);
+      clickForInfoLabel.setAttribute("sy", 0);
+      clickForInfoLabel.setAttribute("y", 1.4);
+      clickForInfoLabel.setAttribute("z", 0.1);
+      clickForInfoLabel.setAttribute("ry", 180);
+      clickForInfoLabel.setAttribute("emissive", 8);
+      clickForInfoLabel.setAttribute("class", "hidden");
+      this.loopAnim(clickForInfoLabel, "y", 1.4, 1.45, 8000, true, "easeInOutQuad");
+      this.base.appendChild(clickForInfoLabel);
+
+      const playersInInfoProbe = new Set();
+      const showClickForInfo = () => {
+        if (clickForInfoLabel.getAttribute("class") === "hidden") {
+          clickForInfoLabel.setAttribute("class", "visible");
+          this.animateLabel(clickForInfoLabel, "sx", 0, 1, 1000, "easeOutBack");
+          this.animateLabel(clickForInfoLabel, "sy", 0, 1, 1000, "easeOutBack");
+        }
+      };
+      const hideClickForInfo = () => {
+        if (clickForInfoLabel.getAttribute("class") === "visible") {
+          clickForInfoLabel.setAttribute("class", "hidden");
+          this.animateLabel(clickForInfoLabel, "sx", 1, 0, 1000, "easeInBack");
+          this.animateLabel(clickForInfoLabel, "sy", 1, 0, 1000, "easeInBack");
+        }
+      };
+      const infoProbe = document.createElement("m-position-probe");
+      infoProbe.setAttribute("interval", 777);
+      infoProbe.setAttribute("range", 5.5);
+      infoProbe.setAttribute("debug", false);
+      infoProbe.addEventListener("positionenter", (event) => {
+        const { connectionId } = event.detail;
+        if (!playersInInfoProbe.has(connectionId)) playersInInfoProbe.add(connectionId);
+      });
+      infoProbe.addEventListener("positionmove", (event) => {
+        const { connectionId } = event.detail;
+        if (!playersInInfoProbe.has(connectionId)) playersInInfoProbe.add(connectionId);
+      });
+      infoProbe.addEventListener("positionleave", (event) => {
+        const { connectionId } = event.detail;
+        if (playersInInfoProbe.has(connectionId)) playersInInfoProbe.delete(connectionId);
+      });
+      window.addEventListener("disconnected", (event) => {
+        const { connectionId } = event.detail;
+        if (playersInInfoProbe.has(connectionId)) playersInInfoProbe.delete(connectionId);
+      });
+      setInterval(() => {
+        if (playersInInfoProbe.size > 0) {
+          showClickForInfo();
+        } else {
+          hideClickForInfo();
+        }
+      }, 1000);
+      this.base.appendChild(infoProbe);
+
+      this.buttonOn.addEventListener("click", () => {
+        this.pushButtonAnim();
+        setTimeout(() => {
+          this.releaseButtonAnim();
+          setTimeout(() => {
+            this.turnOff();
+            setTimeout(() => this.turnOn(), infoSoundDuration);
+          }, this.animDuration + 20);
+        }, this.animDuration + 20);
+
+        this.playButtonSound();
+        setTimeout(() => {
+          this.playInfoSound(infoSoundDuration, infoSoundVolume);
+        }, this.buttonSoundDuration * 0.6667);
+      });
+    }
+
+    turnOff() {
+      this.swap(this.buttonOn, this.buttonOff);
+    }
+
+    turnOn() {
+      this.swap(this.buttonOff, this.buttonOn);
+    }
+
+    pushButtonAnim() {
+      this.animateButton(this.buttonOn, "y", 0, -this.offset, this.animDuration, this.easing);
+      this.animateButton(this.buttonOn, "z", 0, this.offset, this.animDuration, this.easing);
+    }
+
+    releaseButtonAnim() {
+      this.animateButton(this.buttonOn, "y", -this.offset, 0, this.animDuration, this.easing);
+      this.animateButton(this.buttonOn, "z", this.offset, 0, this.animDuration, this.easing);
+    }
+
+    playInfoSound(infoSoundDuration, infoSoundVolume) {
+      if (this.infoSoundCanPlay === false || this.infoSound === null) {
+        return;
+      }
+      this.infoSoundCanPlay = false;
+      const now = document.timeline.currentTime;
+      this.infoSound.setAttribute("volume", infoSoundVolume);
+      this.infoSound.setAttribute("start-time", now);
+      this.infoSound.setAttribute("pause-time", now + infoSoundDuration);
+      setTimeout(() => {
+        this.infoSound.setAttribute("volume", 0);
+        this.infoSoundCanPlay = true;
+      }, infoSoundDuration);
+    }
+
+    playButtonSound() {
+      if (this.buttonSoundCanPlay === false) {
+        return;
+      }
+      this.buttonSoundCanPlay === false;
+      const now = document.timeline.currentTime;
+      this.buttonSound.setAttribute("volume", 3);
+      this.buttonSound.setAttribute("start-time", now);
+      this.buttonSound.setAttribute("pause-time", now + this.buttonSoundDuration);
+      setTimeout(() => {
+        this.buttonSound.setAttribute("volume", 0);
+        this.buttonSoundCanPlay === true;
+      }, this.buttonSoundDuration);
+    }
+
+    transform(element, x, y, z, ry) {
+      element.setAttribute("x", x);
+      element.setAttribute("y", y);
+      element.setAttribute("z", z);
+      element.setAttribute("ry", ry);
+    }
+
+    scale(element, size) {
+      element.setAttribute("sx", size);
+      element.setAttribute("sy", size);
+      element.setAttribute("sz", size);
+    }
+
+    swap(elementA, elementB) {
+      this.scale(elementB, 1.0);
+      this.scale(elementA, 0.001);
+    }
+
+    setupButtonSound() {
+      this.buttonSound.setAttribute("y", 1.2);
+      this.buttonSound.setAttribute("loop", false);
+      this.buttonSound.setAttribute("debug", false);
+      this.buttonSound.setAttribute("src", "/assets/playground/interaction_button_sfx.mp3");
+      this.buttonSound.setAttribute("volume", 0);
+      this.buttonSound.setAttribute("start-time", document.timeline.currentTime - 900);
+      this.buttonSound.setAttribute("pause-time", document.timeline.currentTime);
+      this.group.appendChild(this.buttonSound);
+    }
+
+    animateButton(element, attr, start, end, duration, easing) {
+      const buttonAnim = document.createElement("m-attr-anim");
+      buttonAnim.setAttribute("attr", attr);
+      buttonAnim.setAttribute("start", start);
+      buttonAnim.setAttribute("end", end);
+      buttonAnim.setAttribute("start-time", document.timeline.currentTime);
+      buttonAnim.setAttribute("end-time", document.timeline.currentTime + duration);
+      buttonAnim.setAttribute("duration", duration);
+      buttonAnim.setAttribute("easing", easing);
+      buttonAnim.setAttribute("loop", false);
+      element.appendChild(buttonAnim);
+      setTimeout(() => {
+        element.setAttribute(attr, end);
+        element.removeChild(buttonAnim);
+      }, duration);
+    }
+  }
+
+  class LabelSign {
+    constructor(parentGroup, x, y, z, ry, width, height) {
+      this.width = width;
+      this.height = height;
+      this.group = document.createElement("m-group");
+      this.group.setAttribute("x", x);
+      this.group.setAttribute("y", y);
+      this.group.setAttribute("z", z);
+      this.group.setAttribute("ry", ry);
+      parentGroup.appendChild(this.group);
+
+      this.createLabel();
+      return this;
+    }
+
+    createLabel() {
+      this.labelGroup = document.createElement("m-group");
+      this.labelGroup.setAttribute("id", "label-group");
+
+      this.labelBackground = document.createElement("m-cube");
+      this.labelBackground.setAttribute("id", "state-label-background");
+      this.labelBackground.setAttribute("width", this.width);
+      this.labelBackground.setAttribute("height", this.height);
+      this.labelBackground.setAttribute("depth", 0.05);
+      this.labelBackground.setAttribute("color", "#000000");
+      this.labelBackground.setAttribute("opacity", 1);
+      this.labelBackground.setAttribute("collide", false);
+      this.labelGroup.appendChild(this.labelBackground);
+
+      this.label = document.createElement("m-label");
+      this.label.setAttribute("id", "state-label");
+      this.label.setAttribute("width", 9.5);
+      this.label.setAttribute("z", 0.026);
+      this.label.setAttribute("height", 0.45);
+      this.label.setAttribute("emissive", 4);
+      this.label.setAttribute("content", "");
+      this.label.setAttribute("color", "rgba(1, 0, 3, 0.45)");
+      this.label.setAttribute("font-color", "#4477ff");
+      this.label.setAttribute("padding", 7);
+      this.label.setAttribute("collide", true);
+      this.label.setAttribute("font-size", 30);
+      this.labelGroup.appendChild(this.label);
+
+      this.group.appendChild(this.labelGroup);
+    }
+
+    setContent(content) {
+      this.label.setAttribute("content", content);
+    }
+  }
+
+  class ChessGameRenderer {
+    constructor(parentElement, pieceClickFunction, squareClickFunction, options = {}) {
+      this.parentElement = parentElement;
+      this.clickCallback = pieceClickFunction;
+      this.squareClickFunction = squareClickFunction;
+
+      this.boardCastShadows = options.boardCastShadows || false;
+      this.piecesCastShadows = options.piecesCastShadows || false;
+      this.boardLightCastShadows = options.boardLightCastShadows || false;
+
+      this.board2DX = options.board2DX || 0;
+      this.board2DY = options.board2DY || 11.58;
+      this.board2DZ = options.board2DZ || 11.425;
+      this.board2DRX = options.board2DRX || -90;
+      this.board2DRY = options.board2DRY || 0;
+      this.board2DRZ = options.board2DRZ || 0;
+
+      // chess game settings =================================================
+      this.boardSize = 8;
+      this.squareSize = 1;
+      this.halfBoardSize = this.boardSize / 2;
+      this.halfSquareSize = this.squareSize / 2;
+      this.centerOffset = this.halfBoardSize - this.halfSquareSize;
+
+      this.board2DYOffset = 0.003;
+      this.board3DYOffset = 0.35;
+      this.squareY = this.board3DYOffset + 0.007;
+
+      this.piece3DScale = 0.2;
+      this.capturedScale = 0.1;
+
+      this.capturedOffsetX = 4.45;
+      this.capturedOffsetZ = 4.45;
+
+      this.movementDuration = 500;
+      this.afterMoveRatio = 0.3334;
+
+      this.inverse = false;
+
+      this.defaultMoveSoundVolume = 3;
+      // =====================================================================
+
+      // states and book keeping =============================================
+      this.gameInProgress = false;
+      this.initialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+      this.currentFEN = this.initialFEN;
+
+      this.busy = false;
+
+      this.all2DPieces = [];
+      this.extra2DPieces = [];
+
+      this.all3DPieces = [];
+      this.extra3DPieces = [];
+
+      this.pieces2DMap = new Map();
+      this.pieces3DMap = new Map();
+
+      this.possibleMovesMap = new Map();
+      this.possibleCapturesMap = new Map();
+      this.squareEventListeners = new Map();
+
+      this.capturedPieces2DMap = { white: [], black: [] };
+      this.capturedPieces3DMap = { white: [], black: [] };
+      // =====================================================================
+
+      // Create groups =======================================================
+      this.group = document.createElement("m-group");
+      this.group.setAttribute("sx", 0.7);
+      this.group.setAttribute("sy", 0.7);
+      this.group.setAttribute("sz", 0.7);
+
+      this.board3DBorder = null;
+      this.board3D = this.create3DBoard();
+      this.group.appendChild(this.board3D);
+
+      this.board2DWrapper = document.createElement("m-group");
+      this.board2DWrapper.setAttribute("id", "2D-board-wrapper");
+      this.board2DWrapper.setAttribute("x", this.board2DX);
+      this.board2DWrapper.setAttribute("y", this.board2DY);
+      this.board2DWrapper.setAttribute("z", this.board2DZ);
+      this.board2DWrapper.setAttribute("rx", this.board2DRX);
+      this.board2DWrapper.setAttribute("ry", this.board2DRY);
+      this.board2DWrapper.setAttribute("rz", this.board2DRZ);
+
+      this.pieces2DGroup = document.createElement("m-group");
+      this.pieces2DGroup.setAttribute("id", "pieces-2D-group");
+      this.pieces2DGroup.appendChild(this.create2DBoard(8, 8, 0.3, 1.0));
+      this.board2DWrapper.appendChild(this.pieces2DGroup);
+      this.group.appendChild(this.board2DWrapper);
+
+      this.pieces3DGroup = document.createElement("m-group");
+      this.pieces3DGroup.setAttribute("id", "pieces-3D-group");
+      this.group.appendChild(this.pieces3DGroup);
+
+      this.parentElement.appendChild(this.group);
+      // =====================================================================
+
+      // chess game assets ===================================================
+      this.possibleImageURL = "/assets/playground/chess_possible.png";
+      this.checkImageURL = "/assets/playground/chess_check.png";
+
+      this.pieces3DModels = new Map([
+        ["P", "/assets/playground/chess_white_pawn.glb"],
+        ["R", "/assets/playground/chess_white_rook.glb"],
+        ["N", "/assets/playground/chess_white_knight.glb"],
+        ["B", "/assets/playground/chess_white_bishop.glb"],
+        ["Q", "/assets/playground/chess_white_queen.glb"],
+        ["K", "/assets/playground/chess_white_king.glb"],
+        ["p", "/assets/playground/chess_black_pawn.glb"],
+        ["r", "/assets/playground/chess_black_rook.glb"],
+        ["n", "/assets/playground/chess_black_knight.glb"],
+        ["b", "/assets/playground/chess_black_bishop.glb"],
+        ["q", "/assets/playground/chess_black_queen.glb"],
+        ["k", "/assets/playground/chess_black_king.glb"],
+      ]);
+
+      this.pieces2DImages = new Map([
+        ["P", "/assets/playground/chess_white_pawn.png"],
+        ["R", "/assets/playground/chess_white_rook.png"],
+        ["N", "/assets/playground/chess_white_knight.png"],
+        ["B", "/assets/playground/chess_white_bishop.png"],
+        ["Q", "/assets/playground/chess_white_queen.png"],
+        ["K", "/assets/playground/chess_white_king.png"],
+        ["p", "/assets/playground/chess_black_pawn.png"],
+        ["r", "/assets/playground/chess_black_rook.png"],
+        ["n", "/assets/playground/chess_black_knight.png"],
+        ["b", "/assets/playground/chess_black_bishop.png"],
+        ["q", "/assets/playground/chess_black_queen.png"],
+        ["k", "/assets/playground/chess_black_king.png"],
+      ]);
+
+      this.moveAudioURL = "/assets/playground/chess_move.mp3";
+      this.captureAudioURL = "/assets/playground/chess_capture.mp3";
+      this.castleAudioURL = "/assets/playground/chess_castle.mp3";
+      this.checkAudioURL = "/assets/playground/chess_check.mp3";
+      // =====================================================================
+
+      this.createSounds();
+
+      this.setBoardFromFEN(this.initialFEN);
+
+      this.reactiveCallback = null;
+    }
+
+    create3DBoard() {
+      const board3DGroup = document.createElement("m-group");
+      const board = document.createElement("m-model");
+      board.setAttribute("src", "/assets/playground/chess_board_d.glb");
+      board.setAttribute("id", "3D-board");
+      board.setAttribute("sx", 5);
+      board.setAttribute("sy", 5);
+      board.setAttribute("sz", 5);
+      board.setAttribute("cast-shadows", this.boardCastShadows);
+      board3DGroup.appendChild(board);
+
+      const boardBorder = document.createElement("m-cube");
+      boardBorder.setAttribute("width", 9.5);
+      boardBorder.setAttribute("height", 0.7);
+      boardBorder.setAttribute("depth", 9.5);
+      board3DGroup.appendChild(boardBorder);
+      this.board3DBorder = boardBorder;
+
+      const boardLight = document.createElement("m-light");
+      boardLight.setAttribute("id", "chess-light");
+      boardLight.setAttribute("color", "#ffbbbb");
+      boardLight.setAttribute("x", 0);
+      boardLight.setAttribute("y", 8);
+      boardLight.setAttribute("z", 0);
+      boardLight.setAttribute("cast-shadows", this.boardLightCastShadows);
+      boardLight.setAttribute("intensity", 150);
+      boardLight.setAttribute("type", "spotlight");
+      boardLight.setAttribute("angle", 60);
+      boardLight.setAttribute("distance", 8);
+      boardLight.setAttribute("debug", false);
+      board3DGroup.appendChild(boardLight);
+
+      return board3DGroup;
+    }
+
+    create2DBoard(width, height, emissive, opacity) {
+      const board2DGroup = document.createElement("m-group");
+
+      const board = document.createElement("m-image");
+      board.setAttribute("src", "/assets/playground/chess_2d_board.jpg");
+      board.setAttribute("id", "2D-board");
+      board.setAttribute("width", width);
+      board.setAttribute("height", height);
+      board.setAttribute("emissive", 0.3);
+      board.setAttribute("opacity", 1);
+      board.setAttribute("rx", 90);
+      board.setAttribute("cast-shadows", false);
+      board.setAttribute("collide", true);
+      board2DGroup.appendChild(board);
+
+      return board2DGroup;
+    }
+
+    randomFloatBetween(a, b) {
+      return Math.random() * (b - a) + a;
+    }
+
+    createSounds() {
+      this.moveAudio = document.createElement("m-audio");
+      this.moveAudio.setAttribute("src", this.moveAudioURL);
+      this.moveAudio.setAttribute("volume", 0);
+      this.moveAudio.setAttribute("start-time", document.timeline.currentTime - 300);
+      this.moveAudio.setAttribute("pause-time", document.timeline.currentTime);
+      this.moveAudio.setAttribute("loop", false);
+      this.parentElement.appendChild(this.moveAudio);
+
+      this.captureAudio = document.createElement("m-audio");
+      this.captureAudio.setAttribute("src", this.captureAudioURL);
+      this.captureAudio.setAttribute("volume", 0);
+      this.captureAudio.setAttribute("start-time", document.timeline.currentTime - 300);
+      this.captureAudio.setAttribute("pause-time", document.timeline.currentTime);
+      this.captureAudio.setAttribute("loop", false);
+      this.parentElement.appendChild(this.captureAudio);
+
+      this.castleAudio = document.createElement("m-audio");
+      this.castleAudio.setAttribute("src", this.castleAudioURL);
+      this.castleAudio.setAttribute("volume", 0);
+      this.castleAudio.setAttribute("start-time", document.timeline.currentTime - 300);
+      this.castleAudio.setAttribute("pause-time", document.timeline.currentTime);
+      this.castleAudio.setAttribute("loop", false);
+      this.parentElement.appendChild(this.castleAudio);
+
+      this.checkAudio = document.createElement("m-audio");
+      this.checkAudio.setAttribute("src", this.checkAudioURL);
+      this.checkAudio.setAttribute("volume", 0);
+      this.checkAudio.setAttribute("start-time", document.timeline.currentTime - 300);
+      this.checkAudio.setAttribute("pause-time", document.timeline.currentTime);
+      this.checkAudio.setAttribute("loop", false);
+      this.parentElement.appendChild(this.checkAudio);
+    }
+
+    playAudio(movementType) {
+      const hasRandomness = movementType === "move";
+      const volume = hasRandomness
+        ? this.randomFloatBetween(2, 4)
+        : movementType === "check"
+          ? this.defaultMoveSoundVolume * 3
+          : this.defaultMoveSoundVolume;
+
+      let audioElement = this.moveAudio;
+      if (movementType === "capture") {
+        audioElement = this.captureAudio;
+      } else if (movementType === "castle") {
+        audioElement = this.castleAudio;
+      } else if (movementType === "check") {
+        audioElement = this.checkAudio;
+      }
+
+      const play = () => {
+        const now = document.timeline.currentTime;
+        audioElement.setAttribute("volume", volume);
+        audioElement.setAttribute("start-time", now);
+        audioElement.setAttribute("pause-time", now + 200);
+        setTimeout(() => audioElement.setAttribute("volume", 0), 200);
+      };
+
+      if (hasRandomness) {
+        setTimeout(() => play(), this.randomFloatBetween(0, 50));
+      } else {
+        play();
+      }
+    }
+
+    reset() {
+      this.setBoardFromFEN(this.initialFEN);
+      this.busy = false;
+    }
+
+    scale(element, scale) {
+      element.setAttribute("sx", scale);
+      element.setAttribute("sy", scale);
+      element.setAttribute("sz", scale);
+    }
+
+    translate(element, x, y, z, moveY = false, isCapture = false) {
+      element.setAttribute("x", x);
+      if (moveY) {
+        const yOffset = this.randomFloatBetween(0.3, 0.7);
+        const timeRatio = this.randomFloatBetween(0.4, 0.6);
+        element.setAttribute("y", y + yOffset);
+        setTimeout(() => element.setAttribute("y", y), this.movementDuration * timeRatio);
+      } else {
+        element.setAttribute("y", y);
+      }
+      if (isCapture) {
+        element.setAttribute("rz", this.randomFloatBetween(-35, -45));
+        setTimeout(() => element.setAttribute("rz", 0), this.movementDuration * 0.5);
+      }
+      element.setAttribute("z", z);
+    }
+
+    getStateFromFEN(fen) {
+      const rows = fen.split(" ")[0].split("/");
+      return rows.map((row) => {
+        const expandedRow = [];
+        for (const char of row) {
+          if (isNaN(char)) {
+            expandedRow.push(char);
+          } else {
+            for (let i = 0; i < parseInt(char); i++) {
+              expandedRow.push(null);
+            }
+          }
+        }
+        return expandedRow;
+      });
+    }
+
+    create3DPiece(piece3DAsset, pieceId, x, y, z, rotation, scale = this.piece3DScale) {
+      const model = document.createElement("m-model");
+
+      model.setAttribute("src", piece3DAsset);
+      model.setAttribute("id", pieceId);
+      model.setAttribute("x", 0);
+      model.setAttribute("y", 0);
+      model.setAttribute("z", 0);
+      model.setAttribute("rx", 0);
+      model.setAttribute("ry", rotation);
+      model.setAttribute("rz", 0);
+      model.setAttribute("sx", scale * 1.1);
+      model.setAttribute("sy", scale * 1.1);
+      model.setAttribute("sz", scale * 1.1);
+      model.setAttribute("cast-shadows", this.piecesCastShadows);
+      model.setAttribute("collide", true);
+
+      const lerp = document.createElement("m-attr-lerp");
+      lerp.setAttribute("attr", "x,z,sx,sy,sz");
+      lerp.setAttribute("duration", this.movementDuration);
+      lerp.setAttribute("easing", "easeInOutQuint");
+      model.appendChild(lerp);
+
+      const yLerp = document.createElement("m-attr-lerp");
+      yLerp.setAttribute("attr", "y");
+      yLerp.setAttribute("duration", this.movementDuration);
+      yLerp.setAttribute("easing", "easeInOutCubic");
+      model.appendChild(yLerp);
+
+      const rzLerp = document.createElement("m-attr-lerp");
+      rzLerp.setAttribute("attr", "rz");
+      rzLerp.setAttribute("duration", this.movementDuration);
+      rzLerp.setAttribute("easing", "easeInOutBack");
+      model.appendChild(rzLerp);
+
+      this.translate(model, x, y, z);
+      this.scale(model, scale);
+
+      const position = pieceId.split("-")[1];
+      model.setAttribute("class", position);
+
+      model.clickCallback = (connectionId) => {
+        this.gameInProgress = true;
+        this.clickCallback(connectionId, pieceId, model.getAttribute("class"));
+      };
+      model.addEventListener("click", (e) => model.clickCallback(e.detail.connectionId));
+
+      this.all3DPieces.push(model);
+      return model;
+    }
+
+    create2DPiece(src, pieceId, x, y, z, width, height, emissive, rotation) {
+      const image = document.createElement("m-image");
+      image.setAttribute("id", pieceId);
+      image.setAttribute("src", src);
+      image.setAttribute("x", x);
+      image.setAttribute("y", y);
+      image.setAttribute("z", z);
+      image.setAttribute("width", width);
+      image.setAttribute("height", height);
+      image.setAttribute("emissive", emissive);
+      image.setAttribute("rx", rotation);
+      image.setAttribute("cast-shadows", false);
+      image.setAttribute("collide", false);
+
+      const lerp = document.createElement("m-attr-lerp");
+      lerp.setAttribute("attr", "x,z");
+      lerp.setAttribute("duration", this.movementDuration);
+      lerp.setAttribute("easing", "easeInOutQuint");
+      image.appendChild(lerp);
+
+      const position = pieceId.split("-")[1];
+      image.setAttribute("class", position);
+
+      image.clickCallback = (connectionId) => {
+        this.gameInProgress = true;
+        this.clickCallback(connectionId, pieceId, image.getAttribute("class"));
+      };
+      image.addEventListener("click", (e) => image.clickCallback(e.detail.connectionId));
+
+      this.all2DPieces.push(image);
+      return image;
+    }
+
+    getModelPositionOnBoard(model) {
+      const x = parseFloat(model.getAttribute("x"));
+      const z = parseFloat(model.getAttribute("z"));
+      const file = String.fromCharCode(97 + x / this.squareSize + this.centerOffset); // a-h
+      const rank = 8 - (z / this.squareSize + this.centerOffset); // 1-8
+      const position = `${file}${rank}`;
+      return position;
+    }
+
+    createPlane(id, image, x, y, z) {
+      const plane = document.createElement("m-image");
+      plane.setAttribute("src", image);
+      plane.setAttribute("id", id);
+      plane.setAttribute("width", 1.1);
+      plane.setAttribute("height", 1.1);
+      plane.setAttribute("rx", -90);
+      plane.setAttribute("x", x);
+      plane.setAttribute("y", y);
+      plane.setAttribute("z", z);
+      plane.setAttribute("rotation", "-90 0 0");
+      plane.setAttribute("collide", false);
+      plane.setAttribute("cast-shadows", false);
+      plane.setAttribute("emissive", 2);
+      plane.setAttribute("visible-to", -1);
+      plane.addEventListener("click", (e) => {
+        this.pieces3DMap.forEach((model, i) => {
+          const modelPos = this.getModelPositionOnBoard(model);
+          const modelId = model.getAttribute("id");
+          if (id === modelPos) {
+            console.log(modelId);
+          }
+        });
+        console.log(`${e.detail.connectionId} clicked on ${id}`);
+      });
+      return plane;
+    }
+
+    setBoardFromFEN(fen) {
+      const boardState = this.getStateFromFEN(fen);
+
+      this.all2DPieces.forEach((piece) => this.pieces2DGroup.removeChild(piece));
+      this.all2DPieces = [];
+      this.pieces2DMap.clear();
+
+      this.all3DPieces.forEach((piece) => this.pieces3DGroup.removeChild(piece));
+      this.all3DPieces = [];
+      this.pieces3DMap.clear();
+
+      this.capturedPieces2DMap.white = [];
+      this.capturedPieces2DMap.black = [];
+      this.capturedPieces3DMap.white = [];
+      this.capturedPieces3DMap.black = [];
+
+      this.possibleMovesMap.forEach((square) => this.pieces3DGroup.removeChild(square));
+      this.possibleMovesMap.clear();
+
+      this.pieces3DGroup.innerHTML = "";
+
+      const board2D = document.getElementById("2D-board");
+      const board2DX = parseFloat(board2D.getAttribute("x"));
+      const board2DY = parseFloat(board2D.getAttribute("y"));
+      const board2DZ = parseFloat(board2D.getAttribute("z"));
+
+      const checkSquare = this.createPlane("check-square", this.checkImageURL, 0, 1, 0);
+      this.pieces3DGroup.appendChild(checkSquare);
+
+      for (let row = 0; row < this.boardSize; row++) {
+        for (let col = 0; col < this.boardSize; col++) {
+          const piece = boardState[row][col];
+
+          const x = this.inverse
+            ? (col - this.centerOffset) * this.squareSize
+            : (this.boardSize - 1 - col - this.centerOffset) * this.squareSize;
+
+          const z = this.inverse
+            ? (row - this.centerOffset) * this.squareSize
+            : (this.boardSize - 1 - row - this.centerOffset) * this.squareSize;
+
+          const y3D = this.board3DYOffset;
+          const y2D = this.board2DYOffset;
+
+          const file = String.fromCharCode(97 + (this.inverse ? this.boardSize - 1 - col : col));
+          const rank = this.inverse ? row + 1 : this.boardSize - row;
+          const chessCellId = `${file}${rank}`;
+
+          const squareId = `square-${chessCellId}`;
+          const possible3DSquare = this.createPlane(
+            squareId,
+            this.possibleImageURL,
+            x,
+            this.squareY,
+            z,
+          );
+          this.possibleMovesMap.set(chessCellId, possible3DSquare);
+          this.pieces3DGroup.appendChild(possible3DSquare);
+
+          if (piece) {
+            const isWhite = piece === piece.toUpperCase();
+            const side = isWhite ? "w" : "b";
+            const rotation = isWhite ? 180 : 0;
+            const pieceId = `${piece}${side}-${file}${rank}`;
+
+            const piece2DAsset = this.pieces2DImages.get(piece);
+            const piece2D = this.create2DPiece(piece2DAsset, pieceId, x, y2D, z, 1, 1, 1, 90);
+            this.pieces2DGroup.appendChild(piece2D);
+            this.pieces2DMap.set(`${row}${col}`, piece2D);
+
+            const piece3DAsset = this.pieces3DModels.get(piece);
+            const piece3D = this.create3DPiece(piece3DAsset, pieceId, x, y3D, z, rotation);
+            this.pieces3DGroup.appendChild(piece3D);
+            this.pieces3DMap.set(`${row}${col}`, piece3D);
+          }
+        }
+      }
+    }
+
+    highlightCheck(position) {
+      const row = 8 - parseInt(position[1]);
+      const col = position.charCodeAt(0) - 97;
+
+      console.log(`✅ Highlighting check at ${position}, row: ${row}, col: ${col}`);
+
+      const checkSquare = this.pieces3DGroup.querySelector("#check-square");
+      if (!checkSquare) {
+        console.error("❌ ERROR: No check-square found to highlight check!");
+        return;
+      }
+
+      const x = this.inverse
+        ? (col - this.centerOffset) * this.squareSize
+        : (this.boardSize - 1 - col - this.centerOffset) * this.squareSize;
+
+      const z = this.inverse
+        ? (row - this.centerOffset) * this.squareSize
+        : (this.boardSize - 1 - row - this.centerOffset) * this.squareSize;
+
+      this.translate(checkSquare, x, this.squareY, z);
+      checkSquare.removeAttribute("visible-to");
+      checkSquare.setAttribute("emissive", 8);
+    }
+
+    clearCheckHighlight() {
+      const checkSquare = this.pieces3DGroup.querySelector("#check-square");
+      if (!checkSquare) {
+        console.error("❌ ERROR: No check-square found to clear check highlight!");
+        return;
+      }
+
+      checkSquare.setAttribute("y", this.squareY);
+      checkSquare.setAttribute("emissive", 0);
+      checkSquare.setAttribute("visible-to", "-1");
+    }
+
+    clearHighlightedMoves() {
+      console.log("Clearing highlighted moves.");
+      this.possibleMovesMap.forEach((square, index) => {
+        console.log(`Clearing square ${index} highlight.`);
+        square.setAttribute("y", this.squareY);
+        square.setAttribute("emissive", 0.2);
+        square.setAttribute("visible-to", "-1");
+        if (this.squareEventListeners.has(index)) {
+          console.log(`Removing event listener for square ${square} ${index}.`);
+          square.removeEventListener("click", this.squareEventListeners.get(index));
+          this.squareEventListeners.delete(index);
+        }
+      });
+    }
+
+    highlightMoves(moves, captures, userId) {
+      console.log("highlightMoves", moves, captures, userId);
+      if (!Array.isArray(moves) || moves.length === 0) {
+        console.warn("⚠️ No valid moves to highlight.");
+        return;
+      }
+
+      if (!userId) {
+        console.error("❌ ERROR: No userId provided for highlighting moves.");
+        return;
+      }
+
+      moves.forEach((move) => {
+        const square = this.possibleMovesMap.get(move);
+
+        if (!square) {
+          console.warn(`⚠️ Move square ${move} not found in possibleMovesMap.`);
+          return;
+        }
+
+        square.setAttribute("visible-to", userId);
+
+        captures.forEach((capture) => {
+          if (capture === move) {
+            square.setAttribute("y", this.squareY + 0.07);
+            square.setAttribute("emissive", 7);
+          }
+        });
+
+        const clickHandler = (event) => {
+          if (this.squareClickFunction) {
+            this.squareClickFunction(userId, move);
+          } else {
+            console.error("❌ ERROR: No squareClickFunction provided for handling square clicks.");
+          }
+        };
+        square.addEventListener("click", clickHandler);
+        this.squareEventListeners.set(move, clickHandler);
+      });
+
+      console.log(`✅ Highlighted moves ${moves.join(", ")} for user ${userId}`);
+    }
+
+    applyMove(from, to, isCapture = false) {
+      if (this.busy === false) this.busy = true;
+
+      const fromRow = 8 - parseInt(from[1]);
+      const fromCol = from.charCodeAt(0) - 97;
+      const toRow = 8 - parseInt(to[1]);
+      const toCol = to.charCodeAt(0) - 97;
+
+      const movingPiece2D = this.pieces2DMap.get(`${fromRow}${fromCol}`);
+      if (!movingPiece2D) {
+        console.error(`❌ ERROR: No movingPiece2D found at ${from}`);
+        return;
+      }
+
+      const movingPiece3D = this.pieces3DMap.get(`${fromRow}${fromCol}`);
+      if (!movingPiece3D) {
+        console.error(`❌ ERROR: No movingPiece3D found at ${from}`);
+        return;
+      }
+
+      const x = this.inverse
+        ? (toCol - this.centerOffset) * this.squareSize
+        : (this.boardSize - 1 - toCol - this.centerOffset) * this.squareSize;
+
+      const z = this.inverse
+        ? (toRow - this.centerOffset) * this.squareSize
+        : (this.boardSize - 1 - toRow - this.centerOffset) * this.squareSize;
+
+      movingPiece3D.setAttribute("class", to);
+      this.translate(movingPiece3D, x, this.board3DYOffset, z, true, isCapture);
+      this.pieces3DMap.delete(`${fromRow}${fromCol}`);
+      this.pieces3DMap.set(`${toRow}${toCol}`, movingPiece3D);
+
+      movingPiece2D.setAttribute("class", to);
+      this.translate(movingPiece2D, x, this.board2DYOffset, z, false, isCapture);
+      this.pieces2DMap.delete(`${fromRow}${fromCol}`);
+      this.pieces2DMap.set(`${toRow}${toCol}`, movingPiece2D);
+    }
+
+    sendToCapturedArea(position) {
+      const row = 8 - parseInt(position[1]);
+      const col = position.charCodeAt(0) - 97;
+
+      const capturedPiece2D = this.pieces2DMap.get(`${row}${col}`);
+      if (!capturedPiece2D) {
+        console.log(`❌ ERROR: No capturedPiece2D found at ${position} to capture!`);
+        return;
+      }
+      const piece2DId = capturedPiece2D.getAttribute("id");
+      if (!piece2DId) {
+        console.log(`❌ ERROR: Captured piece2DId at ${position} is missing an ID!`);
+        return;
+      }
+
+      const capturedPiece3D = this.pieces3DMap.get(`${row}${col}`);
+      if (!capturedPiece3D) {
+        console.log(`❌ ERROR: No capturedPiece3D found at ${position} to capture!`);
+        return;
+      }
+      const piece3DId = capturedPiece3D.getAttribute("id");
+      if (!piece3DId) {
+        console.log(`❌ ERROR: Captured piece3DId at ${position} is missing an ID!`);
+        return;
+      }
+
+      const isWhite = piece3DId.includes("w");
+
+      const capture2DArray = isWhite
+        ? this.capturedPieces2DMap.white
+        : this.capturedPieces2DMap.black;
+      capture2DArray.push(capturedPiece2D);
+
+      const capture3DArray = isWhite
+        ? this.capturedPieces3DMap.white
+        : this.capturedPieces3DMap.black;
+      capture3DArray.push(capturedPiece3D);
+
+      if (this.pieces3DMap.has(`${row}${col}`)) {
+        this.pieces3DMap.delete(`${row}${col}`);
+      } else {
+        console.log(`❌ ERROR: Piece at ${position} not found in pieces3DMap!`);
+      }
+
+      if (this.pieces2DMap.has(`${row}${col}`)) {
+        this.pieces2DMap.delete(`${row}${col}`);
+      } else {
+        console.log(`❌ ERROR: Piece at ${position} not found in pieces2DMap!`);
+      }
+
+      const captured3DX = isWhite ? -this.capturedOffsetX : this.capturedOffsetX;
+      const captured3DZ = isWhite
+        ? this.capturedOffsetZ - capture3DArray.length * 0.5
+        : -this.capturedOffsetZ + capture3DArray.length * 0.5;
+
+      setTimeout(() => {
+        this.translate(capturedPiece3D, captured3DX, this.board3DYOffset, captured3DZ);
+        this.scale(capturedPiece3D, this.capturedScale);
+      }, this.movementDuration * this.afterMoveRatio);
+
+      const captured2DX = isWhite ? -this.capturedOffsetX : this.capturedOffsetX;
+      const captured2DZ = isWhite
+        ? this.capturedOffsetZ - capture2DArray.length * 0.5
+        : -this.capturedOffsetZ + capture2DArray.length * 0.5;
+
+      setTimeout(() => {
+        this.translate(capturedPiece2D, captured2DX, this.board2DYOffset, captured2DZ);
+        this.scale(capturedPiece2D, 0.5);
+      }, this.movementDuration * this.afterMoveRatio);
+    }
+
+    promotePawn(position, newPiece) {
+      console.log(`✅ Promoting pawn at ${position} to ${newPiece}`);
+      const row = 8 - parseInt(position[1]);
+      const col = position.charCodeAt(0) - 97;
+      const isWhite = newPiece === newPiece.toUpperCase();
+      const rotation = isWhite ? 0 : 180;
+
+      const pawn3D = this.pieces3DMap.get(`${row}${col}`);
+      const pawn2D = this.pieces2DMap.get(`${row}${col}`);
+
+      if (!pawn3D || !pawn2D) {
+        console.error(`❌ ERROR: No pawn found at ${position} to promote!`);
+        return;
+      }
+
+      // Move the pawn to the captured area
+      this.sendToCapturedArea(position);
+
+      // Remove the pawn from the maps
+      this.pieces3DMap.delete(`${row}${col}`);
+      this.pieces2DMap.delete(`${row}${col}`);
+
+      // Compute new position
+      const x = this.inverse
+        ? (col - this.centerOffset) * this.squareSize
+        : (this.boardSize - 1 - col - this.centerOffset) * this.squareSize;
+
+      const z = this.inverse
+        ? (row - this.centerOffset) * this.squareSize
+        : (this.boardSize - 1 - row - this.centerOffset) * this.squareSize;
+
+      const y3D = this.board3DYOffset;
+      const y2D = this.board2DYOffset;
+
+      // Create and place the promoted piece (3D)
+      const promoted3DAsset = this.pieces3DModels.get(isWhite ? newPiece : newPiece.toLowerCase());
+      if (!promoted3DAsset) {
+        console.error(`❌ ERROR: No 3D model found for ${newPiece}!`);
+        return;
+      }
+      const promoted3D = this.create3DPiece(
+        promoted3DAsset,
+        `${newPiece}-${position}`,
+        x,
+        y3D,
+        z,
+        rotation,
+      );
+      this.pieces3DGroup.appendChild(promoted3D);
+      this.pieces3DMap.set(`${row}${col}`, promoted3D);
+      this.extra3DPieces.push(promoted3D);
+
+      // Create and place the promoted piece (2D)
+      const promoted2DAsset = this.pieces2DImages.get(newPiece);
+      if (!promoted2DAsset) {
+        console.error(`❌ ERROR: No 2D image found for ${newPiece}!`);
+        return;
+      }
+      const promoted2D = this.create2DPiece(
+        promoted2DAsset,
+        `${newPiece}-${position}`,
+        x,
+        y2D,
+        z,
+        1,
+        1,
+        1,
+        90,
+      );
+      this.pieces2DGroup.appendChild(promoted2D);
+      this.pieces2DMap.set(`${row}${col}`, promoted2D);
+      this.extra2DPieces.push(promoted2D);
+    }
+  }
+
+  class MatchViewer {
+    chessEngineInstance = null;
+    constructor(parentElement, chessEngineInstance, chessRendererInstance, x, y, z, ry) {
+      this.parentElement = parentElement;
+      this.chessRendererInstance = chessRendererInstance;
+      this.chessEngineInstance = chessEngineInstance;
+      this.x = x;
+      this.y = y;
+      this.z = z;
+      this.ry = ry;
+      this.activationButton = new InteractionButton(x, y, z, ry, this.parentElement);
+      this.activationButton.setupPlay(() => {});
+      this.label = new LabelSign(this.parentElement, -5.7, 3, 0, 90, 9.5, 0.45);
+      this.label.setContent("♟️ MML CHESS");
+
+      this.promptCallback = null;
+      this.prompt = this.createPrompt(
+        "Enter a Chess.com playername, year, month, day (comma-separated values) to re-watch a match",
+        "",
+        "magnuscarlsen,2023,12,14",
+        async (detail) => {
+          const cleanValue = detail.value.trim().replace(/\s/g, "");
+          const [username, year, month, day] = cleanValue.split(",");
+          const games = await this.getChessGameByDate(username, year, month, day);
+          if (games.length > 0) {
+            this.createGameSelector(games);
+          } else {
+            console.log("No games found for", username, year, month, day);
+          }
+        },
+      );
+
+      this.parentElement.appendChild(this.prompt);
+      this.prompt.appendChild(this.activationButton.group);
+
+      this.optionsGroup = document.createElement("m-group");
+      this.optionsGroup.setAttribute("id", "match-viewer-options");
+      this.optionsGroup.setAttribute("x", this.x - 0.5);
+      this.optionsGroup.setAttribute("y", this.y + 2);
+      this.optionsGroup.setAttribute("z", this.z);
+      this.optionsGroup.setAttribute("ry", this.ry + 180);
+      this.parentElement.appendChild(this.optionsGroup);
+
+      this.menuOptions = [];
+    }
+
+    simulateMatch(moves, delay, debug = false) {
+      this.label.setContent("♟️ MML CHESS");
+
+      if (!this.chessEngineInstance || !this.chessRendererInstance) {
+        console.error("❌ ERROR: NO chessEngineInstance or chessRendererInstances.");
+        return;
+      }
+      if (!moves || moves.length === 0) {
+        console.error("❌ ERROR: No moves provided for simulation.");
+        return;
+      }
+      if (delay < this.chessRendererInstance.movementDuration) {
+        console.error("❌ ERROR: Delay is too short for simulation.");
+        return;
+      }
+
+      if (this.label) {
+        this.label.setContent("♟️ MML CHESS");
+      }
+      this.chessEngineInstance.reset();
+
+      let moveIndex = 0;
+      let isGameOver = false;
+
+      const playNextMove = (moves, moveIndex, delay, debug = false) => {
+        if (moveIndex >= moves.length || isGameOver) {
+          if (debug === true) {
+            console.log("✅ Game Over - Simulation Complete!");
+          }
+          return;
+        }
+
+        const moveNotation = moves[moveIndex];
+        const moveNumber = `${moveIndex + 1}`.padStart(3, " ");
+        const paddedMoveNotation = moveNotation.padStart(5, " ");
+        let moveDescription = `[${moveNumber}] ${paddedMoveNotation}`;
+
+        if (["1-0", "0-1", "1/2-1/2"].includes(moveNotation)) {
+          if (moveNotation === "1-0") {
+            this.label.setContent("♟️ WHITE WINS");
+          } else if (moveNotation === "0-1") {
+            this.label.setContent("♟️ BLACK WINS");
+          } else {
+            this.label.setContent("♟️ DRAW");
+          }
+          moveDescription = `🏁 Game Over`;
+          if (debug === true) {
+            console.log(moveDescription);
+          }
+          this.chessEngineInstance.reset();
+          isGameOver = true;
+          this.activationButton.turnOn();
+          setTimeout(() => {
+            this.chessRendererInstance.reset();
+            this.label.setContent("♟️ MML CHESS");
+          }, this.chessRendererInstance.movementDuration * 10);
+          return;
+        }
+
+        // check the intended move with the chess engine =====================
+        const move = this.chessEngineInstance.move(moveNotation);
+        if (!move) {
+          console.error(`❌ ERROR: Invalid move: ${moveNotation}`);
+          return;
+        }
+        const isWhiteTurn = move.color === "w";
+        moveDescription = isWhiteTurn ? ` ⚪ ${moveDescription}` : ` ⚫ ${moveDescription}`;
+        const piece = isWhiteTurn ? move.piece.toUpperCase() : move.piece.toLowerCase();
+        const fromSquare = move.from;
+        const toSquare = move.to;
+
+        const pieceFromTo = `${piece} from ${fromSquare} to ${toSquare}`;
+        moveDescription = `${moveDescription} | ${pieceFromTo} |`.padEnd(30, " ");
+
+        const isCapture = move.captured;
+        const isCastle = move.flags.includes("k") || move.flags.includes("q");
+        const isCheck = this.chessEngineInstance.isCheck();
+
+        if (isCapture) {
+          const captured = move.captured;
+          const isWhite = move.color === "w";
+          const capturedPiece = isWhite ? captured.toLowerCase() : captured.toUpperCase();
+          moveDescription = `${moveDescription} ⚔️ ${capturedPiece} captured at ${toSquare}`;
+          this.chessRendererInstance.sendToCapturedArea(move.to);
+        }
+
+        // Handle castling
+        if (isCastle) {
+          const isKingside = move.flags.includes("k");
+          const rookFrom = isKingside
+            ? move.from[1] === "1"
+              ? "h1"
+              : "h8"
+            : move.from[1] === "1"
+              ? "a1"
+              : "a8";
+          const rookTo = isKingside
+            ? move.from[1] === "1"
+              ? "f1"
+              : "f8"
+            : move.from[1] === "1"
+              ? "d1"
+              : "d8";
+
+          const side = isKingside ? "king-side" : "queen-side";
+          moveDescription = `${moveDescription} 🏰 Castled ${side} from ${rookFrom} to ${rookTo}`;
+
+          // Apply move to renderer
+          setTimeout(() => {
+            this.chessRendererInstance.applyMove(rookFrom, rookTo, false);
+          }, this.chessRendererInstance.movementDuration * 0.5);
+        }
+
+        if (isCheck) {
+          moveDescription = `${moveDescription} 🚨 Check!`;
+        }
+
+        if (this.label) {
+          this.label.setContent(moveDescription);
+        }
+
+        // Apply move to renderer
+        this.chessRendererInstance.applyMove(fromSquare, toSquare, isCapture);
+
+        // Handle pawn promotion
+        if (move.promotion) {
+          this.chessRendererInstance.promotePawn(toSquare, move.promotion.toUpperCase());
+        } else {
+        }
+
+        let audioDelay = isCheck
+          ? renderer.movementDuration * 0.7
+          : isCapture || isCastle
+            ? renderer.movementDuration * 0.5
+            : renderer.movementDuration * 0.85;
+
+        if (isCheck) {
+          setTimeout(() => this.chessRendererInstance.playAudio("check"), audioDelay);
+        }
+
+        if (isCapture) {
+          setTimeout(() => this.chessRendererInstance.playAudio("capture"), audioDelay);
+        } else if (isCastle) {
+          setTimeout(() => this.chessRendererInstance.playAudio("castle"), audioDelay);
+        } else {
+          setTimeout(() => this.chessRendererInstance.playAudio("move"), audioDelay);
+        }
+
+        setTimeout(() => playNextMove(moves, moveIndex + 1, delay), delay, debug);
+      };
+
+      playNextMove(moves, moveIndex, delay, debug);
+    }
+
+    watchMatch(game) {
+      this.chessEngineInstance.reset();
+      if (this.chessEngineInstance.validateSequenceOfMoves(this.chessEngineInstance, game.pgn)) {
+        this.menuOptions.forEach((option) => {
+          option.label.removeEventListener("click", option.eventListener);
+          this.optionsGroup.removeChild(option.label);
+        });
+        this.menuOptions = [];
+        this.simulateMatch(game.pgn, this.chessRendererInstance.movementDuration * 3, true);
+      }
+    }
+
+    createGameSelector(games) {
+      const height = 0.2;
+      const spacing = 0.025;
+      const totalItems = games.length;
+
+      games.forEach((game, i) => {
+        const column = i % 2 === 0 ? 0 : 1;
+        const row = Math.floor(i / 2);
+        const middleIndex = totalItems / 4;
+        const y = (middleIndex - row) * (height / 2 + spacing);
+
+        const date = new Date(game.utcDate);
+        const matchTimeStamp = `${date.toLocaleDateString()} ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${date.getSeconds().toString().padStart(2, "0")}`;
+        const matchName = `${matchTimeStamp} | ${game.whiteName} vs ${game.blackName}: ${game.result.toUpperCase()}`;
+
+        const option = {};
+
+        const label = document.createElement("m-label");
+        label.setAttribute("content", matchName);
+        label.setAttribute("x", column === 0 ? -1.1 : 1.1);
+        label.setAttribute("y", y);
+        label.setAttribute("z", 0);
+        label.setAttribute("sx", 0.5);
+        label.setAttribute("sy", 0.5);
+        label.setAttribute("width", 4.2);
+        label.setAttribute("height", height);
+        label.setAttribute("font-size", 13);
+        label.setAttribute("padding", 3);
+        label.setAttribute("color", "rgba(0, 0, 0, 0.9)");
+        label.setAttribute("font-color", "#33ff88");
+        label.setAttribute("emissive", 3);
+        label.setAttribute("cast-shadows", false);
+        label.setAttribute("collide", false);
+
+        option.label = label;
+        option.eventListener = (event) => {
+          console.log(`${event.detail.connectionId} clicked on ${matchName}`);
+          this.watchMatch(game);
+        };
+        option.label.addEventListener("click", option.eventListener);
+
+        this.menuOptions.push(option);
+        this.optionsGroup.appendChild(label);
+      });
+    }
+
+    createPrompt(message, placeholder, prefill, callback) {
+      const prompt = document.createElement("m-prompt");
+      prompt.setAttribute("id", "match-viewer-prompt");
+      prompt.setAttribute("message", message);
+      prompt.setAttribute("placeholder", placeholder);
+      prompt.setAttribute("prefill", prefill);
+      this.promptCallback = callback;
+      prompt.addEventListener("prompt", (e) => {
+        this.promptCallback(e.detail);
+      });
+      return prompt;
+    }
+
+    async getChessGameByDate(username, year, month = null, day = null) {
+      let url = `https://api.chess.com/pub/player/${username}/games/${year}`;
+      if (month) url += `/${month}`;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch games: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (!data.games || data.games.length === 0) {
+          return [];
+        }
+
+        let gamesArray = data.games.map((game) => this.parsePGN(game.pgn, username));
+
+        if (day) {
+          const dayStr = day.toString().padStart(2, "0");
+          gamesArray = gamesArray.filter((game) => {
+            const gameDay = new Date(game.utcDate).getUTCDate().toString().padStart(2, "0");
+            return gameDay === dayStr;
+          });
+        }
+
+        return gamesArray;
+      } catch (error) {
+        console.error("Error fetching games:", error);
+        return [];
+      }
+    }
+
+    parsePGN(pgn, username) {
+      const pgnLines = pgn.split("\n");
+
+      const extractTag = (tag) => {
+        const line = pgnLines.find((l) => l.startsWith(`[${tag} `));
+        return line ? line.match(/\[.* "(.*)"\]/)[1] : null;
+      };
+
+      const parseTime = (timeStr) => {
+        const [hours, minutes, seconds] = timeStr.split(":").map(Number);
+        return hours * 3600 + minutes * 60 + seconds;
+      };
+
+      const formatDuration = (seconds) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        return `${h > 0 ? `${h}h ` : ""}${m > 0 ? `${m}m ` : ""}${s}s`.trim();
+      };
+
+      const utcDateStr = extractTag("UTCDate");
+      const utcTimeStr = extractTag("UTCTime");
+      const whiteName = extractTag("White");
+      const whiteElo = extractTag("WhiteElo");
+      const blackName = extractTag("Black");
+      const blackElo = extractTag("BlackElo");
+      const startTimeStr = extractTag("StartTime");
+      const endTimeStr = extractTag("EndTime");
+      const resultStr = extractTag("Result");
+      const matchURL = extractTag("Link");
+
+      const utcDateTimeStr = `${utcDateStr} ${utcTimeStr} UTC`;
+      const utcDate = new Date(utcDateTimeStr);
+      const startTime = new Date(`${utcDateStr} ${startTimeStr} UTC`);
+      const endTime = new Date(`${utcDateStr} ${endTimeStr} UTC`);
+      const matchDuration = (endTime - startTime) / 1000;
+      const matchDurationHR = formatDuration(matchDuration);
+
+      let result = "draw";
+
+      if (resultStr === "1-0") {
+        result = username.toLowerCase() === whiteName.toLowerCase() ? "win" : "lose";
+      }
+      if (resultStr === "0-1") {
+        result = username.toLowerCase() === blackName.toLowerCase() ? "win" : "lose";
+      }
+
+      return {
+        utcDate,
+        whiteName,
+        whiteElo: whiteElo ? parseInt(whiteElo, 10) : null,
+        blackName,
+        blackElo: blackElo ? parseInt(blackElo, 10) : null,
+        matchDuration,
+        matchDurationHR,
+        result,
+        matchURL,
+        pgn: this.cleanPGN(pgn),
+      };
+    }
+
+    cleanPGN(pgn) {
+      const movesOnly = pgn
+        .replace(/\[.*?\]\n?/g, "") // remove all headers
+        .trim() // remove leading and trailing whitespace
+        .replace(/\{.*?\}/g, "") // remove clock
+        .replace(/\d+\.+/g, "") // remove move numbers
+        .trim(); // remove leading and trailing whitespace
+      const movesArray = movesOnly.trim().split(/\s+/);
+      return movesArray;
+    }
+
+    dispose() {
+      if (this.promptCallback && this.prompt) {
+        this.prompt.removeEventListener("prompt", this.promptCallback);
+        this.promptCallback = null;
+      }
+    }
+  }
+
+  class PlayerVsPlayer {
+    presenceMap = new Map();
+
+    constructor(parentElement) {
+      this.parentElement = parentElement;
+
+      this.chessEngine = createChessEngine();
+      this.chessRenderEngine = new ChessGameRenderer(
+        this.parentElement,
+        this.handlePieceClick.bind(this),
+        this.handleMoveSelection.bind(this),
+        {
+          boardLightCastShadows: false,
+          boardCastShadows: true,
+          piecesCastShadows: true,
+          board2DX: -8,
+          board2DY: 8,
+          board2DZ: 0.00001,
+          board2DRX: 0,
+          board2DRY: 0,
+          board2DRZ: -90,
+        },
+      );
+
+      // states ==============================================================
+      this.currentTurn = "w";
+      this.selectedPiece = null;
+      this.moveIndex = 0;
+      this.gameOver = false;
+      this.gameShouldReset = false;
+      this.gameIsResetting = false;
+
+      // create stuff ========================================================
+      this.presenceProbe = this.createPresenceProbe();
+      this.parentElement.appendChild(this.presenceProbe);
+
+      this.player1Ready = false;
+      this.player1ConnectionId = null;
+      this.player2Ready = false;
+      this.player2ConnectionId = null;
+
+      const { player1Button, player2Button } = this.createStartInterface();
+      this.player1Button = player1Button;
+      this.player2Button = player2Button;
+
+      this.startInterfaceGroup = this.createStartInterfaceGroup();
+      this.startInterfaceGroup.appendChild(this.player1Button.group);
+      this.startInterfaceGroup.appendChild(this.player2Button.group);
+      this.parentElement.appendChild(this.startInterfaceGroup);
+
+      this.healthCheck = this.healthCheck.bind(this);
+      setInterval(() => this.healthCheck(), 500);
+    }
+
+    showStartButtons() {
+      if (this.startInterfaceGroup.getAttribute("class") === "visible") {
+        return;
+      }
+      this.startInterfaceGroup.setAttribute("class", "visible");
+      this.startInterfaceGroup.removeAttribute("visible-to");
+      this.startInterfaceGroup.setAttribute("sx", 1);
+      this.startInterfaceGroup.setAttribute("sy", 1);
+    }
+
+    hideStartButtons() {
+      if (this.startInterfaceGroup.getAttribute("class") === "hidden") {
+        return;
+      }
+      this.startInterfaceGroup.setAttribute("class", "hidden");
+      this.startInterfaceGroup.setAttribute("sx", 0);
+      this.startInterfaceGroup.setAttribute("sy", 0);
+      setTimeout(() => {
+        this.startInterfaceGroup.setAttribute("visible-to", "-1");
+      }, 500);
+    }
+
+    checkStartGame() {
+      if (this.player1Ready && this.player2Ready) {
+        console.log("✅ Both players are ready! Starting match...");
+        this.startMatch();
+      }
+    }
+
+    startMatch() {
+      this.chessEngine.reset();
+      this.currentTurn = "w";
+      this.gameOver = false;
+      this.selectedPiece = null;
+      this.chessRenderEngine.reset();
+    }
+
+    handlePieceClick(userId, pieceId, position) {
+      if (
+        this.gameOver ||
+        !this.player1Ready ||
+        !this.player2Ready ||
+        this.gameShouldReset ||
+        this.gameIsResetting
+      ) {
+        console.log("⏹️ Game is over. No moves allowed.");
+        return;
+      }
+
+      const playerColor = this.player1ConnectionId === userId ? "w" : "b";
+      if (playerColor !== this.currentTurn) {
+        console.log(`🚫 Not ${userId}'s turn!`);
+        return;
+      }
+
+      if (this.selectedPiece) {
+        if (this.selectedPiece === position) {
+          console.log(`🔄 ${userId} reselected ${pieceId} at ${position}`);
+          return;
+        }
+
+        // player should be able to click its own stuff to change its mind (select another)
+        const clickedPiece = this.chessEngine.get(position);
+        if (clickedPiece && clickedPiece.color === playerColor) {
+          console.log(`🔄 ${userId} switched selection to ${pieceId} at ${position}`);
+          this.chessRenderEngine.clearHighlightedMoves();
+          this.selectedPiece = position;
+        } else {
+          const possibleMoves = this.chessEngine
+            .moves({ square: this.selectedPiece, verbose: true })
+            .map((move) => move.to); // Extract valid target squares
+
+          if (possibleMoves.includes(position)) {
+            console.log(`⚔️ ${userId} clicked enemy piece at ${position}, capturing it!`);
+            this.handleMoveSelection(userId, position);
+            return;
+          }
+
+          console.log(`❌ ${userId} clicked ${position}, but it's not a valid move.`);
+          return;
+        }
+      }
+
+      const possibleMovesSAN = this.chessEngine.moves({ square: position, verbose: true });
+      if (possibleMovesSAN.length === 0) {
+        console.log(`❌ No valid moves for ${pieceId} at ${position}`);
+        return;
+      }
+
+      const possibleSquares = [];
+      const possibleCaptures = [];
+
+      possibleMovesSAN.forEach((move) => {
+        const moveSquare = move.to; // Target square
+
+        if (move.san.includes("=")) {
+          possibleSquares.push(moveSquare);
+          possibleCaptures.push(moveSquare);
+        } else if (move.san === "O-O") {
+          possibleSquares.push(playerColor === "w" ? "g1" : "g8"); // Kingside castle
+        } else if (move.san === "O-O-O") {
+          possibleSquares.push(playerColor === "w" ? "c1" : "c8"); // Queenside castle
+        } else if (move.flags.includes("c") || move.flags.includes("e")) {
+          possibleSquares.push(moveSquare);
+          possibleCaptures.push(moveSquare); // Captures or en passant
+        } else {
+          possibleSquares.push(moveSquare); // Normal moves
+        }
+      });
+
+      console.log(
+        `✅ ${userId} clicked ${pieceId} at ${position}, possible moves:`,
+        possibleSquares,
+        `| possible captures: `,
+        possibleCaptures,
+      );
+
+      this.chessRenderEngine.highlightMoves(possibleSquares, possibleCaptures, userId);
+      this.selectedPiece = position;
+    }
+
+    handleMoveSelection(userId, targetPosition) {
+      if (
+        this.gameOver ||
+        !this.player1Ready ||
+        !this.player2Ready ||
+        this.gameShouldReset ||
+        this.gameIsResetting
+      ) {
+        console.log("⏹️ Game is over. No moves allowed.");
+        return;
+      }
+
+      if (!this.selectedPiece) {
+        console.log("⚠️ No piece selected!");
+        return;
+      }
+
+      const playerColor = this.player1ConnectionId === userId ? "w" : "b";
+      if (playerColor !== this.currentTurn) {
+        console.log(`🚫 Not ${userId}'s turn!`);
+        return;
+      }
+
+      const pieceToBeMoved = this.chessEngine.get(this.selectedPiece);
+      if (!pieceToBeMoved) {
+        console.log(`❌ No piece found at ${this.selectedPiece}`);
+        return;
+      }
+      let moveOptions = { from: this.selectedPiece, to: targetPosition };
+      const mayBeWhitePromotion = playerColor === "w" && targetPosition[1] === "8";
+      const mayBeBlackPromotion = playerColor === "b" && targetPosition[1] === "1";
+      if (pieceToBeMoved?.type === "p" && (mayBeWhitePromotion || mayBeBlackPromotion)) {
+        console.log(`♟️ Pawn promotion detected! Defaulting to Queen.`);
+        moveOptions.promotion = "q";
+      }
+
+      // check the intended move with the chess engine =======================
+      const move = this.chessEngine.move(moveOptions);
+      if (!move) {
+        console.log(`❌ Invalid move from ${this.selectedPiece} to ${targetPosition}`);
+        return;
+      } else {
+        console.log(`✅ Move executed: ${move.san}`);
+      }
+      const moveNotation = move.san;
+      const isWhiteTurn = move.color === "w";
+      const fromSquare = move.from;
+      const toSquare = move.to;
+
+      this.chessRenderEngine.board3DBorder.setAttribute(
+        "color",
+        isWhiteTurn ? "#121212" : "#eeeeee",
+      );
+
+      const isCapture = move.captured;
+      const isCastle = move.flags.includes("k") || move.flags.includes("q");
+      const isEnPassant = move.flags.includes("e");
+      const isCheck = this.chessEngine.isCheck();
+      const isCheckMate = this.chessEngine.isCheckmate();
+      const isStalemate = this.chessEngine.isStalemate();
+      const isThreefoldRepetition = this.chessEngine.isThreefoldRepetition();
+      const isInsufficientMaterial = this.chessEngine.isInsufficientMaterial();
+
+      const piece = isWhiteTurn ? move.piece.toUpperCase() : move.piece.toLowerCase();
+      const pieceFromTo = `${piece} from ${fromSquare} to ${toSquare}`;
+
+      const moveNumber = `${this.moveIndex + 1}`.padStart(3, " ");
+      const paddedMoveNotation = moveNotation.padStart(5, " ");
+      let moveDescription = `[${moveNumber}] ${paddedMoveNotation}`;
+      moveDescription = isWhiteTurn ? ` ⚪ ${moveDescription}` : ` ⚫ ${moveDescription}`;
+      moveDescription = `${moveDescription} | ${pieceFromTo} |`.padEnd(30, " ");
+
+      this.chessRenderEngine.clearHighlightedMoves();
+      this.chessRenderEngine.clearCheckHighlight();
+
+      if (isCapture) {
+        const captured = move.captured;
+        const isWhite = move.color === "w";
+        const capturedPiece = isWhite ? captured.toLowerCase() : captured.toUpperCase();
+        moveDescription = `${moveDescription} ⚔️ ${capturedPiece} captured at ${toSquare}`;
+        this.chessRenderEngine.sendToCapturedArea(move.to);
+      }
+
+      if (isEnPassant) {
+        const enPassantSquare = move.to[0] + move.from[1];
+        moveDescription = `${moveDescription} ⚔️ En passant at ${enPassantSquare}`;
+        this.chessRenderEngine.sendToCapturedArea(enPassantSquare);
+      }
+
+      if (isCastle) {
+        const isKingside = move.flags.includes("k");
+        const rookFrom = isKingside
+          ? move.from[1] === "1"
+            ? "h1"
+            : "h8"
+          : move.from[1] === "1"
+            ? "a1"
+            : "a8";
+        const rookTo = isKingside
+          ? move.from[1] === "1"
+            ? "f1"
+            : "f8"
+          : move.from[1] === "1"
+            ? "d1"
+            : "d8";
+
+        const side = isKingside ? "king-side" : "queen-side";
+        moveDescription = `${moveDescription} 🏰 Castled ${side} from ${rookFrom} to ${rookTo}`;
+
+        setTimeout(() => {
+          this.chessRenderEngine.applyMove(rookFrom, rookTo, false);
+        }, this.chessRenderEngine.movementDuration * 0.5);
+      }
+
+      if (isCheck) {
+        console.log(`🚨 CHECK detected! Finding enemy king's position...`);
+
+        const board = this.chessEngine.board();
+        let kingPosition = null;
+
+        for (let row of board) {
+          for (let square of row) {
+            if (square && square.type === "k" && square.color !== playerColor) {
+              kingPosition = square.square; // Get the square the king is on
+              break;
+            }
+          }
+          if (kingPosition) break;
+        }
+
+        if (kingPosition) {
+          console.log(`🔴 Enemy king at ${kingPosition} is in CHECK!`);
+          this.chessRenderEngine.highlightCheck(kingPosition);
+        } else {
+          console.error("❌ ERROR: Could not find enemy king!");
+        }
+      }
+
+      console.log(`✅ Move executed: ${moveDescription}`);
+      this.chessRenderEngine.applyMove(fromSquare, toSquare, isCapture);
+
+      if (move.promotion) {
+        console.log(`🔼 ${move.promotion}`);
+        this.chessRenderEngine.promotePawn(
+          toSquare,
+          isWhiteTurn ? move.promotion.toUpperCase() : move.promotion.toLowerCase(),
+        );
+      }
+
+      let audioDelay = isCheck
+        ? this.chessRenderEngine.movementDuration * 0.7
+        : isCapture || isCastle
+          ? this.chessRenderEngine.movementDuration * 0.5
+          : this.chessRenderEngine.movementDuration * 0.85;
+      if (isCapture) {
+        setTimeout(() => this.chessRenderEngine.playAudio("capture"), audioDelay);
+      } else if (isCastle) {
+        setTimeout(() => this.chessRenderEngine.playAudio("castle"), audioDelay);
+      } else {
+        setTimeout(() => this.chessRenderEngine.playAudio("move"), audioDelay);
+      }
+
+      // Handle game-ending conditions =========================================
+      if (isCheckMate) {
+        this.gameOver = true;
+        console.log(`🏆 Checkmate! ${playerColor === "w" ? "White" : "Black"} wins!`);
+        this.gameShouldReset = true;
+        return;
+      }
+
+      if (isStalemate) {
+        this.gameOver = true;
+        console.log("🤝 Stalemate! The game is a draw.");
+        this.gameShouldReset = true;
+        return;
+      }
+
+      if (isThreefoldRepetition) {
+        this.gameOver = true;
+        console.log("🤝 Threefold repetition! The game is a draw.");
+        this.gameShouldReset = true;
+        return;
+      }
+
+      if (isInsufficientMaterial) {
+        this.gameOver = true;
+        console.log("🤝 Draw due to insufficient material.");
+        this.gameShouldReset = true;
+        return;
+      }
+
+      // Switch turn =========================================================
+      this.currentTurn = this.currentTurn === "w" ? "b" : "w";
+      console.log(`🔄 Next turn: ${this.currentTurn === "w" ? "White" : "Black"}`);
+
+      this.selectedPiece = null;
+      this.moveIndex++;
+    }
+
+    healthCheck() {
+      if (this.gameShouldReset && !this.gameIsResetting) {
+        this.gameShouldReset = false;
+        this.gameIsResetting = true;
+        setTimeout(() => this.resetGame(), 5000);
+      }
+      if (this.presenceMap.size === 0) {
+        this.hideStartButtons();
+      } else {
+        if (this.gameOver || !this.player1Ready || !this.player2Ready) {
+          this.showStartButtons();
+        } else {
+          this.hideStartButtons();
+        }
+      }
+    }
+
+    resetGame() {
+      console.log("🔄 Resetting game...");
+      this.chessEngine.reset();
+      this.chessRenderEngine.reset();
+      this.currentTurn = "w";
+      this.gameOver = false;
+      this.selectedPiece = null;
+      this.moveIndex = 0;
+      this.selectedPiece = null;
+
+      this.player1Ready = false;
+      this.player1ConnectionId = null;
+      this.player1Button.labelFront.setAttribute("content", "W ☐ Ready");
+      this.player1Button.labelFront.setAttribute("emissive", 1);
+      this.player1Button.labelBack.setAttribute("content", "W ☐ Ready");
+      this.player1Button.labelBack.setAttribute("emissive", 1);
+      this.player2Ready = false;
+      this.player2ConnectionId = null;
+      this.player2Button.labelFront.setAttribute("content", "B ☐ Ready");
+      this.player2Button.labelFront.setAttribute("emissive", 1);
+      this.player2Button.labelBack.setAttribute("content", "B ☐ Ready");
+      this.player2Button.labelBack.setAttribute("emissive", 1);
+
+      this.gameIsResetting = false;
+    }
+
+    createStartInterfaceGroup() {
+      const group = document.createElement("m-group");
+      group.setAttribute("id", "start-interface");
+      group.setAttribute("x", 0);
+      group.setAttribute("y", 0);
+      group.setAttribute("z", 0);
+      group.setAttribute("sx", 0);
+      group.setAttribute("sy", 0);
+      group.setAttribute("class", "hidden");
+
+      const lerp = document.createElement("m-attr-lerp");
+      lerp.setAttribute("attr", "sx,sy");
+      lerp.setAttribute("duration", 500);
+      lerp.setAttribute("easing", "easeInOutQuint");
+      group.appendChild(lerp);
+
+      return group;
+    }
+
+    createButton(x, y, z, ry, width, height) {
+      const buttonGroup = document.createElement("m-group");
+      buttonGroup.setAttribute("x", x);
+      buttonGroup.setAttribute("y", y);
+      buttonGroup.setAttribute("z", z);
+      buttonGroup.setAttribute("ry", ry);
+
+      const background = document.createElement("m-cube");
+      background.setAttribute("width", width);
+      background.setAttribute("height", height);
+      background.setAttribute("depth", 0.03);
+      background.setAttribute("collide", false);
+      background.setAttribute("color", "#33ff33");
+
+      const labelFront = document.createElement("m-label");
+      labelFront.setAttribute("width", width - 0.03);
+      labelFront.setAttribute("height", height - 0.03);
+      labelFront.setAttribute("font-size", 20);
+      labelFront.setAttribute("padding", 10);
+      labelFront.setAttribute("z", 0.02);
+      labelFront.setAttribute("alignment", "center");
+      labelFront.setAttribute("color", "rgba(0, 0, 0, 0.9)");
+      labelFront.setAttribute("font-color", "#33ff88");
+      labelFront.setAttribute("emissive", 1);
+      labelFront.setAttribute("cast-shadows", false);
+      labelFront.setAttribute("collide", false);
+
+      const labelBack = document.createElement("m-label");
+      labelBack.setAttribute("width", width - 0.03);
+      labelBack.setAttribute("height", height - 0.03);
+      labelBack.setAttribute("font-size", 20);
+      labelBack.setAttribute("padding", 10);
+      labelBack.setAttribute("z", -0.02);
+      labelBack.setAttribute("ry", 180);
+      labelBack.setAttribute("alignment", "center");
+      labelBack.setAttribute("color", "rgba(0, 0, 0, 0.9)");
+      labelBack.setAttribute("font-color", "#33ff88");
+      labelBack.setAttribute("emissive", 1);
+      labelBack.setAttribute("cast-shadows", false);
+      labelBack.setAttribute("collide", false);
+
+      buttonGroup.appendChild(background);
+      buttonGroup.appendChild(labelFront);
+      buttonGroup.appendChild(labelBack);
+      return {
+        group: buttonGroup,
+        labelFront: labelFront,
+        labelBack: labelBack,
+      };
+    }
+
+    createStartInterface() {
+      const p1Ready = "W ☑ Ready";
+      const p1NotReady = "W ☐ Ready";
+      const p2Ready = "B ☑ Ready";
+      const p2NotReady = "B ☐ Ready";
+      const buttonWidth = 1.3;
+      const buttonHeight = 0.4;
+
+      const x = 4;
+      const y = 2;
+      const z = buttonWidth / 2;
+      const off = 0.02;
+
+      const player1ReadyButton = this.createButton(x, y, -z - off, 90, buttonWidth, buttonHeight);
+      player1ReadyButton.labelFront.setAttribute("content", p1NotReady);
+      player1ReadyButton.labelBack.setAttribute("content", p1NotReady);
+      player1ReadyButton.group.addEventListener("click", (e) => {
+        const connectionId = e.detail.connectionId;
+        const hasPlayer = this.player1Ready && connectionId !== this.player1ConnectionId;
+        const isAnotherPlayer = this.player2Ready && connectionId === this.player2ConnectionId;
+        if (hasPlayer || isAnotherPlayer) return;
+        this.player1Ready = !this.player1Ready;
+        this.player1ConnectionId = this.player1Ready ? connectionId : null;
+        player1ReadyButton.labelFront.setAttribute(
+          "content",
+          this.player1Ready ? p1Ready : p1NotReady,
+        );
+        player1ReadyButton.labelBack.setAttribute(
+          "content",
+          this.player1Ready ? p1Ready : p1NotReady,
+        );
+        player1ReadyButton.labelFront.setAttribute("emissive", this.player1Ready ? 5 : 1);
+        player1ReadyButton.labelBack.setAttribute("emissive", this.player1Ready ? 5 : 1);
+      });
+
+      const player2ReadyButton = this.createButton(x, y, z + off, 90, buttonWidth, buttonHeight);
+      player2ReadyButton.labelFront.setAttribute("content", p2NotReady);
+      player2ReadyButton.labelBack.setAttribute("content", p2NotReady);
+      player2ReadyButton.group.addEventListener("click", (e) => {
+        const connectionId = e.detail.connectionId;
+        const hasPlayer = this.player2Ready && connectionId !== this.player2ConnectionId;
+        const isAnotherPlayer = this.player1Ready && connectionId === this.player1ConnectionId;
+        if (hasPlayer || isAnotherPlayer) return;
+        this.player2Ready = !this.player2Ready;
+        this.player2ConnectionId = this.player2Ready ? connectionId : null;
+        player2ReadyButton.labelFront.setAttribute(
+          "content",
+          this.player2Ready ? p2Ready : p2NotReady,
+        );
+        player2ReadyButton.labelBack.setAttribute(
+          "content",
+          this.player2Ready ? p2Ready : p2NotReady,
+        );
+        player2ReadyButton.labelFront.setAttribute("emissive", this.player2Ready ? 5 : 1);
+        player2ReadyButton.labelBack.setAttribute("emissive", this.player2Ready ? 5 : 1);
+      });
+
+      return {
+        player1Button: player1ReadyButton,
+        player2Button: player2ReadyButton,
+      };
+    }
+
+    removePlayer(connectionId) {
+      console.log(`User ${connectionId} left the area.`);
+      if (this.presenceMap.has(connectionId)) {
+        this.presenceMap.delete(connectionId);
+      }
+      if (this.player1ConnectionId === connectionId) {
+        if (this.player1Button) {
+          this.player1Button.labelFront.setAttribute("content", "W ☐ Ready");
+          this.player1Button.labelFront.setAttribute("emissive", 1);
+          this.player1Button.labelBack.setAttribute("content", "W ☐ Ready");
+          this.player1Button.labelBack.setAttribute("emissive", 1);
+        }
+        this.player1Ready = false;
+        this.player1ConnectionId = null;
+        this.gameOver = true;
+        if (!this.gameIsResetting) {
+          this.gameShouldReset = true;
+        }
+      }
+      if (this.player2ConnectionId === connectionId) {
+        if (this.player2Button) {
+          this.player2Button.labelFront.setAttribute("content", "B ☐ Ready");
+          this.player2Button.labelFront.setAttribute("emissive", 1);
+          this.player2Button.labelBack.setAttribute("content", "B ☐ Ready");
+          this.player2Button.labelBack.setAttribute("emissive", 1);
+        }
+        this.player2Ready = false;
+        this.player2ConnectionId = null;
+        this.gameOver = true;
+        if (!this.gameIsResetting) {
+          this.gameShouldReset = true;
+        }
+      }
+    }
+
+    createPresenceProbe() {
+      const probe = document.createElement("m-position-probe");
+      probe.setAttribute("id", "presence-probe");
+      probe.setAttribute("interval", 500);
+      probe.setAttribute("range", 22);
+      probe.setAttribute("debug", false);
+
+      probe.addEventListener("positionenter", (e) => {
+        this.presenceMap.set(e.detail.connectionId, e.detail);
+      });
+
+      probe.addEventListener("positionmove", (e) => {
+        this.presenceMap.set(e.detail.connectionId, e.detail);
+      });
+
+      probe.addEventListener("positionleave", (e) => {
+        this.removePlayer(e.detail.connectionId);
+      });
+
+      window.addEventListener("disconnected", (e) => {
+        this.removePlayer(e.detail.connectionId);
+      });
+
+      return probe;
+    }
+  }
+
+  const wrapper = document.getElementById("wrapper");
+  const pvpWrapper = document.getElementById("pvp-wrapper");
+  const engine = createChessEngine();
+
+  const clickFunction = (userId, pieceId, position) => {
+    console.log(`User ${userId} clicked on piece ${pieceId} at position ${position}`);
+  };
+
+  const renderer = new ChessGameRenderer(wrapper, clickFunction, {
+    boardLightCastShadows: false,
+    boardCastShadows: true,
+    piecesCastShadows: true,
+  });
+  const matchViewer = new MatchViewer(wrapper, engine, renderer, 6, 0, 0, -90);
+
+  const toPvPStart = [-25.5, 31.8, -17.5];
+  const toPvPEnd = [1000, 0, 1000];
+
+  const backFromPvPStart = [950, 0, 1000];
+  const backFromPvPEnd = [-18.5, 31.8, -17.5];
+  const toPvP = createTeleporter(wrapper, ...toPvPStart, ...toPvPEnd);
+  const backFromPvP = createTeleporter(wrapper, ...backFromPvPStart, ...backFromPvPEnd);
+
+  const pvp = new PlayerVsPlayer(pvpWrapper);
+</script>

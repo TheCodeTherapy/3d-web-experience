@@ -1,0 +1,189 @@
+<m-group x="5">
+  <m-group id="staircase-holder" ry="180"></m-group>
+</m-group>
+
+<script>
+  const staircaseHolder = document.getElementById("staircase-holder");
+
+  const stepHeight = 0.23;
+  const stepWidth = 6;
+  const stepDepth = 1.5;
+  const stepsToKeep = 16;
+  const stepAngle = Math.PI / 64;
+  const gracePeriodDuration = 3000;
+
+  const protectedStepRanges = {};
+  const gracePeriodTimers = {};
+  const playersOnStep = new Map(); // Map<stepId, Set<connectionId>>
+
+  function generateStepsData(numSteps = 204) {
+    const stepDataArray = [];
+    for (let y = 0; y < numSteps; y++) {
+      const stepData = {
+        id: `step-${y}`,
+        position: {
+          x: stepWidth * Math.cos((y * stepAngle) / stepHeight),
+          y: y * stepHeight,
+          z: stepWidth * Math.sin((y * stepAngle) / stepHeight),
+        },
+        rotation: {
+          x: 0,
+          y: y * (-stepAngle / stepHeight) * (180 / Math.PI),
+          z: 0,
+        },
+        color: `hsl(${Math.floor((y / numSteps) * 360 * Math.PI * 2)}, 75%, 72%)`,
+      };
+      stepDataArray.push(stepData);
+    }
+    return stepDataArray;
+  }
+
+  function createStep(stepData, id) {
+    const step = document.createElement("m-cube");
+    step.setAttribute("x", stepData.position.x);
+    step.setAttribute("y", stepData.position.y);
+    step.setAttribute("z", stepData.position.z);
+    step.setAttribute("sx", stepWidth);
+    step.setAttribute("sy", stepHeight);
+    step.setAttribute("sz", stepDepth);
+    step.setAttribute("rx", stepData.rotation.x);
+    step.setAttribute("ry", stepData.rotation.y);
+    step.setAttribute("rz", stepData.rotation.z);
+    step.setAttribute("color", stepData.color);
+    step.setAttribute("id", id);
+    step.setAttribute("collision-interval", "250");
+
+    step.addEventListener("collisionstart", (event) => {
+      const connectionId = event.detail.connectionId;
+      handleCollisionStart(id, connectionId);
+    });
+
+    step.addEventListener("collisionend", (event) => {
+      const connectionId = event.detail.connectionId;
+      handleCollisionEnd(id, connectionId);
+    });
+
+    return step;
+  }
+
+  function isStepProtected(stepIndex) {
+    for (let key in protectedStepRanges) {
+      const [start, end] = protectedStepRanges[key];
+      if (stepIndex < stepsToKeep) return true;
+      if (stepIndex >= start && stepIndex <= end) return true;
+    }
+    return false;
+  }
+
+  function spawnSurroundingSteps(collidedStepId) {
+    const collidedIndex = parseInt(collidedStepId.replace("step-", ""));
+    const start = Math.max(collidedIndex - stepsToKeep, 0);
+    const end = Math.min(collidedIndex + stepsToKeep, stepsArray.length - 1);
+
+    protectedStepRanges[collidedStepId] = [start, end];
+
+    const currentStepsOnStaircase = Array.from(staircaseHolder.children).map((el) =>
+      parseInt(el.id.replace("step-", "")),
+    );
+
+    const stepsToRemove = currentStepsOnStaircase
+      .filter((idx) => idx > stepsToKeep && !isStepProtected(idx))
+      .sort((a, b) => a - b);
+
+    stepsToRemove.forEach((idx, i) => {
+      setTimeout(() => {
+        if (
+          stepElementsArray[idx] &&
+          staircaseHolder.contains(stepElementsArray[idx]) &&
+          !isStepProtected(idx)
+        ) {
+          staircaseHolder.removeChild(stepElementsArray[idx]);
+        }
+      }, i * 30);
+    });
+
+    for (let i = start; i <= end; i++) {
+      if (!currentStepsOnStaircase.includes(i)) {
+        staircaseHolder.appendChild(stepElementsArray[i]);
+      }
+    }
+  }
+
+  function handleCollisionStart(stepId, connectionId) {
+    if (!playersOnStep.has(stepId)) {
+      playersOnStep.set(stepId, new Set());
+    }
+    playersOnStep.get(stepId).add(connectionId);
+    spawnSurroundingSteps(stepId);
+
+    if (gracePeriodTimers[stepId]) {
+      clearTimeout(gracePeriodTimers[stepId]);
+      delete gracePeriodTimers[stepId];
+    }
+  }
+
+  function handleCollisionEnd(stepId, connectionId) {
+    if (!playersOnStep.has(stepId)) return;
+
+    const playerSet = playersOnStep.get(stepId);
+    playerSet.delete(connectionId);
+
+    if (playerSet.size === 0) {
+      gracePeriodTimers[stepId] = setTimeout(() => {
+        if (playersOnStep.get(stepId).size === 0) {
+          playersOnStep.delete(stepId);
+          delete protectedStepRanges[stepId];
+          delete gracePeriodTimers[stepId];
+          removeUnprotectedSteps();
+        }
+      }, gracePeriodDuration);
+    }
+  }
+
+  function handlePlayerDisconnect(event) {
+    const connectionId = event.detail.connectionId;
+
+    playersOnStep.forEach((playerSet, stepId) => {
+      if (playerSet.has(connectionId)) {
+        playerSet.delete(connectionId);
+
+        if (playerSet.size === 0) {
+          playersOnStep.delete(stepId);
+          delete protectedStepRanges[stepId];
+          removeUnprotectedSteps();
+        }
+      }
+    });
+  }
+
+  function removeUnprotectedSteps() {
+    const currentStepsOnStaircase = Array.from(staircaseHolder.children).map((el) =>
+      parseInt(el.id.replace("step-", "")),
+    );
+
+    const stepsToRemove = currentStepsOnStaircase
+      .filter((idx) => idx > stepsToKeep && !isStepProtected(idx))
+      .sort((a, b) => a - b);
+
+    stepsToRemove.forEach((idx, i) => {
+      setTimeout(() => {
+        if (
+          stepElementsArray[idx] &&
+          staircaseHolder.contains(stepElementsArray[idx]) &&
+          !isStepProtected(idx)
+        ) {
+          staircaseHolder.removeChild(stepElementsArray[idx]);
+        }
+      }, i * 30);
+    });
+  }
+
+  window.addEventListener("disconnected", handlePlayerDisconnect);
+
+  const stepsArray = generateStepsData();
+  const stepElementsArray = stepsArray.map((stepData) => createStep(stepData, stepData.id));
+
+  for (let i = 0; i < stepsToKeep; i++) {
+    staircaseHolder.appendChild(stepElementsArray[i]);
+  }
+</script>

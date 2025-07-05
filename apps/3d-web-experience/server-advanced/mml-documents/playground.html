@@ -1,0 +1,476 @@
+<m-group id="content-group">
+  <m-group id="wind-group"></m-group>
+  <m-group id="altars-group"></m-group>
+</m-group>
+
+<script>
+  const contentGroup = document.getElementById("content-group");
+  const windGroup = document.getElementById("wind-group");
+  const altarsGroup = document.getElementById("altars-group");
+
+  class Respawner {
+    constructor(parentElement, originYPosition, targetYPosition, immediate = false) {
+      this.parentElement = parentElement;
+      this.originYPosition = originYPosition;
+      this.targetYPosition = targetYPosition;
+      this.immediate = immediate;
+
+      this.transporterDelay = 150;
+      this.transporterRadius = 1.5;
+      this.transporterThickness = 0.03;
+      this.transporterColor = "#4D96ED";
+      this.transporterOpacity = 0.001;
+      this.transporterCastShadows = false;
+      this.transporterVisible = true;
+
+      if (this.immediate) {
+        this.transporterOpacity = 0;
+        this.transporterCastShadows = false;
+        this.transporterVisible = false;
+      }
+
+      this.teleportAudioURL = "/assets/playground/sfx_portal_through.mp3";
+      this.teleportAudioArraySize = 10;
+      this.teleportAudioArray = [];
+
+      this.respawnerWidth = 9900;
+      this.respawnerHeight = 1.2;
+      this.respawnerDepth = 9900;
+
+      this.usersColliding = new Set();
+
+      this.respawner = this.createCube(
+        0,
+        this.originYPosition,
+        0,
+        this.respawnerWidth,
+        this.respawnerHeight,
+        this.respawnerDepth,
+        0,
+        "#ffffff",
+        false,
+      );
+      this.parentElement.appendChild(this.respawner);
+
+      this.createTransporter = this.createTransporter.bind(this);
+      this.shiftTeleportAudioArray = this.shiftTeleportAudioArray.bind(this);
+
+      this.populateTeleportAudioArray();
+      this.setEventListeners();
+    }
+
+    setEventListeners() {
+      this.respawner.setAttribute("collision-interval", 250);
+
+      this.respawner.addEventListener("collisionstart", (e) => {
+        if (!this.usersColliding.has(e.detail.connectionId)) {
+          this.usersColliding.add(e.detail.connectionId);
+          const worldY = this.originYPosition;
+          const { x, y, z } = e.detail.position;
+          this.createTransporter(x, worldY + y, z);
+        }
+      });
+
+      this.respawner.addEventListener("collisionmove", (e) => {
+        if (!this.usersColliding.has(e.detail.connectionId)) {
+          this.usersColliding.add(e.detail.connectionId);
+          const worldY = this.originYPosition;
+          const { x, y, z } = e.detail.position;
+          this.createTransporter(x, y, z);
+        }
+      });
+
+      this.respawner.addEventListener("collisionend", (e) => {
+        if (this.usersColliding.has(e.detail.connectionId)) {
+          this.usersColliding.delete(e.detail.connectionId);
+        }
+      });
+
+      window.addEventListener("disconnected", (e) => {
+        if (this.usersColliding.has(e.detail.connectionId)) {
+          this.usersColliding.delete(e.detail.connectionId);
+        }
+      });
+    }
+
+    createCube(x, y, z, width, height, depth, opacity, color = "#aaaaaa", castShadows = true) {
+      const cube = document.createElement("m-cube");
+      cube.setAttribute("x", x);
+      cube.setAttribute("y", y);
+      cube.setAttribute("z", z);
+      cube.setAttribute("width", width);
+      cube.setAttribute("depth", depth);
+      cube.setAttribute("height", height);
+      cube.setAttribute("color", color);
+      cube.setAttribute("opacity", opacity);
+      cube.setAttribute("cast-shadows", castShadows);
+      return cube;
+    }
+
+    createCylinder(x, y, z, radius, height, opacity, color = "#aaaaaa", castShadows = true) {
+      const cylinder = document.createElement("m-cylinder");
+      cylinder.setAttribute("x", x);
+      cylinder.setAttribute("y", y);
+      cylinder.setAttribute("z", z);
+      cylinder.setAttribute("radius", radius);
+      cylinder.setAttribute("height", height);
+      cylinder.setAttribute("color", color);
+      cylinder.setAttribute("opacity", opacity);
+      cylinder.setAttribute("cast-shadows", castShadows);
+      return cylinder;
+    }
+
+    createAudio(index) {
+      const audio = document.createElement("m-audio");
+      audio.setAttribute("id", `teleport-audio-${index}`);
+      audio.setAttribute("x", this.respawnerWidth);
+      audio.setAttribute("y", this.respawnerHeight);
+      audio.setAttribute("z", this.respawnerDepth);
+      audio.setAttribute("volume", 0);
+      audio.setAttribute("loop", false);
+      audio.setAttribute("src", this.teleportAudioURL);
+      audio.setAttribute("start-time", document.timeline.currentTime - 2000);
+      audio.setAttribute("pause-time", document.timeline.currentTime);
+      audio.setAttribute("volume", 1);
+      return audio;
+    }
+
+    populateTeleportAudioArray() {
+      for (let i = 0; i < this.teleportAudioArraySize; i++) {
+        const audio = this.createAudio(i);
+        this.parentElement.appendChild(audio);
+        this.teleportAudioArray.push(audio);
+      }
+    }
+
+    shiftTeleportAudioArray() {
+      const audio = this.teleportAudioArray.shift();
+      this.teleportAudioArray.push(audio);
+      return audio;
+    }
+
+    createTransporter(x, y, z) {
+      const transporter = this.createCylinder(
+        x,
+        y,
+        z,
+        this.transporterRadius,
+        this.transporterThickness,
+        this.transporterOpacity,
+        this.transporterColor,
+        this.transporterCastShadows,
+      );
+      transporter.setAttribute("visible", this.transporterVisible);
+      this.parentElement.appendChild(transporter);
+
+      const animate = (element, attr, start, end, duration, easing, loop = false) => {
+        const anim = document.createElement("m-attr-anim");
+        anim.setAttribute("attr", attr);
+        anim.setAttribute("start", start);
+        anim.setAttribute("end", end);
+        anim.setAttribute("start-time", document.timeline.currentTime);
+        anim.setAttribute("end-time", document.timeline.currentTime + duration);
+        anim.setAttribute("duration", duration);
+        anim.setAttribute("easing", easing);
+        anim.setAttribute("loop", loop);
+        element.appendChild(anim);
+        setTimeout(() => {
+          element.setAttribute(attr, end);
+          element.removeChild(anim);
+        }, duration);
+        return anim;
+      };
+
+      const createSequence = (element, sequence, easing, duration, pauses, loop = false) => {
+        const timeAction = (cb, delay) => setTimeout(() => cb(), delay);
+
+        const animSequence = [];
+        for (let i = 0; i < sequence.length; i++) {
+          const seq = sequence[i];
+          if (Array.isArray(seq)) {
+            const subSeqArr = [];
+            for (let j = 0; j < seq.length; j++) {
+              const subSeq = seq[j];
+              subSeqArr.push(() =>
+                animate(element, subSeq.attr, subSeq.start, subSeq.end, duration, easing),
+              );
+            }
+            animSequence.push(subSeqArr);
+          } else {
+            animSequence.push(() =>
+              animate(
+                element,
+                sequence[i].attr,
+                sequence[i].start,
+                sequence[i].end,
+                duration,
+                easing,
+              ),
+            );
+          }
+        }
+
+        const seqSize = animSequence.length;
+        const seqDuration = seqSize * duration + seqSize * pauses;
+
+        const playSeq = () => {
+          for (let i = 0; i < seqSize; i++) {
+            if (typeof animSequence[i] === "function") {
+              timeAction(animSequence[i], duration * i + pauses * i);
+            } else if (Array.isArray(animSequence[i])) {
+              for (let j = 0; j < animSequence[i].length; j++) {
+                timeAction(animSequence[i][j], duration * i + pauses * i);
+              }
+            }
+          }
+        };
+
+        playSeq();
+        if (loop === true) {
+          setInterval(() => playSeq(), seqDuration);
+        } else {
+          setTimeout(() => element.remove() + 100, seqDuration);
+        }
+      };
+
+      const randomIntPoN = (val) => {
+        val = Math.abs(val);
+        return Math.floor(Math.random() * (val * 2 + 1)) - val;
+      };
+
+      const coinFlip = Math.random() < 0.5 ? -1 : 1;
+
+      const firstX = (-10 - Math.random() * 20) * coinFlip;
+      const firstY = this.targetYPosition - 15 + Math.random() * 20;
+      const firstZ = -70 + randomIntPoN(10);
+
+      const secondX = Math.random() * 10 * coinFlip;
+      const secondY = this.targetYPosition + 20 + Math.random() * 10;
+      const secondZ = -30 + Math.random() * 20;
+
+      const finalX = randomIntPoN(12);
+      const finalZ = randomIntPoN(10);
+
+      const transportSequence = [
+        [
+          { attr: "x", start: x, end: firstX },
+          { attr: "y", start: y, end: firstY },
+          { attr: "z", start: z, end: firstZ },
+        ],
+        [
+          { attr: "x", start: firstX, end: secondX },
+          { attr: "y", start: firstY, end: secondY },
+          { attr: "z", start: firstZ, end: secondZ },
+        ],
+        [
+          { attr: "x", start: secondX, end: finalX },
+          { attr: "y", start: secondY, end: this.targetYPosition - this.transporterThickness },
+          { attr: "z", start: secondZ, end: finalZ },
+        ],
+      ];
+      if (this.immediate) {
+        const audio = this.shiftTeleportAudioArray();
+        const now = document.timeline.currentTime;
+        audio.setAttribute("start-time", now);
+        audio.setAttribute("pause-time", now + 2000);
+        audio.setAttribute("x", x);
+        audio.setAttribute("y", y);
+        audio.setAttribute("z", z);
+
+        setTimeout(() => {
+          audio.setAttribute("x", finalX);
+          audio.setAttribute("y", this.targetYPosition - this.transporterThickness);
+          audio.setAttribute("z", finalZ);
+          transporter.setAttribute("x", finalX);
+          transporter.setAttribute("y", this.targetYPosition - this.transporterThickness);
+          transporter.setAttribute("z", finalZ);
+          setTimeout(() => transporter.remove(), this.transporterDelay);
+        }, this.transporterDelay);
+      } else {
+        createSequence(transporter, transportSequence, "easeInOutQuart", 1500, 0, false);
+      }
+    }
+  }
+
+  function createWindSFX(src, x, y, z, windVolume, startTime, debug) {
+    const wind = document.createElement("m-audio");
+    wind.setAttribute("debug", debug);
+    wind.setAttribute("src", src);
+    wind.setAttribute("volume", windVolume);
+    wind.setAttribute("x", x);
+    wind.setAttribute("y", y);
+    wind.setAttribute("z", z);
+    windGroup.appendChild(wind);
+  }
+
+  function loopAnim(element, attr, start, end, duration, pingPong, easing = undefined) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("loop", true);
+    anim.setAttribute("ping-pong", pingPong);
+    if (easing) {
+      anim.setAttribute("easing", easing);
+    }
+    element.appendChild(anim);
+  }
+
+  function placeWind(radius, sources) {
+    const angleStep = (2 * Math.PI) / sources;
+    const angleOffset = (sources - 1) / Math.PI;
+    const angleCorrection = Math.PI * 2 - 0.5;
+    const startRotation = -(angleStep * angleOffset) * (180 / Math.PI) + angleCorrection;
+    windGroup.setAttribute("ry", startRotation);
+
+    for (let i = 0; i < sources; i++) {
+      const now = document.timeline.currentTime;
+      const angle = i * angleStep;
+      const windOffset = 20;
+      const windX = Math.cos(angle) * (radius + windOffset);
+      const windY = 7;
+      const windZ = Math.sin(angle) * (radius + windOffset);
+      const windVolume = i % 2 === 0 ? 2 : 3.5;
+      const windDebug = false;
+      const windSrc = "/assets/playground/wind.mp3";
+      createWindSFX(windSrc, windX, windY, windZ, windVolume, now, windDebug);
+      loopAnim(windGroup, "ry", 0, 360, 150000, false);
+    }
+  }
+
+  function placeAltars(parentElement, radius, numberOfAltars) {
+    const angleStep = (2 * Math.PI) / numberOfAltars;
+    const angleOffset = (numberOfAltars - 1) / Math.PI;
+    const angleCorrection = Math.PI * 2 - 0.5;
+    const startRotation = -(angleStep * angleOffset) * (180 / Math.PI) + angleCorrection;
+    altarsGroup.setAttribute("ry", startRotation);
+    altarsGroup.setAttribute("y", -10);
+    for (let i = 0; i < numberOfAltars; i++) {
+      const angle = i * angleStep;
+
+      const now = document.timeline.currentTime;
+
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      const ry = -angle * (180 / Math.PI) - 90;
+      const mmlDocYPos = 0.8;
+
+      const altar = document.createElement("m-model");
+      altar.setAttribute("src", "/assets/playground/mml_altar.glb");
+      altar.setAttribute("sx", 1.2);
+      altar.setAttribute("sy", 0.9);
+      altar.setAttribute("sz", 1.2);
+      altar.setAttribute("x", x);
+      altar.setAttribute("y", 0);
+      altar.setAttribute("z", z);
+      altar.setAttribute("ry", ry);
+      parentElement.appendChild(altar);
+
+      const mFrame = document.createElement("m-frame");
+      if (i === 0) {
+        mFrame.setAttribute("src", "wss:///mml-documents/intro.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 1) {
+        mFrame.setAttribute("src", "wss:///mml-documents/memory-game.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 2) {
+        mFrame.setAttribute("src", "wss:///mml-documents/how-mml-works.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 3) {
+        mFrame.setAttribute("src", "wss:///mml-documents/gaming-station.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 4) {
+        mFrame.setAttribute("src", "wss:///mml-documents/fallguys-game.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 5) {
+        mFrame.setAttribute("src", "wss:///mml-documents/rotate-anim.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 6) {
+        mFrame.setAttribute("src", "wss:///mml-documents/chess-room.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 7) {
+        mFrame.setAttribute("src", "wss:///mml-documents/agent.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 8) {
+        mFrame.setAttribute("src", "wss:///mml-documents/magic-stairs.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 9) {
+        mFrame.setAttribute("src", "wss:///mml-documents/dice.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 10) {
+        mFrame.setAttribute("src", "wss:///mml-documents/tic-tac-toe.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 11) {
+        mFrame.setAttribute("src", "wss:///mml-documents/live-stream.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 12) {
+        mFrame.setAttribute("src", "wss:///mml-documents/piano.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 13) {
+        mFrame.setAttribute("src", "wss:///mml-documents/links.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      } else if (i === 14) {
+        mFrame.setAttribute("src", "wss:///mml-documents/physics-world.html");
+        mFrame.setAttribute("x", x);
+        mFrame.setAttribute("y", mmlDocYPos);
+        mFrame.setAttribute("z", z);
+        mFrame.setAttribute("ry", ry);
+      }
+      altarsGroup.appendChild(mFrame);
+    }
+  }
+
+  function addDocuments() {
+    altarsGroup.setAttribute("y", 0);
+  }
+
+  placeAltars(altarsGroup, 42, 15);
+  // placeWind(25, 6);
+
+  new Respawner(contentGroup, -50, 0, true);
+
+  addDocuments();
+</script>

@@ -1,0 +1,786 @@
+<m-group id="agent-group" y="0.75" sx="1.5" sy="1.5" sz="1.5"></m-group>
+<script>
+  const apiKey = "OPENAI_API_KEY_GOES_HERE";
+  const assistantId = "OPENAI_AGENT_ID_GOES_HERE";
+
+  const brainJarModelURL = "/assets/playground/brain_jar.glb";
+  const brainModelURL = "/assets/playground/brain_lowpoly.glb";
+  const brainEyesModelURL = "/assets/playground/brain_lowpoly_eyes.glb";
+  const waitIndicatorURL = "/assets/playground/wait.webm";
+
+  const spinAudioURL = "/assets/playground/spin.mp3";
+  const hornAudioURL = "/assets/playground/horn.mp3";
+  const hornModelURL = "/assets/playground/viking_horn.glb";
+  const thumbModelURL = "/assets/playground/thumb.glb";
+
+  const particlaImageURL = "/assets/playground/particle.png";
+
+  class Agent {
+    audioVolume = 3;
+    audioMarginDuration = 2000;
+    completionTimeout = 7000;
+
+    threadId = undefined;
+    latestPromise = null;
+    queuedMessages = [];
+    queuedResponses = [];
+    responseInProgress = false;
+    latestMessageTime = document.timeline.currentTime;
+
+    noRototation = 90;
+    upRotation = 0;
+    downRotation = 180;
+
+    small = 0.8;
+    big = 1;
+
+    connectionPrefix = Date.now() - 1710000000000;
+    connectedUsers = new Set();
+    proximityMap = new Map();
+    latestProximityActivity = document.timeline.currentTime;
+
+    constructor(parentElement) {
+      const now = document.timeline.currentTime;
+      this.parentElement = parentElement;
+
+      this.waitIndicator = null;
+      this.agentModel = this.createBrainModel();
+      this.agentModel.setAttribute("sx", this.small);
+      this.agentModel.setAttribute("sy", this.small);
+      this.agentModel.setAttribute("sz", this.small);
+
+      this.actionsWrapper = document.createElement("m-group");
+      this.actionsWrapper.setAttribute("id", "actions-wrapper");
+      this.actionsWrapper.appendChild(this.agentModel);
+
+      // this.particles = this.createParticles(21, 0.55);
+      // this.actionsWrapper.appendChild(this.particles);
+
+      this.floatWrapper = document.createElement("m-group");
+      this.floatWrapper.setAttribute("id", "float-wrapper");
+      this.floatWrapper.appendChild(this.actionsWrapper);
+      this.animate(this.floatWrapper, "y", 0.2, 0.35, 17000, true, true, 0, "easeInOutQuad");
+
+      this.agentAudio = document.createElement("m-audio");
+      this.agentAudio.setAttribute("id", "agent-audio");
+      this.agentAudio.setAttribute("y", 2);
+      this.agentAudio.setAttribute("z", -2.7);
+      this.agentAudio.setAttribute("loop", false);
+      this.agentAudio = this.createAudio("agent-audio", null, false, -10000, now, 0);
+
+      this.spinAudio = this.createAudio("spin-audio", spinAudioURL, false, -10000, now, 0);
+      this.actionsWrapper.appendChild(this.spinAudio);
+
+      this.hornAudio = this.createAudio("horn-audio", hornAudioURL, false, -10000, now, 0);
+      this.actionsWrapper.appendChild(this.hornAudio);
+
+      this.horn = this.createModel("horn-model", hornModelURL, -0.8, 0.3, 1, 0, -20, 220);
+      this.actionsWrapper.appendChild(this.horn);
+
+      this.thumb = this.createModel("thumb-model", thumbModelURL, -1.5, 0.5, 0, 0, 0, 0);
+      this.actionsWrapper.appendChild(this.thumb);
+
+      this.responseImage = document.createElement("m-image");
+      this.responseImage.setAttribute("id", "response-image");
+      this.responseImage.setAttribute("class", "hidden");
+      this.responseImage.setAttribute("width", 4);
+      this.responseImage.setAttribute("x", 2.7);
+      this.responseImage.setAttribute("y", 0.75);
+      this.responseImage.setAttribute("z", 1);
+      this.responseImage.setAttribute("ry", -15);
+      this.responseImage.setAttribute("collide", false);
+      this.responseImage.setAttribute("emissive", 12);
+      this.floatWrapper.appendChild(this.responseImage);
+
+      this.text = "Hi, I'm Squig! Chat with me through the text chat box on the UI.";
+      this.textToCanvas = this.generateTextImage(this.responseImage, this.text, {
+        fontSize: 40,
+        textColor: "#00ff00",
+      });
+
+      this.submitMessage = this.submitMessage.bind(this);
+      this.connectionIdToUserId = this.connectionIdToUserId.bind(this);
+      this.sendMessages = this.sendMessages.bind(this);
+      this.onQueue = this.onQueue.bind(this);
+      this.processResponses = this.processResponses.bind(this);
+      this.createSpeech = this.createSpeech.bind(this);
+      this.createSpeechWithTimeout = this.createSpeechWithTimeout.bind(this);
+      this.playAudio = this.playAudio.bind(this);
+      this.createParticles = this.createParticles.bind(this);
+
+      this.proximityProbe = this.createProximityProbe();
+      this.proximityProbe.addEventListener("positionenter", (event) => {
+        const { connectionId } = event.detail;
+        const { position, rotation } = event.detail.documentRelative;
+        this.proximityMap.set(connectionId, { position, rotation });
+        this.latestProximityActivity = document.timeline.currentTime;
+      });
+
+      this.proximityProbe.addEventListener("positionmove", (event) => {
+        const { connectionId } = event.detail;
+        const { position, rotation } = event.detail.documentRelative;
+        this.proximityMap.set(connectionId, { position, rotation });
+        this.latestProximityActivity = document.timeline.currentTime;
+      });
+
+      this.proximityProbe.addEventListener("positionleave", (event) => {
+        const { connectionId } = event.detail;
+        if (this.proximityMap.has(connectionId)) {
+          this.proximityMap.delete(connectionId);
+        }
+      });
+
+      window.addEventListener("connected", (event) => {
+        this.connectedUsers.add(this.connectionIdToUserId(event.detail.connectionId));
+      });
+
+      window.addEventListener("disconnected", (event) => {
+        this.connectedUsers.delete(this.connectionIdToUserId(event.detail.connectionId));
+        if (this.proximityMap.has(event.detail.connectionId)) {
+          this.proximityMap.delete(event.detail.connectionId);
+        }
+      });
+
+      this.chatProbe = this.createChatProbe();
+      this.chatProbe.addEventListener("chat", (event) => {
+        this.latestMessageTime = document.timeline.currentTime;
+        const { message, connectionId } = event.detail;
+        this.submitMessage(message, this.connectionIdToUserId(connectionId));
+      });
+
+      this.parentElement.appendChild(this.floatWrapper);
+      this.parentElement.appendChild(this.agentAudio);
+      this.parentElement.appendChild(this.proximityProbe);
+      this.parentElement.appendChild(this.chatProbe);
+
+      setInterval(() => {
+        this.checkIfHasNearbyUsers();
+      }, 1000);
+    }
+
+    generateTextImage(targetImage, text, options) {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      const fontSize = options.fontSize || 50;
+      const lineHeight = parseFloat((fontSize * 1.2).toFixed(2));
+      const textColor = options.textColor || "#ffffff";
+      const maxLineCharacters = options.maxLineCharacters || 42;
+
+      function splitTextIntoLines(text) {
+        const words = text.split(" ");
+        const lines = [];
+        let currentLine = "";
+
+        words.forEach((word) => {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          if (testLine.length <= maxLineCharacters) {
+            currentLine = testLine;
+          } else {
+            lines.push(currentLine);
+            currentLine = word;
+          }
+        });
+
+        if (currentLine) lines.push(currentLine);
+        return lines;
+      }
+
+      function paintText(text) {
+        const lines = splitTextIntoLines(text);
+        canvas.width = fontSize * (maxLineCharacters + 1) * 0.6;
+        canvas.height = lineHeight * (lines.length + 1);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = `900 ${fontSize}px monospace`;
+        ctx.fillStyle = textColor;
+
+        let yPos = lineHeight;
+        lines.forEach((line) => {
+          ctx.fillText(line, 0, yPos);
+          yPos += lineHeight;
+        });
+
+        const dataUrl = canvas.toDataURL("image/png");
+        targetImage.setAttribute("src", dataUrl);
+      }
+
+      paintText(text);
+
+      return {
+        updateText: (newText) => paintText(newText),
+      };
+    }
+
+    checkIfHasNearbyUsers(connectionId) {
+      if (this.responseInProgress === true) {
+        return;
+      }
+      if (this.proximityMap.size === 0) {
+        const diff = Math.ceil((document.timeline.currentTime - this.latestMessageTime) / 1000);
+        if (diff > 10) {
+          this.textToCanvas.updateText(this.text);
+        }
+      } else {
+        const diff = Math.ceil((document.timeline.currentTime - this.latestMessageTime) / 1000);
+        if (diff > 60) {
+          this.latestPromise = null;
+          this.queuedMessages = [];
+          this.queuedResponses = [];
+          this.responseInProgress = false;
+          this.textToCanvas.updateText(this.text);
+        }
+      }
+    }
+
+    connectionIdToUserId(connectionId) {
+      return `${this.connectionPrefix}_${connectionId}`;
+    }
+
+    async sendMessages() {
+      this.showWaiting();
+      const messages = this.queuedMessages;
+      this.queuedMessages = [];
+      let res;
+      if (this.threadId) {
+        res = await fetch(`https://api.openai.com/v1/threads/${this.threadId}/runs`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "OpenAI-Beta": "assistants=v2",
+          },
+          body: JSON.stringify({
+            assistant_id: assistantId,
+            stream: true,
+            additional_messages: messages.map((message) => ({
+              role: "user",
+              content: JSON.stringify(message),
+            })),
+          }),
+        });
+      } else {
+        res = await fetch("https://api.openai.com/v1/threads/runs", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "OpenAI-Beta": "assistants=v2",
+          },
+          body: JSON.stringify({
+            assistant_id: assistantId,
+            stream: true,
+            thread: {
+              messages: messages.map((message) => ({
+                role: "user",
+                content: JSON.stringify(message),
+              })),
+            },
+          }),
+        });
+      }
+      if (!res.ok) {
+        console.log("ERROR", res.status, res.statusText, await res.text());
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const text = await res.text();
+      const lines = text
+        .split("\n")
+        .filter((line) => line.startsWith("data: ") && line !== "data: [DONE]")
+        .map((line) => line.substring(6))
+        .map((line) => {
+          try {
+            return JSON.parse(line);
+          } catch (e) {
+            console.error("FAIlED TO PARSE LINE", line);
+            return { object: "unknown", data: line };
+          }
+        });
+      const completionLine = lines.find(
+        (line) =>
+          line.object === "thread.message" &&
+          line.status === "completed" &&
+          line !== "data: [DONE]",
+      );
+      if (completionLine) {
+        if (completionLine.thread_id) {
+          this.threadId = completionLine.thread_id;
+        }
+        try {
+          let completionText = completionLine.content[0].text.value;
+          console.log(`
+  #
+  completionText: ${completionText}
+  #`);
+          completionText = completionText.replace(/【[^】]*】/g, "");
+          completionText = completionText.replace("```json\n", "").replace("```", "");
+          const completion = JSON.parse(completionText);
+          if (completion.ignore) {
+            this.textToCanvas.updateText("Ignoring");
+          } else if (completion.wait) {
+            this.textToCanvas.updateText("Waiting");
+          } else if (completion.action) {
+            if (completion.action === "spin") {
+              this.spin();
+            } else if (completion.action === "thumbs_up") {
+              this.thumbsUp();
+            } else if (completion.action === "thumbs_down") {
+              this.thumbsDown();
+            } else if (completion.action === "blow_horn") {
+              this.playHorn();
+            }
+          }
+          if (completion.message) {
+            this.createSpeechWithTimeout(completion.message);
+          }
+          this.hideWaiting();
+        } catch (e) {
+          console.error("FAILED TO PARSE COMPLETION", completionLine.content[0].text.value, e);
+        }
+      }
+    }
+
+    async onQueue() {
+      if (this.latestPromise) {
+        return;
+      } else {
+        this.latestPromise = this.sendMessages().finally(() => {
+          this.latestPromise = null;
+          if (this.queuedMessages.length > 0) {
+            this.onQueue();
+          }
+        });
+      }
+    }
+
+    submitMessage(message, userId) {
+      const time = Date.now() / 1000;
+      this.queuedMessages.push({
+        message,
+        userId,
+        time,
+        nearbyUsers: Array.from(this.connectedUsers),
+      });
+      this.onQueue();
+    }
+
+    estimateMP3Duration(arrayBuffer, debug = false) {
+      const uint8Array = new Uint8Array(arrayBuffer);
+      let i = 0;
+      // Look for the first frame sync to determine CBR/VBR
+      while (i < uint8Array.length - 1) {
+        if (uint8Array[i] === 0xff && (uint8Array[i + 1] & 0xe0) === 0xe0) break;
+        i++;
+      }
+      if (i >= uint8Array.length - 4) {
+        if (debug) {
+          console.log("No valid MP3 frame header found.");
+        }
+        return 0;
+      }
+
+      const headerOffset = i + 4;
+      const isXing =
+        uint8Array.slice(headerOffset, headerOffset + 4).toString() === "88,105,110,103";
+      const isVBRI = uint8Array.slice(headerOffset, headerOffset + 4).toString() === "86,66,82,73";
+
+      if (isXing || isVBRI) {
+        if (debug) {
+          console.log("VBR MP3 detected.");
+        }
+        const headerPosition = isXing ? headerOffset : headerOffset + 32; // Xing is immediate; VBRI follows 32 bytes
+        const frames =
+          (uint8Array[headerPosition + 8] << 24) |
+          (uint8Array[headerPosition + 9] << 16) |
+          (uint8Array[headerPosition + 10] << 8) |
+          uint8Array[headerPosition + 11];
+        const sampleRate = 44100; // Set or detect sample rate per frame headers
+        const durationSeconds = (frames * 1152) / sampleRate; // Frame duration in seconds
+
+        if (debug) {
+          console.log(
+            `Frames: ${frames}, Sample rate: ${sampleRate}, Duration: ${durationSeconds}s`,
+          );
+        }
+        return Math.ceil(durationSeconds * 1000); // Convert to ms
+      } else {
+        if (debug) {
+          console.log("CBR MP3 detected.");
+        }
+      }
+
+      // Otherwise, estimate as Constant Bitrate (CBR) if no VBR info is available
+      const header = (uint8Array[i + 2] << 8) | uint8Array[i + 3];
+      const bitrateIndex = (header >> 4) & 0x0f;
+      const sampleRateIndex = (header >> 2) & 0x03;
+      if (debug) {
+        console.log(`Bitrate index: ${bitrateIndex}, Sample rate index: ${sampleRateIndex}`);
+      }
+      const bitrates = [
+        0, 32000, 40000, 48000, 56000, 64000, 80000, 96000, 112000, 128000, 160000, 192000, 224000,
+        256000, 320000,
+      ];
+      const sampleRates = [44100, 48000, 32000];
+      const bitrate = bitrates[bitrateIndex - 1];
+      const sampleRate = sampleRates[sampleRateIndex];
+
+      if (debug) {
+        console.log(`Bitrate: ${bitrate}, Sample rate: ${sampleRate}`);
+      }
+
+      if (!bitrate || !sampleRate) {
+        console.warn("Invalid bitrate or sample rate.");
+        return 0;
+      }
+
+      const durationSeconds = Math.ceil((arrayBuffer.byteLength * 8) / bitrate);
+      return durationSeconds * 1000; // Convert to milliseconds
+    }
+
+    processResponses() {
+      if (this.queuedResponses.length === 0 || this.responseInProgress === true) {
+        return;
+      }
+      const response = this.queuedResponses.shift();
+      this.responseInProgress = true;
+      this.growWhileSpeaking(response.duration);
+      this.playAudio(response.dataUrl, response.duration);
+      if (response.userId) {
+        this.textToCanvas.updateText(`${response.userId}: ${response.text}`);
+      } else {
+        this.textToCanvas.updateText(response.text);
+      }
+    }
+
+    async createSpeech(tts) {
+      const openAIURL = "https://api.openai.com/v1/audio/speech";
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      };
+      const body = {
+        model: "tts-1",
+        input: tts,
+        voice: "fable",
+        response_format: "mp3",
+      };
+      const response = await fetch(openAIURL, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+      const audioBlob = await response.blob();
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const duration = await this.estimateMP3Duration(arrayBuffer, false);
+      const uint8Array = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < uint8Array.length; i++) {
+        binary += String.fromCharCode(uint8Array[i]);
+      }
+      const base64Audio = btoa(binary);
+      const dataUrl = `data:audio/mp3;base64,${base64Audio}`;
+      this.queuedResponses.push({
+        dataUrl: dataUrl,
+        duration: duration,
+        text: tts,
+      });
+      this.processResponses();
+    }
+
+    async createSpeechWithTimeout(tts) {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Timeout: Speech creation took too long")),
+          this.completionTimeout,
+        ),
+      );
+      try {
+        await Promise.race([this.createSpeech(tts), timeoutPromise]);
+      } catch (error) {
+        console.warn(error.message);
+      }
+    }
+
+    playAudio(src, duration) {
+      const now = document.timeline.currentTime;
+      this.agentAudio.setAttribute("volume", this.audioVolume);
+      this.agentAudio.setAttribute("start-time", now);
+      this.agentAudio.setAttribute("pause-time", now + duration);
+      this.agentAudio.setAttribute("src", src);
+      setTimeout(() => {
+        this.agentAudio.setAttribute("volume", 0);
+        setTimeout(() => {
+          this.responseInProgress = false;
+          this.processResponses();
+        }, this.audioMarginDuration);
+      }, duration);
+    }
+
+    createParticles(maxParticles, radius) {
+      const group = document.createElement("m-group");
+      const randomFloatBetween = (a, b) => {
+        return Math.random() * (b - a) + a;
+      };
+      const particles = new Map();
+      const goldenRatio = (1 + Math.sqrt(5)) / 2;
+      const angleIncrement = Math.PI * 2 * goldenRatio;
+      for (let i = 0; i < maxParticles; i++) {
+        const t = i / maxParticles;
+        const inc = Math.acos(1 - 2 * t);
+        const azimuth = angleIncrement * i;
+        const x = radius * Math.sin(inc) * Math.cos(azimuth);
+        const z = radius * Math.sin(inc) * Math.sin(azimuth);
+        const image = document.createElement("m-image");
+        image.setAttribute("src", particlaImageURL);
+        image.setAttribute("emissive", 200);
+        image.setAttribute("x", x);
+        image.setAttribute("y", -Math.random() * 4);
+        image.setAttribute("z", z);
+        image.setAttribute("rx", randomFloatBetween(-45, 45));
+        image.setAttribute("ry", randomFloatBetween(-180, 180));
+        image.setAttribute("rz", randomFloatBetween(-45, 45));
+        image.setAttribute("width", randomFloatBetween(0.005, 0.01));
+        image.setAttribute("height", 0.005);
+        image.setAttribute("collide", false);
+        image.setAttribute("cast-shadows", false);
+        const anim = document.createElement("m-attr-anim");
+        anim.setAttribute("attr", "y");
+        anim.setAttribute("start", 0);
+        anim.setAttribute("end", 1.15);
+        anim.setAttribute("duration", 7000 + Math.random() * 7000);
+        image.appendChild(anim);
+        particles.set(i, image);
+        group.appendChild(image);
+      }
+      return group;
+    }
+
+    createModel(id, src, x, y, z, scale, rx, ry, rz) {
+      const model = document.createElement("m-model");
+      model.setAttribute("id", id);
+      model.setAttribute("src", src);
+      model.setAttribute("x", x);
+      model.setAttribute("y", y);
+      model.setAttribute("z", z);
+      model.setAttribute("sx", scale);
+      model.setAttribute("sy", scale);
+      model.setAttribute("sz", scale);
+      model.setAttribute("rx", rx);
+      model.setAttribute("ry", ry);
+      model.setAttribute("rz", rz);
+      model.setAttribute("collide", false);
+      return model;
+    }
+
+    createAudio(id, src, loop, startTime, pauseTime, volume) {
+      const audio = document.createElement("m-audio");
+      if (src) {
+        audio.setAttribute("src", src);
+      }
+      audio.setAttribute("id", id);
+      audio.setAttribute("loop", loop);
+      audio.setAttribute("start-time", startTime);
+      audio.setAttribute("pause-time", pauseTime);
+      audio.setAttribute("volume", volume);
+      return audio;
+    }
+
+    animate(parent, attr, start, end, duration, loop, pingPong, pingPongDelay, easing) {
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("loop", loop);
+      anim.setAttribute("ping-pong", pingPong);
+      anim.setAttribute("ping-pong-delay", pingPongDelay);
+      anim.setAttribute("easing", easing);
+      parent.appendChild(anim);
+    }
+
+    once(parent, attr, start, end, duration, easing) {
+      const now = document.timeline.currentTime;
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("start-time", now);
+      anim.setAttribute("end-time", now + duration);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("easing", easing);
+      anim.setAttribute("loop", false);
+      parent.appendChild(anim);
+      setTimeout(() => {
+        parent.setAttribute(attr, end);
+        parent.removeChild(anim);
+      }, duration);
+    }
+
+    createBrainModel() {
+      const group = document.createElement("m-group");
+      group.setAttribute("id", "agent-model");
+
+      const jarModel = document.createElement("m-model");
+      jarModel.setAttribute("src", brainJarModelURL);
+      this.animate(jarModel, "ry", -5, 5, 12000, true, true, 0, "easeInOutQuint");
+
+      const brainLight1 = document.createElement("m-light");
+      brainLight1.setAttribute("type", "spotlight");
+      brainLight1.setAttribute("intensity", "20");
+      brainLight1.setAttribute("cone-angle", "90");
+      brainLight1.setAttribute("cone-angle-falloff", "120");
+      brainLight1.setAttribute("z", "0");
+      brainLight1.setAttribute("y", "2");
+      brainLight1.setAttribute("rx", "0");
+      brainLight1.setAttribute("debug", "false");
+      brainLight1.setAttribute("cast-shadows", "false");
+      brainLight1.setAttribute("color", "#ffaaaa");
+
+      const brainLight2 = document.createElement("m-light");
+      brainLight2.setAttribute("type", "spotlight");
+      brainLight2.setAttribute("intensity", "10");
+      brainLight2.setAttribute("cone-angle", "90");
+      brainLight2.setAttribute("cone-angle-falloff", "120");
+      brainLight2.setAttribute("z", "0");
+      brainLight2.setAttribute("y", "-0.5");
+      brainLight2.setAttribute("rx", "180");
+      brainLight2.setAttribute("debug", "false");
+      brainLight2.setAttribute("cast-shadows", "false");
+
+      jarModel.appendChild(brainLight1);
+      jarModel.appendChild(brainLight2);
+
+      const brainModel = document.createElement("m-model");
+      brainModel.setAttribute("src", brainModelURL);
+      brainModel.setAttribute("collide", "false");
+      this.animate(brainModel, "y", 0, 0.12, 9000, true, true, 300, "easeInOutQuad");
+      this.animate(brainModel, "rz", 1, -1, 9000, true, true, 300, "easeInOutQuad");
+      this.animate(brainModel, "rx", 3, -3, 12000, true, true, 300, "easeInOutQuad");
+      jarModel.appendChild(brainModel);
+
+      const eyesModel = document.createElement("m-model");
+      eyesModel.setAttribute("src", brainEyesModelURL);
+      eyesModel.setAttribute("collide", "false");
+      this.animate(eyesModel, "y", -0.03, 0.09, 9000, true, true, 300, "easeInOutQuad");
+      this.animate(eyesModel, "sz", 0.9, 1.02, 11000, true, true, 400, "easeInOutBack");
+      jarModel.appendChild(eyesModel);
+
+      const collider = document.createElement("m-cylinder");
+      collider.setAttribute("radius", 0.75);
+      collider.setAttribute("height", 1.5);
+      collider.setAttribute("y", 0.75);
+      collider.setAttribute("visible", "false");
+      collider.setAttribute("collide", "true");
+      jarModel.appendChild(collider);
+
+      const waitIndicator = document.createElement("m-video");
+      waitIndicator.setAttribute("id", "wait-indicator");
+      waitIndicator.setAttribute("src", waitIndicatorURL);
+      waitIndicator.setAttribute("x", 0);
+      waitIndicator.setAttribute("y", 2.15);
+      waitIndicator.setAttribute("z", 0);
+      waitIndicator.setAttribute("sy", 0);
+      waitIndicator.setAttribute("emissive", 5);
+      waitIndicator.setAttribute("collide", false);
+      this.waitIndicator = waitIndicator;
+      jarModel.appendChild(waitIndicator);
+
+      group.appendChild(jarModel);
+
+      return group;
+    }
+
+    showWaiting() {
+      if (this.responseInProgress === false) {
+        this.textToCanvas.updateText("Thinking...");
+      }
+      this.once(this.waitIndicator, "sy", 0, 1, 500, "easeInOutQuint");
+    }
+
+    hideWaiting() {
+      this.once(this.waitIndicator, "sy", 1, 0, 500, "easeInOutQuint");
+    }
+
+    spin() {
+      this.spinAudio.setAttribute("volume", 1);
+      this.spinAudio.setAttribute("start-time", document.timeline.currentTime);
+      this.spinAudio.setAttribute("pause-time", document.timeline.currentTime + 6000);
+      setTimeout(() => {
+        this.spinAudio.setAttribute("volume", 0);
+      }, 6000);
+      this.once(this.actionsWrapper, "ry", 0, 1800, 3500, "easeInOutQuint");
+    }
+
+    thumbsUp() {
+      this.once(this.thumb, "sx", 0, 4, 1000, "easeInOutQuint");
+      this.once(this.thumb, "sy", 0, 4, 1000, "easeInOutQuint");
+      this.once(this.thumb, "sz", 0, 4, 1000, "easeInOutQuint");
+      this.once(this.thumb, "rx", this.noRotation, this.upRotation, 1000, "easeInOutQuint");
+      setTimeout(() => {
+        this.once(this.thumb, "sx", 4, 0, 1000, "easeInOutQuint");
+        this.once(this.thumb, "sy", 4, 0, 1000, "easeInOutQuint");
+        this.once(this.thumb, "sz", 4, 0, 1000, "easeInOutQuint");
+        this.once(this.thumb, "rx", this.upRotation, this.noRotation, 1000, "easeInOutQuint");
+      }, 5000);
+    }
+
+    thumbsDown() {
+      this.once(this.thumb, "sx", 0, 4, 1000, "easeInOutQuint");
+      this.once(this.thumb, "sy", 0, 4, 1000, "easeInOutQuint");
+      this.once(this.thumb, "sz", 0, 4, 1000, "easeInOutQuint");
+      this.once(this.thumb, "rx", this.noRotation, this.downRotation, 1000, "easeInOutQuint");
+      setTimeout(() => {
+        this.once(this.thumb, "sx", 4, 0, 1000, "easeInOutQuint");
+        this.once(this.thumb, "sy", 4, 0, 1000, "easeInOutQuint");
+        this.once(this.thumb, "sz", 4, 0, 1000, "easeInOutQuint");
+        this.once(this.thumb, "rx", this.downRotation, this.noRotation, 1000, "easeInOutQuint");
+      }, 5000);
+    }
+
+    playHorn() {
+      const now = document.timeline.currentTime;
+      this.hornAudio.setAttribute("volume", 1);
+      this.hornAudio.setAttribute("start-time", now);
+      this.hornAudio.setAttribute("pause-time", now + 6000);
+      this.once(this.horn, "sx", 0, 4, 1000, "easeInOutQuint");
+      this.once(this.horn, "sy", 0, 4, 1000, "easeInOutQuint");
+      this.once(this.horn, "sz", 0, 4, 1000, "easeInOutQuint");
+      setTimeout(() => {
+        this.hornAudio.setAttribute("volume", 0);
+        this.once(this.horn, "sx", 4, 0, 1000, "easeInOutQuint");
+        this.once(this.horn, "sy", 4, 0, 1000, "easeInOutQuint");
+        this.once(this.horn, "sz", 4, 0, 1000, "easeInOutQuint");
+      }, 6000);
+    }
+
+    growWhileSpeaking(duration) {
+      this.once(this.agentModel, "sx", this.small, this.big, 2000, "easeOutBack");
+      this.once(this.agentModel, "sy", this.small, this.big, 2000, "easeOutBack");
+      this.once(this.agentModel, "sz", this.small, this.big, 2000, "easeOutBack");
+      setTimeout(() => {
+        this.once(this.agentModel, "sx", this.big, this.small, 2000, "easeInOutQuint");
+        this.once(this.agentModel, "sy", this.big, this.small, 2000, "easeInOutQuint");
+        this.once(this.agentModel, "sz", this.big, this.small, 2000, "easeInOutQuint");
+      }, duration);
+    }
+
+    createChatProbe() {
+      const chatProbe = document.createElement("m-chat-probe");
+      chatProbe.setAttribute("id", "chat-probe");
+      chatProbe.setAttribute("range", 10);
+      chatProbe.setAttribute("debug", false);
+      return chatProbe;
+    }
+
+    createProximityProbe() {
+      const proximityProbe = document.createElement("m-position-probe");
+      proximityProbe.setAttribute("id", "position-probe");
+      proximityProbe.setAttribute("range", 10);
+      proximityProbe.setAttribute("debug", false);
+      return proximityProbe;
+    }
+  }
+
+  const agentGroup = document.getElementById("agent-group");
+  const agent = new Agent(agentGroup);
+</script>

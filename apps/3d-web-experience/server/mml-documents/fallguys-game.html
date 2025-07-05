@@ -1,0 +1,1147 @@
+<m-group id="wrapper">
+  <m-group id="fall-guys-group">
+    <m-group id="helis-group"></m-group>
+    <m-group id="rotate-group" ry="90" x="0.7"></m-group>
+    <m-group id="hammers-group" y="-3.5"></m-group>
+    <m-group id="sine-group"></m-group>
+    <m-group id="axe-group"></m-group>
+    <m-group id="travelator" ry="180" z="142"></m-group>
+  </m-group>
+
+  <m-group id="teleporter"></m-group>
+</m-group>
+
+<script>
+  class Respawner {
+    constructor(parentElement, originYPosition, targetYPosition, immediate = false) {
+      this.parentElement = parentElement;
+      this.originYPosition = originYPosition;
+      this.targetYPosition = targetYPosition;
+      this.immediate = immediate;
+
+      this.transporterDelay = 150;
+      this.transporterRadius = 2.5;
+      this.transporterThickness = 0.03;
+      this.transporterColor = "#4D96ED";
+      this.transporterOpacity = 0.001;
+      this.transporterCastShadows = false;
+      this.transporterVisible = true;
+
+      if (this.immediate) {
+        this.transporterOpacity = 0;
+        this.transporterCastShadows = false;
+        this.transporterVisible = false;
+      }
+
+      this.teleportAudioURL = "/assets/playground/sfx_portal_through.mp3";
+      this.teleportAudioArraySize = 10;
+      this.teleportAudioArray = [];
+
+      this.respawnerWidth = 9900;
+      this.respawnerHeight = 1.2;
+      this.respawnerDepth = 9900;
+
+      this.usersColliding = new Set();
+
+      this.respawner = this.createCube(
+        0,
+        this.originYPosition,
+        0,
+        this.respawnerWidth,
+        this.respawnerHeight,
+        this.respawnerDepth,
+        0,
+        "#ffffff",
+        false,
+      );
+      this.parentElement.appendChild(this.respawner);
+
+      this.createTransporter = this.createTransporter.bind(this);
+      this.shiftTeleportAudioArray = this.shiftTeleportAudioArray.bind(this);
+
+      this.populateTeleportAudioArray();
+      this.setEventListeners();
+    }
+
+    setEventListeners() {
+      this.respawner.setAttribute("collision-interval", 250);
+
+      this.respawner.addEventListener("collisionstart", (e) => {
+        if (!this.usersColliding.has(e.detail.connectionId)) {
+          this.usersColliding.add(e.detail.connectionId);
+          const worldY = this.originYPosition;
+          const { x, y, z } = e.detail.position;
+          this.createTransporter(x, worldY + y, z);
+        }
+      });
+
+      this.respawner.addEventListener("collisionmove", (e) => {
+        if (!this.usersColliding.has(e.detail.connectionId)) {
+          this.usersColliding.add(e.detail.connectionId);
+          const worldY = this.originYPosition;
+          const { x, y, z } = e.detail.position;
+          this.createTransporter(x, y, z);
+        }
+      });
+
+      this.respawner.addEventListener("collisionend", (e) => {
+        if (this.usersColliding.has(e.detail.connectionId)) {
+          this.usersColliding.delete(e.detail.connectionId);
+        }
+      });
+
+      window.addEventListener("disconnected", (e) => {
+        if (this.usersColliding.has(e.detail.connectionId)) {
+          this.usersColliding.delete(e.detail.connectionId);
+        }
+      });
+    }
+
+    createCube(x, y, z, width, height, depth, opacity, color = "#aaaaaa", castShadows = true) {
+      const cube = document.createElement("m-cube");
+      cube.setAttribute("x", x);
+      cube.setAttribute("y", y);
+      cube.setAttribute("z", z);
+      cube.setAttribute("width", width);
+      cube.setAttribute("depth", depth);
+      cube.setAttribute("height", height);
+      cube.setAttribute("color", color);
+      cube.setAttribute("opacity", opacity);
+      cube.setAttribute("cast-shadows", castShadows);
+      return cube;
+    }
+
+    createCylinder(x, y, z, radius, height, opacity, color = "#aaaaaa", castShadows = true) {
+      const cylinder = document.createElement("m-cylinder");
+      cylinder.setAttribute("x", x);
+      cylinder.setAttribute("y", y);
+      cylinder.setAttribute("z", z);
+      cylinder.setAttribute("radius", radius);
+      cylinder.setAttribute("height", height);
+      cylinder.setAttribute("color", color);
+      cylinder.setAttribute("opacity", opacity);
+      cylinder.setAttribute("cast-shadows", castShadows);
+      return cylinder;
+    }
+
+    createAudio(index) {
+      const audio = document.createElement("m-audio");
+      audio.setAttribute("id", `teleport-audio-${index}`);
+      audio.setAttribute("x", this.respawnerWidth);
+      audio.setAttribute("y", this.respawnerHeight);
+      audio.setAttribute("z", this.respawnerDepth);
+      audio.setAttribute("volume", 0);
+      audio.setAttribute("loop", false);
+      audio.setAttribute("src", this.teleportAudioURL);
+      audio.setAttribute("start-time", document.timeline.currentTime - 2000);
+      audio.setAttribute("pause-time", document.timeline.currentTime);
+      audio.setAttribute("volume", 1);
+      return audio;
+    }
+
+    populateTeleportAudioArray() {
+      for (let i = 0; i < this.teleportAudioArraySize; i++) {
+        const audio = this.createAudio(i);
+        this.parentElement.appendChild(audio);
+        this.teleportAudioArray.push(audio);
+      }
+    }
+
+    shiftTeleportAudioArray() {
+      const audio = this.teleportAudioArray.shift();
+      this.teleportAudioArray.push(audio);
+      return audio;
+    }
+
+    createTransporter(x, y, z) {
+      const transporter = this.createCylinder(
+        x,
+        y,
+        z,
+        this.transporterRadius,
+        this.transporterThickness,
+        this.transporterOpacity,
+        this.transporterColor,
+        this.transporterCastShadows,
+      );
+      transporter.setAttribute("visible", this.transporterVisible);
+      this.parentElement.appendChild(transporter);
+
+      const animate = (element, attr, start, end, duration, easing, loop = false) => {
+        const anim = document.createElement("m-attr-anim");
+        anim.setAttribute("attr", attr);
+        anim.setAttribute("start", start);
+        anim.setAttribute("end", end);
+        anim.setAttribute("start-time", document.timeline.currentTime);
+        anim.setAttribute("end-time", document.timeline.currentTime + duration);
+        anim.setAttribute("duration", duration);
+        anim.setAttribute("easing", easing);
+        anim.setAttribute("loop", loop);
+        element.appendChild(anim);
+        setTimeout(() => {
+          element.setAttribute(attr, end);
+          element.removeChild(anim);
+        }, duration);
+        return anim;
+      };
+
+      const createSequence = (element, sequence, easing, duration, pauses, loop = false) => {
+        const timeAction = (cb, delay) => setTimeout(() => cb(), delay);
+
+        const animSequence = [];
+        for (let i = 0; i < sequence.length; i++) {
+          const seq = sequence[i];
+          if (Array.isArray(seq)) {
+            const subSeqArr = [];
+            for (let j = 0; j < seq.length; j++) {
+              const subSeq = seq[j];
+              subSeqArr.push(() =>
+                animate(element, subSeq.attr, subSeq.start, subSeq.end, duration, easing),
+              );
+            }
+            animSequence.push(subSeqArr);
+          } else {
+            animSequence.push(() =>
+              animate(
+                element,
+                sequence[i].attr,
+                sequence[i].start,
+                sequence[i].end,
+                duration,
+                easing,
+              ),
+            );
+          }
+        }
+
+        const seqSize = animSequence.length;
+        const seqDuration = seqSize * duration + seqSize * pauses;
+
+        const playSeq = () => {
+          for (let i = 0; i < seqSize; i++) {
+            if (typeof animSequence[i] === "function") {
+              timeAction(animSequence[i], duration * i + pauses * i);
+            } else if (Array.isArray(animSequence[i])) {
+              for (let j = 0; j < animSequence[i].length; j++) {
+                timeAction(animSequence[i][j], duration * i + pauses * i);
+              }
+            }
+          }
+        };
+
+        playSeq();
+        if (loop === true) {
+          setInterval(() => playSeq(), seqDuration);
+        } else {
+          setTimeout(() => element.remove() + 100, seqDuration);
+        }
+      };
+
+      const randomIntPoN = (val) => {
+        val = Math.abs(val);
+        return Math.floor(Math.random() * (val * 2 + 1)) - val;
+      };
+
+      const coinFlip = Math.random() < 0.5 ? -1 : 1;
+
+      const firstX = (-10 - Math.random() * 20) * coinFlip;
+      const firstY = this.targetYPosition - 15 + Math.random() * 20;
+      const firstZ = -70 + randomIntPoN(10);
+
+      const secondX = Math.random() * 10 * coinFlip;
+      const secondY = this.targetYPosition + 20 + Math.random() * 10;
+      const secondZ = -30 + Math.random() * 20;
+
+      const finalX = randomIntPoN(12);
+      const finalZ = randomIntPoN(10);
+
+      const transportSequence = [
+        [
+          { attr: "x", start: x, end: firstX },
+          { attr: "y", start: y, end: firstY },
+          { attr: "z", start: z, end: firstZ },
+        ],
+        [
+          { attr: "x", start: firstX, end: secondX },
+          { attr: "y", start: firstY, end: secondY },
+          { attr: "z", start: firstZ, end: secondZ },
+        ],
+        [
+          { attr: "x", start: secondX, end: finalX },
+          { attr: "y", start: secondY, end: this.targetYPosition - this.transporterThickness },
+          { attr: "z", start: secondZ, end: finalZ },
+        ],
+      ];
+      if (this.immediate) {
+        const audio = this.shiftTeleportAudioArray();
+        const now = document.timeline.currentTime;
+        audio.setAttribute("start-time", now);
+        audio.setAttribute("pause-time", now + 2000);
+        audio.setAttribute("x", x);
+        audio.setAttribute("y", y);
+        audio.setAttribute("z", z);
+
+        setTimeout(() => {
+          audio.setAttribute("x", finalX);
+          audio.setAttribute("y", this.targetYPosition - this.transporterThickness);
+          audio.setAttribute("z", finalZ);
+          transporter.setAttribute("x", finalX);
+          transporter.setAttribute("y", this.targetYPosition - this.transporterThickness);
+          transporter.setAttribute("z", finalZ);
+          setTimeout(() => transporter.remove(), this.transporterDelay);
+        }, this.transporterDelay);
+      } else {
+        createSequence(transporter, transportSequence, "easeInOutQuart", 1500, 0, false);
+      }
+    }
+  }
+
+  function createFallGuys(gameYPosition, gamePartsYPos, teleporterSkinOffset) {
+    const fallGuysGroup = document.getElementById("fall-guys-group");
+    fallGuysGroup.setAttribute("y", gameYPosition);
+
+    const helisGroup = document.getElementById("helis-group");
+    const rotateGroup = document.getElementById("rotate-group");
+    const hammersGroup = document.getElementById("hammers-group");
+    const sineGroup = document.getElementById("sine-group");
+    const axeGroup = document.getElementById("axe-group");
+    const travelatorGroup = document.getElementById("travelator");
+    const hammersLeft = document.createElement("m-group");
+    const hammersRight = document.createElement("m-group");
+
+    const allGroups = [
+      helisGroup,
+      rotateGroup,
+      hammersGroup,
+      sineGroup,
+      axeGroup,
+      travelatorGroup,
+      hammersLeft,
+      hammersRight,
+    ];
+
+    const usersInRange = new Map();
+    const gameZPos = 0;
+
+    const spinnersMap = new Map();
+    let spinnersAnimating = false;
+
+    const hammersMap = new Map();
+    let hammersAnimating = false;
+
+    const hexPlatformsMap = new Map();
+    let hexPlatformsAnimating = false;
+
+    const axesMap = new Map();
+    let axesAnimating = false;
+
+    const helisMap = new Map();
+    let helisAnimating = false;
+
+    const width = 10;
+    const height = 0.1;
+    const depth = 308;
+    const numberOfPlatforms = 12;
+    const movementDuration = 15;
+    const stepDepth = depth / numberOfPlatforms;
+
+    function animate(element, attr, start, end, duration, easing, loop = false) {
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("start-time", document.timeline.currentTime);
+      anim.setAttribute("end-time", document.timeline.currentTime + duration);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("easing", easing);
+      anim.setAttribute("loop", loop);
+      element.appendChild(anim);
+      setTimeout(() => {
+        element.setAttribute(attr, end);
+        element.removeChild(anim);
+      }, duration);
+      return anim;
+    }
+
+    function createPingPongAnim(attr, start, end, startTime, duration, pingPongDelay, easing) {
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("start-time", startTime);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("ping-pong", true);
+      anim.setAttribute("ping-pong-delay", pingPongDelay);
+      if (easing) anim.setAttribute("easing", easing);
+      return anim;
+    }
+
+    function updateGroupVisibility(group, visibilityString) {
+      const currentVisibility = group.getAttribute("visible-to");
+      if (currentVisibility !== visibilityString) {
+        group.setAttribute("visible-to", visibilityString);
+      }
+    }
+
+    function createStart(yPos) {
+      const start = document.createElement("m-model");
+      start.setAttribute("src", "/assets/playground/fg_start_open.glb");
+      start.setAttribute("x", 0);
+      start.setAttribute("y", yPos);
+      start.setAttribute("z", 0);
+
+      let furthestZ = 0;
+
+      const positionProbe = document.createElement("m-position-probe");
+      positionProbe.setAttribute("interval", 444);
+      positionProbe.setAttribute("range", 400);
+      positionProbe.setAttribute("z", 250);
+      positionProbe.setAttribute("debug", false);
+
+      const gameMusic = document.createElement("m-audio");
+      gameMusic.setAttribute("src", "/assets/playground/kabalevsky.mp3");
+      gameMusic.setAttribute("loop", true);
+      gameMusic.setAttribute("z", -14);
+      gameMusic.setAttribute("y", 3);
+      gameMusic.setAttribute("ry", 180);
+      gameMusic.setAttribute("cone-angle", 90);
+      gameMusic.setAttribute("cone-falloff-angle", 130);
+      gameMusic.setAttribute("volume", 3);
+      gameMusic.setAttribute("start-time", document.timeline.currentTime);
+      gameMusic.setAttribute("debug", false);
+      start.appendChild(gameMusic);
+
+      positionProbe.addEventListener("positionenter", (e) => {
+        const relativeZ = e.detail.elementRelative.position.z;
+        usersInRange.set(e.detail.connectionId, relativeZ);
+      });
+      positionProbe.addEventListener("positionmove", (e) => {
+        const relativeZ = e.detail.elementRelative.position.z;
+        usersInRange.set(e.detail.connectionId, relativeZ);
+      });
+      positionProbe.addEventListener("positionleave", (e) => {
+        if (usersInRange.has(e.detail.connectionId)) {
+          usersInRange.delete(e.detail.connectionId);
+        }
+      });
+
+      setInterval(() => {
+        let visibleToString = "";
+        usersInRange.forEach((userPos, id) => {
+          visibleToString += `${id} `;
+        });
+
+        if (usersInRange.size === 0) {
+          for (let i = 0; i < allGroups.length; i++) {
+            updateGroupVisibility(allGroups[i], "-1");
+          }
+        } else {
+          for (let i = 0; i < allGroups.length; i++) {
+            updateGroupVisibility(allGroups[i], visibleToString);
+          }
+        }
+
+        if (usersInRange.size > 0) {
+          animateSpinners();
+          animateHammers();
+          animateSinePlatforms();
+          animateAxes();
+          animateHelis();
+        } else {
+          stopSpinners();
+          stopHammers();
+          stopSinePlatforms();
+          stopAxes();
+          stopHelis();
+        }
+        let max = -1000;
+        usersInRange.forEach((user) => {
+          if (user > max) max = user;
+        });
+        gameMusic.setAttribute("z", max + 260);
+      }, 444);
+
+      start.appendChild(positionProbe);
+      fallGuysGroup.appendChild(start);
+    }
+
+    function createEnd(yPos, zPos) {
+      const end = document.createElement("m-model");
+      end.setAttribute("src", "/assets/playground/fg_end_open.glb");
+      end.setAttribute("x", 0);
+      end.setAttribute("y", yPos);
+      end.setAttribute("z", zPos);
+      end.setAttribute("ry", 180);
+      fallGuysGroup.appendChild(end);
+    }
+
+    function spin(duration, clockWise = true) {
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", "ry");
+      anim.setAttribute("start", clockWise ? 0 : 360);
+      anim.setAttribute("end", clockWise ? 360 : 0);
+      anim.setAttribute("start-time", document.timeline.currentTime);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("loop", true);
+      return anim;
+    }
+
+    function createSpinner(x, y, z, clockWise = true) {
+      const spinner = document.createElement("m-model");
+      spinner.setAttribute("src", "/assets/playground/fg_circle_clean.glb");
+      spinner.setAttribute("x", x);
+      spinner.setAttribute("y", y);
+      spinner.setAttribute("z", z);
+      spinner.setAttribute("rx", clockWise ? 180 : 0);
+      spinner.setAttribute("rz", clockWise ? 180 : 0);
+      return spinner;
+    }
+
+    function createSpinnersInHexGrid(segmentOffset, y, width, depth) {
+      const spinnerRadius = 3.4999;
+      const spinnerDiameter = spinnerRadius * 2;
+      const hexHeight = (spinnerDiameter * Math.sqrt(3)) / 2;
+      const numSpinnersX = Math.floor(width / spinnerDiameter);
+      const numSpinnersZ = Math.floor(depth / hexHeight);
+
+      const totalWidth = numSpinnersX * spinnerDiameter + spinnerRadius;
+      const totalDepth = numSpinnersZ * hexHeight;
+      const halfTotalWidth = totalWidth / 2;
+      const halfRadius = spinnerRadius / 2;
+
+      for (let j = 0; j < numSpinnersZ; j++) {
+        for (let i = 0; i < numSpinnersX; i++) {
+          const ccw = (i + j) % 2 === 0;
+          const xOffset = (j % 2) * spinnerRadius;
+          const x = i * spinnerDiameter + xOffset - halfTotalWidth + halfRadius;
+          const z = j * hexHeight - totalDepth / 2 + halfRadius;
+          const spinner = createSpinner(x - segmentOffset, y, z, ccw);
+          const spinnerObject = {
+            mesh: spinner,
+            animation: spin(2900, true),
+            isSpinning: false,
+          };
+          spinnersMap.set(`${j}${i}`, spinnerObject);
+          rotateGroup.appendChild(spinnerObject.mesh);
+        }
+      }
+    }
+
+    function animateSpinners() {
+      if (spinnersAnimating === true) return;
+      spinnersMap.forEach((spinner) => {
+        if (spinner.isSpinning === false) {
+          spinner.mesh.appendChild(spinner.animation);
+          spinner.isSpinning = true;
+        }
+      });
+      spinnersAnimating = true;
+    }
+
+    function stopSpinners() {
+      if (spinnersAnimating === false) return;
+      spinnersMap.forEach((spinner) => {
+        if (spinner.isSpinning === true) {
+          spinner.animation.remove();
+          spinner.isSpinning = false;
+        }
+      });
+      spinnersAnimating = false;
+    }
+
+    function createHeli(left = false) {
+      const heliGroup = document.createElement("m-group");
+      const body = document.createElement("m-model");
+      body.setAttribute("src", "/assets/playground/fg_heli_body.glb");
+      heliGroup.appendChild(body);
+
+      const heliBlade = document.createElement("m-model");
+      heliBlade.setAttribute("src", "/assets/playground/fg_heli_blade.glb");
+      heliGroup.appendChild(heliBlade);
+
+      return {
+        heliGroup: heliGroup,
+        blade: heliBlade,
+      };
+    }
+
+    function createHelis(xPos, yPos) {
+      const now = document.timeline.currentTime;
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 2; j++) {
+          const { heliGroup, blade } = createHeli(j === 0);
+          heliGroup.setAttribute("x", j % 2 === 0 ? -14 : 14);
+          heliGroup.setAttribute("y", yPos);
+          heliGroup.setAttribute("z", -i * 8 + xPos);
+
+          const heliAnim = createPingPongAnim("y", yPos, yPos + 0.75, now * -i * 300, 12000, 1200);
+          const bladeAnim = spin(300, true);
+          const heli = {
+            group: heliGroup,
+            blade: blade,
+            heliAnim: heliAnim,
+            bladeAnim: bladeAnim,
+            isAnimating: false,
+          };
+          helisMap.set(`${xPos}-${i}${j}`, heli);
+          helisGroup.appendChild(heli.group);
+        }
+      }
+    }
+
+    function animateHelis() {
+      if (helisAnimating === true) return;
+      helisMap.forEach((heli) => {
+        if (heli.isAnimating === false) {
+          heli.group.appendChild(heli.heliAnim);
+          heli.blade.appendChild(heli.bladeAnim);
+          heli.isAnimating = true;
+        }
+      });
+      helisAnimating = true;
+    }
+
+    function stopHelis() {
+      if (helisAnimating === false) return;
+      helisMap.forEach((heli) => {
+        if (heli.isAnimating === true) {
+          heli.group.removeChild(heli.heliAnim);
+          heli.blade.removeChild(heli.bladeAnim);
+          heli.isAnimating = false;
+        }
+      });
+      helisAnimating = false;
+    }
+
+    function rotateInZ(startTime, fullRevoTime, clockWise = true) {
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", "rz");
+      anim.setAttribute("start", clockWise ? 0 : 360);
+      anim.setAttribute("end", clockWise ? 360 : 0);
+      anim.setAttribute("start-time", startTime);
+      anim.setAttribute("loop", true);
+      anim.setAttribute("duration", fullRevoTime);
+      return anim;
+    }
+
+    function createHammersBase() {
+      const baseGroup = document.createElement("m-group");
+      const base = document.createElement("m-model");
+      base.setAttribute("src", "/assets/playground/fg_hammers_base.glb");
+      base.setAttribute("sx", 1);
+      base.setAttribute("sy", 1);
+      base.setAttribute("sz", 2);
+      baseGroup.appendChild(base);
+
+      for (let i = 0; i < 2; i++) {
+        const edge = document.createElement("m-model");
+        edge.setAttribute("src", "/assets/playground/fg_hammers_edge.glb");
+        edge.setAttribute("z", i % 3 === 0 ? 30 : -30);
+        baseGroup.appendChild(edge);
+      }
+      return baseGroup;
+    }
+
+    function createHammer(z) {
+      const hammer = document.createElement("m-model");
+      hammer.setAttribute("src", "/assets/playground/fg_hammers.glb");
+      hammer.setAttribute("z", z);
+      hammer.setAttribute("sx", 1);
+      hammer.setAttribute("sy", 0.95);
+      hammer.setAttribute("sz", 2.5);
+      return hammer;
+    }
+
+    function createHammers(segmentOffset, yPos) {
+      const now = document.timeline.currentTime;
+      const hammersCount = 10;
+      const hammersInitialOffset = -18.45;
+      const hammersOffset = 3.75;
+      const speedOffsetMult = 600;
+
+      const baseLeft = createHammersBase();
+      const baseRight = createHammersBase();
+      hammersLeft.appendChild(baseLeft);
+      hammersRight.appendChild(baseRight);
+
+      for (let i = 0; i < hammersCount; i++) {
+        const speedOffset = Math.random() * speedOffsetMult * (Math.random() < 0.5 ? -1 : 1);
+        const hammerMesh = createHammer(hammersInitialOffset + hammersOffset * i);
+        const hammerAnim = rotateInZ(now - i * 300, 2100 + speedOffset, Math.random() < 0.5);
+        const hammer = {
+          mesh: hammerMesh,
+          animation: hammerAnim,
+          isSpinning: false,
+        };
+        hammersMap.set(`left-${i}`, hammer);
+        hammersLeft.appendChild(hammer.mesh);
+      }
+      for (let i = 0; i < hammersCount; i++) {
+        const speedOffset = Math.random() * speedOffsetMult * (Math.random() < 0.5 ? -1 : 1);
+        const hammerMesh = createHammer(hammersInitialOffset + hammersOffset * i);
+        const hammerAnim = rotateInZ(now - i * 300, 2100 + speedOffset, Math.random() < 0.5);
+        const hammer = {
+          mesh: hammerMesh,
+          animation: hammerAnim,
+          isSpinning: false,
+        };
+        hammersMap.set(`right-${i}`, hammer);
+        hammersRight.appendChild(hammer.mesh);
+      }
+
+      hammersLeft.setAttribute("x", 6);
+      hammersLeft.setAttribute("y", yPos);
+      hammersLeft.setAttribute("z", segmentOffset);
+      hammersRight.setAttribute("x", -6);
+      hammersRight.setAttribute("y", yPos);
+      hammersRight.setAttribute("z", segmentOffset);
+      hammersGroup.appendChild(hammersLeft);
+      hammersGroup.appendChild(hammersRight);
+    }
+
+    function animateHammers() {
+      if (hammersAnimating === true) return;
+      hammersMap.forEach((hammer) => {
+        if (hammer.isSpinning === false) {
+          hammer.mesh.appendChild(hammer.animation);
+          hammer.isSpinning = true;
+        }
+      });
+      hammersAnimating = true;
+    }
+
+    function stopHammers() {
+      if (hammersAnimating === false) return;
+      hammersMap.forEach((hammer) => {
+        if (hammer.isSpinning === true) {
+          hammer.animation.remove();
+          hammer.isSpinning = false;
+        }
+      });
+      hammersAnimating = false;
+    }
+
+    function createHexagon(x, y, z) {
+      const hexagon = document.createElement("m-model");
+      hexagon.setAttribute("src", "/assets/playground/fg_hexagon.glb");
+      hexagon.setAttribute("x", x);
+      hexagon.setAttribute("y", y);
+      hexagon.setAttribute("z", z);
+      return hexagon;
+    }
+
+    function createSinePlatforms(segmentOffset, yPos) {
+      const now = document.timeline.currentTime;
+      const totalPlatforms = 10;
+      const sineTime = 10000;
+      for (let i = 0; i < totalPlatforms; i++) {
+        const hexPlatformMesh = createHexagon(0, yPos, i * 11 + segmentOffset);
+        let sineAnim = null;
+        let yAnim = null;
+        if (i < totalPlatforms - 1) {
+          sineAnim = createPingPongAnim("x", -6, 6, now - i * 1000, sineTime, sineTime * 0.1);
+          yAnim = createPingPongAnim(
+            "y",
+            yPos,
+            yPos - 0.5,
+            now - i * 1000,
+            sineTime * 0.5,
+            sineAnim * 0.5 * 0.1,
+          );
+        }
+        const hexPlatform = {
+          mesh: hexPlatformMesh,
+          sineAnim: sineAnim,
+          yAnim: yAnim,
+          isAnimating: false,
+        };
+        hexPlatformsMap.set(i, hexPlatform);
+        sineGroup.appendChild(hexPlatform.mesh);
+      }
+    }
+
+    function animateSinePlatforms() {
+      if (hexPlatformsAnimating === true) return;
+      hexPlatformsMap.forEach((platform) => {
+        if (platform.isAnimating === false) {
+          if (platform.sineAnim) {
+            platform.mesh.appendChild(platform.sineAnim);
+          }
+          if (platform.yAnim) {
+            platform.mesh.appendChild(platform.yAnim);
+          }
+          platform.isAnimating = true;
+        }
+      });
+      hexPlatformsAnimating = true;
+    }
+
+    function stopSinePlatforms() {
+      if (hexPlatformsAnimating === false) return;
+      hexPlatformsMap.forEach((platform) => {
+        if (platform.isAnimating === true) {
+          if (platform.sineAnim) {
+            platform.mesh.removeChild(platform.sineAnim);
+          }
+          if (platform.yAnim) {
+            platform.mesh.removeChild(platform.yAnim);
+          }
+          platform.isAnimating = false;
+        }
+      });
+      hexPlatformsAnimating = false;
+    }
+
+    function createAxesBase(segmentOffset, yPos) {
+      const base = document.createElement("m-model");
+      base.setAttribute("src", "/assets/playground/fg_axe_base.glb");
+      base.setAttribute("z", segmentOffset);
+      base.setAttribute("y", yPos);
+      axeGroup.appendChild(base);
+    }
+
+    function createAxe(yPos, zPos) {
+      const axeGroup = document.createElement("m-group");
+
+      const axeRod = document.createElement("m-model");
+      axeRod.setAttribute("src", "/assets/playground/fg_axe_rod.glb");
+      axeRod.setAttribute("collide", false);
+      axeGroup.appendChild(axeRod);
+
+      const axeBlade = document.createElement("m-model");
+      axeBlade.setAttribute("src", "/assets/playground/fg_axe_blade.glb");
+      axeBlade.setAttribute("sz", 2);
+      axeGroup.appendChild(axeBlade);
+
+      axeGroup.setAttribute("z", zPos);
+      axeGroup.setAttribute("y", yPos + 19.8);
+
+      return axeGroup;
+    }
+
+    function createAxes(segmentOffset, yPos) {
+      const now = document.timeline.currentTime;
+      const totalAxes = 7;
+      const axeSwingTime = 4000;
+      const zOffset = -17;
+      let space = 4.4;
+      for (let i = 0; i < totalAxes; i++) {
+        if (i === 3) space += 0.5;
+        const axeMesh = createAxe(yPos, segmentOffset + zOffset + i * space);
+        const axeAnim = createPingPongAnim(
+          "rz",
+          -45,
+          45,
+          now * -i * 3,
+          axeSwingTime,
+          axeSwingTime * 0.025,
+          "easeInOutQuad",
+        );
+        const axe = {
+          mesh: axeMesh,
+          animation: axeAnim,
+          isAnimating: false,
+        };
+        axesMap.set(i, axe);
+        axeGroup.appendChild(axe.mesh);
+      }
+    }
+
+    function animateAxes() {
+      if (axesAnimating === true) return;
+      axesMap.forEach((axe) => {
+        if (axe.isAnimating === false) {
+          axe.mesh.appendChild(axe.animation);
+          axe.isAnimating = true;
+        }
+      });
+      axesAnimating = true;
+    }
+
+    function stopAxes() {
+      if (axesAnimating === false) return;
+      axesMap.forEach((axe) => {
+        if (axe.isAnimating === true) {
+          axe.mesh.removeChild(axe.animation);
+          axe.isAnimating = false;
+        }
+      });
+      axesAnimating = false;
+    }
+
+    function createAxesSegment(segmentOffset, yPos) {
+      createAxesBase(segmentOffset, yPos);
+      createAxes(segmentOffset, yPos);
+    }
+
+    function createStaticStep(xPosition, yPosition, zPosition) {
+      const step = document.createElement("m-cube");
+      step.setAttribute("width", width + 0.1);
+      step.setAttribute("height", height);
+      step.setAttribute("depth", stepDepth * 1.3);
+      step.setAttribute("x", xPosition);
+      step.setAttribute("y", yPosition);
+      step.setAttribute("z", zPosition);
+      step.setAttribute("color", "#bbbbbb");
+      return step;
+    }
+
+    function animateWithTime(element, attr, start, end, duration, startTime) {
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("start-time", startTime);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("loop", true);
+      element.appendChild(anim);
+      return anim;
+    }
+
+    function createMovingSteps(xPosition, yPosition) {
+      const startingStep = createStaticStep(xPosition, yPosition, -depth / 2 + stepDepth / 2);
+      travelatorGroup.appendChild(startingStep);
+
+      const endingStep = createStaticStep(xPosition, yPosition, depth / 2 - stepDepth / 2 - 0.1);
+      travelatorGroup.appendChild(endingStep);
+
+      const now = document.timeline.currentTime;
+      for (let i = 0; i < numberOfPlatforms; i++) {
+        const zPos = -depth / 2 + stepDepth / 2 + i * stepDepth;
+        const hue = (360 / numberOfPlatforms) * i;
+        const platform = document.createElement("m-cube");
+        platform.setAttribute("width", width);
+        platform.setAttribute("height", height);
+        platform.setAttribute("depth", stepDepth);
+        platform.setAttribute("x", xPosition);
+        platform.setAttribute("y", yPosition - 0.02);
+        platform.setAttribute("z", zPos);
+        platform.setAttribute("color", `hsl(${hue}, 90%, 80%)`);
+        const startTime = now - (movementDuration * 1000 * i) / (numberOfPlatforms - 1);
+        animateWithTime(
+          platform,
+          "z",
+          -depth / 2 + stepDepth / 2,
+          depth / 2 - stepDepth / 2,
+          movementDuration * 1000,
+          startTime,
+        );
+        travelatorGroup.appendChild(platform);
+      }
+    }
+
+    createMovingSteps(20, gamePartsYPos - 0.05);
+    new Respawner(fallGuysGroup, gamePartsYPos - 50, gamePartsYPos, true);
+
+    createStart(gamePartsYPos);
+    createSpinnersInHexGrid(32.6, gamePartsYPos, 35, 19, 2900);
+    createHammers(88, gamePartsYPos);
+    createSinePlatforms(125, gamePartsYPos);
+    createAxesSegment(249, gamePartsYPos);
+    createEnd(gamePartsYPos, 286.6);
+    createHelis(70, gamePartsYPos);
+    createHelis(140, gamePartsYPos);
+  }
+
+  const teleporterGroup = document.getElementById("teleporter");
+
+  function createTeleporter(parentElement, startX, startY, startZ, endX, endY, endZ) {
+    const transporterYOffset = -0.047;
+    const transporterAnimTravel = 0.047;
+    const transporterAnimDuration = 1200;
+
+    const usersColliding = new Set();
+    let telerportingStarted = false;
+
+    const animate = (element, attr, start, end, duration, easing, cb) => {
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("start-time", document.timeline.currentTime);
+      anim.setAttribute("end-time", document.timeline.currentTime + duration);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("easing", easing);
+      anim.setAttribute("loop", false);
+      element.appendChild(anim);
+      setTimeout(() => {
+        element.setAttribute(attr, end);
+        element.removeChild(anim);
+        cb();
+      }, duration);
+    };
+
+    const teleporterStart = document.createElement("m-model");
+    teleporterStart.setAttribute("src", "/assets/playground/base_plinth.glb");
+    teleporterStart.setAttribute("ry", 180);
+    teleporterStart.setAttribute("x", startX);
+    teleporterStart.setAttribute("y", startY);
+    teleporterStart.setAttribute("z", startZ);
+
+    const transporter = document.createElement("m-model");
+    transporter.setAttribute("src", "/assets/playground/base_plinth_platform.glb");
+    transporter.setAttribute("x", startX);
+    transporter.setAttribute("y", startY + transporterYOffset);
+    transporter.setAttribute("z", startZ);
+    parentElement.appendChild(transporter);
+
+    const teleporterEnd = document.createElement("m-model");
+    teleporterEnd.setAttribute("src", "/assets/playground/base_plinth.glb");
+    teleporterEnd.setAttribute("ry", 180);
+    teleporterEnd.setAttribute("x", endX);
+    teleporterEnd.setAttribute("y", endY);
+    teleporterEnd.setAttribute("z", endZ);
+    parentElement.appendChild(teleporterEnd);
+
+    const teleporterProbe = document.createElement("m-position-probe");
+    teleporterProbe.setAttribute("debug", false);
+    teleporterProbe.setAttribute("range", 1.32);
+    teleporterProbe.setAttribute("interval", 500);
+    teleporterProbe.setAttribute("x", startX);
+    teleporterProbe.setAttribute("y", startY + 0.3);
+    teleporterProbe.setAttribute("z", startZ);
+    parentElement.appendChild(teleporterProbe);
+
+    teleporterProbe.addEventListener("positionenter", (e) => {
+      teleport();
+    });
+    teleporterProbe.addEventListener("positionmove", (e) => {
+      teleport();
+    });
+
+    const createAudio = (src) => {
+      const sfx = document.createElement("m-audio");
+      sfx.setAttribute("loop", false);
+      sfx.setAttribute("volume", 0);
+      sfx.setAttribute("start-time", document.timeline.currentTime - 4000);
+      sfx.setAttribute("pause-time", document.timeline.currentTime - 100);
+      sfx.setAttribute("src", src);
+      sfx.setAttribute("y", 15);
+      sfx.setAttribute("rx", 90);
+      sfx.setAttribute("cone-angle", 45);
+      sfx.setAttribute("cone-falloff-angle", 100);
+      sfx.setAttribute("debug", false);
+      return sfx;
+    };
+
+    const sfxStart = createAudio("/assets/playground/charge.mp3");
+    const sfxEnd = createAudio("/assets/playground/charge.mp3");
+    teleporterStart.appendChild(sfxStart);
+    teleporterEnd.appendChild(sfxEnd);
+
+    const stopSFX = () => {
+      sfxStart.setAttribute("volume", 0);
+      sfxStart.setAttribute("start-time", document.timeline.currentTime - 4000);
+      sfxStart.setAttribute("pause-time", document.timeline.currentTime - 100);
+      sfxEnd.setAttribute("volume", 0);
+      sfxEnd.setAttribute("start-time", document.timeline.currentTime - 4000);
+      sfxEnd.setAttribute("pause-time", document.timeline.currentTime - 100);
+    };
+
+    const playSFX = () => {
+      sfxStart.setAttribute("volume", 6);
+      sfxStart.setAttribute("start-time", document.timeline.currentTime);
+      sfxStart.setAttribute("pause-time", document.timeline.currentTime + 4000);
+      sfxEnd.setAttribute("volume", 6);
+      sfxEnd.setAttribute("start-time", document.timeline.currentTime);
+      sfxEnd.setAttribute("pause-time", document.timeline.currentTime + 4000);
+      setTimeout(() => {
+        stopSFX();
+      }, 3100);
+    };
+
+    const teleport = () => {
+      if (telerportingStarted) {
+        return;
+      }
+      telerportingStarted = true;
+      playSFX();
+      animate(
+        transporter,
+        "y",
+        startY + transporterYOffset,
+        startY + transporterYOffset + transporterAnimTravel,
+        transporterAnimDuration,
+        "EaseInOutCubic",
+        () => {
+          transporter.setAttribute("y", endY + 5000);
+          transporter.setAttribute("x", endX);
+          transporter.setAttribute("z", endZ);
+          transporter.setAttribute("y", endY - 0.003);
+          animate(
+            transporter,
+            "y",
+            endY + transporterYOffset + transporterAnimTravel,
+            endY + transporterYOffset,
+            transporterAnimDuration,
+            "EaseInOutCubuc",
+            () => {
+              transporter.setAttribute("x", startX);
+              transporter.setAttribute("y", startY + transporterYOffset);
+              transporter.setAttribute("z", startZ);
+              telerportingStarted = false;
+            },
+          );
+        },
+      );
+    };
+
+    parentElement.appendChild(teleporterStart);
+
+    const randomFloatBetween = (a, b) => {
+      return Math.random() * (b - a) + a;
+    };
+
+    const createParticles = (parentElement, maxParticles, radius) => {
+      const particles = new Map();
+      const goldenRatio = (1 + Math.sqrt(5)) / 2;
+      const angleIncrement = Math.PI * 2 * goldenRatio;
+      for (let i = 0; i < maxParticles; i++) {
+        const t = i / maxParticles;
+        const inc = Math.acos(1 - 2 * t);
+        const azimuth = angleIncrement * i;
+        const x = radius * Math.sin(inc) * Math.cos(azimuth);
+        const z = radius * Math.sin(inc) * Math.sin(azimuth);
+        const image = document.createElement("m-image");
+        image.setAttribute("src", "/assets/playground/particle.png");
+        image.setAttribute("emissive", 200);
+        image.setAttribute("x", x);
+        image.setAttribute("y", -Math.random() * 4);
+        image.setAttribute("z", z);
+        image.setAttribute("rx", randomFloatBetween(-45, 45));
+        image.setAttribute("ry", randomFloatBetween(-180, 180));
+        image.setAttribute("rz", randomFloatBetween(-45, 45));
+        image.setAttribute("width", randomFloatBetween(0.03, 0.08));
+        image.setAttribute("collide", false);
+        image.setAttribute("cast-shadows", false);
+        const anim = document.createElement("m-attr-anim");
+        anim.setAttribute("attr", "y");
+        anim.setAttribute("start", 0);
+        anim.setAttribute("end", 3 + Math.random() * 2);
+        anim.setAttribute("duration", 3000 + Math.random() * 3000);
+        anim.setAttribute("start-time", document.timeline.currentTime - Math.random() * 2000);
+        image.appendChild(anim);
+        particles.set(i, image);
+        parentElement.appendChild(image);
+      }
+    };
+    createParticles(teleporterStart, 12, 1);
+  }
+
+  const cylinder = document.createElement("m-cylinder");
+  cylinder.setAttribute("color", "#888888");
+  cylinder.setAttribute("radius", 0.7);
+  cylinder.setAttribute("height", 2);
+  cylinder.setAttribute("y", 0);
+  cylinder.setAttribute("z", -15);
+  teleporterGroup.appendChild(cylinder);
+
+  const gameYPos = 1000;
+  const partsYPos = 90;
+  const teleporterSkin = 0.02;
+
+  createFallGuys(gameYPos, partsYPos, teleporterSkin);
+
+  createTeleporter(teleporterGroup, 0, -0.05, 0, 0, gameYPos + partsYPos - teleporterSkin, -8);
+  createTeleporter(teleporterGroup, -20, gameYPos + partsYPos - teleporterSkin, -8, 0, 1, -15);
+</script>
