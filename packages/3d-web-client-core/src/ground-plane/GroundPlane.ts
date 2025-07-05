@@ -363,7 +363,7 @@ export class GroundPlane extends Group {
   private floorMaterial: MeshStandardMaterial;
   private floorMesh: Mesh | null = null;
 
-  private useExtraFloor = true;
+  private useExtraFloor = false;
   private floorGeometryExtra: CircleGeometry | null = null;
   private floorMaterialExtra: MeshStandardMaterial | null = null;
   private floorMeshExtra: Mesh | null = null;
