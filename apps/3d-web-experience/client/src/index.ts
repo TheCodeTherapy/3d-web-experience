@@ -56,7 +56,7 @@ const app = new Networked3dWebExperienceClient(holder, {
   animationConfig: animations,
   mmlDocuments: {
     example: { url: `${protocol}//${host}/mml-documents/playground.html` },
-    physicsDemo: { url: `${protocol}//${host}/mml-document/index` },
+    // physicsDemo: { url: `${protocol}//${host}/mml-document/index` },
   },
   environmentConfiguration: {
     groundPlane: true,

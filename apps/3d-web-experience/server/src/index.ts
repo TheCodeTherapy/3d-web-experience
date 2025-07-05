@@ -16,7 +16,7 @@ import { registerDolbyVoiceRoutes, registerLiveKitVoiceRoutes } from "./voice-ro
 
 const dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
-const PORT = process.env.PORT || 9090;
+const PORT = process.env.PORT || 8080;
 
 // Specify the avatar to use here:
 const characterDescription: CharacterDescription = {
