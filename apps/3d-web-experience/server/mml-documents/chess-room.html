@@ -1,6 +1,18 @@
 <m-group id="wrapper">
   <m-group id="teleporter"></m-group>
-  <m-frame y="20000" src="wss:///mml-documents/chess.html"></m-frame>
+  <m-frame
+    y="20000"
+    src="wss:///mml-documents/chess.html"
+    min-x="-50"
+    max-x="50"
+    min-y="-50"
+    max-y="50"
+    min-z="-50"
+    max-z="50"
+    load-range="3"
+    unload-range="5"
+    debug="false"
+  ></m-frame>
   <m-model src="/assets/playground/chess_black_rook.glb" z="-4"></m-model>
   <m-model src="/assets/playground/chess_room.glb" y="19999.841"></m-model>
   <m-model
@@ -15,6 +27,15 @@
     x="-4"
     z="-15.35"
     ry="-90"
+    min-x="-50"
+    max-x="50"
+    min-y="-50"
+    max-y="50"
+    min-z="-50"
+    max-z="50"
+    load-range="3"
+    unload-range="5"
+    debug="false"
   ></m-frame>
   <m-light
     color="#ff7744"
@@ -26,7 +47,7 @@
     distance="4"
     angle="40"
     cast-shadows="false"
-    debug="true"
+    debug="false"
   ></m-light>
   <m-position-probe
     y="20000"
