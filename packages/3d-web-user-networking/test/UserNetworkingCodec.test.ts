@@ -42,7 +42,7 @@ describe("UserNetworkingCodec", () => {
   test.each(cases)("%p: should encode and decode", (testCaseName, clientUpdate, expectedResult) => {
     const encoded = UserNetworkingCodec.encodeUpdate(clientUpdate);
     expect(encoded).toStrictEqual(expectedResult);
-    const decoded = UserNetworkingCodec.decodeUpdate(encoded.buffer);
+    const decoded = UserNetworkingCodec.decodeUpdate(encoded.buffer as ArrayBuffer);
     expect(decoded).toEqual({
       id: clientUpdate.id,
       position: {
