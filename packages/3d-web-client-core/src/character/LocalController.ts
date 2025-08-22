@@ -94,9 +94,18 @@ export class LocalController {
   public jumpPressed: boolean = false; // Tracks if the jump button is pressed
   public jumpReleased: boolean = true; // Indicates if the jump button has been released
 
+  // Slide state management (simplified like double jump)
+  public canSlide: boolean = true;
+  public slideUsed: boolean = false;
+  public slideReleased: boolean = true;
+
   public networkState: CharacterState;
-  private controlState: { direction: number | null; isSprinting: boolean; jump: boolean } | null =
-    null;
+  private controlState: {
+    direction: number | null;
+    isSprinting: boolean;
+    jump: boolean;
+    slide: boolean;
+  } | null = null;
 
   private minimumX: number;
   private maximumX: number;
@@ -173,6 +182,14 @@ export class LocalController {
     this.controlState =
       this.config.keyInputManager.getOutput() || this.config.virtualJoystick?.getOutput() || null;
 
+    // Handle slide key release tracking (like jump key)
+    if (!this.controlState?.slide) {
+      this.slideReleased = true;
+    }
+
+    // Calculate canSlide similar to canDoubleJump
+    this.canSlide = !this.slideUsed && this.slideReleased && this.characterOnGround;
+
     this.rayCaster.set(this.config.character.position, this.vectorDown);
     const firstRaycastHit = this.config.collisionsManager.raycastFirst(this.rayCaster.ray);
     if (firstRaycastHit !== null) {
@@ -228,10 +245,25 @@ export class LocalController {
       return AnimationState.idle;
     }
 
+    // Check for slide animation - keep returning slide while sliding
+    if (this.controlState.slide && this.characterOnGround && this.controlState.direction !== null) {
+      if (this.canSlide) {
+        this.slideUsed = true;
+        this.slideReleased = false;
+      }
+      return AnimationState.slide;
+    }
+
     if (this.controlState.isSprinting) {
       return AnimationState.running;
     }
 
+    return AnimationState.walking;
+  }
+
+  public getPreviousMovementState(): AnimationState {
+    // For now, just return walking as default
+    // This could be improved to track actual previous state
     return AnimationState.walking;
   }
 
@@ -425,6 +457,7 @@ export class LocalController {
     if (this.characterOnGround) {
       this.doubleJumpUsed = false;
       this.jumpCounter = 0;
+      this.slideUsed = false; // Reset slide when on ground like doubleJump
     }
 
     if (this.characterWasOnGround && !this.characterOnGround) {

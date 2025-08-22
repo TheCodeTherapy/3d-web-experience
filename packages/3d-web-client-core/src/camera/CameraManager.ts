@@ -96,7 +96,7 @@ export class CameraManager {
     this.eventHandlerCollection = EventHandlerCollection.create([
       [this.targetElement, "pointerdown", this.onPointerDown.bind(this)],
       [this.targetElement, "gesturestart", this.preventDefaultAndStopPropagation.bind(this)],
-      [this.targetElement, "wheel", this.onMouseWheel.bind(this)],
+      [this.targetElement, "wheel", this.onMouseWheel.bind(this), { passive: false }],
       [this.targetElement, "contextmenu", this.onContextMenu.bind(this)],
       [document, "pointerup", this.onPointerUp.bind(this)],
       [document, "pointercancel", this.onPointerUp.bind(this)],

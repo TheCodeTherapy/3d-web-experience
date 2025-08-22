@@ -23,6 +23,7 @@ import doubleJumpAnimationFileUrl from "../../../assets/models/anim_double_jump.
 import idleAnimationFileUrl from "../../../assets/models/anim_idle.glb";
 import jogAnimationFileUrl from "../../../assets/models/anim_jog.glb";
 import sprintAnimationFileUrl from "../../../assets/models/anim_run.glb";
+import slideAnimationFileUrl from "../../../assets/models/anim_slide.glb";
 import defaultAvatarMeshFileUrl from "../../../assets/models/bot.glb";
 
 import { LocalAvatarServer } from "./LocalAvatarServer";
@@ -33,6 +34,7 @@ const animations = {
   jogAnimationUrlOrConfig: jogAnimationFileUrl,
   sprintAnimationUrlOrConfig: sprintAnimationFileUrl,
   doubleJumpAnimationUrlOrConfig: doubleJumpAnimationFileUrl,
+  slideAnimationUrlOrConfig: slideAnimationFileUrl,
 };
 
 // Specify the avatar to use here:

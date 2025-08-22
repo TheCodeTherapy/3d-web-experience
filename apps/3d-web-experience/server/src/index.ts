@@ -58,6 +58,8 @@ const { app } = enableWs(express());
 app.enable("trust proxy");
 app.use(cors());
 
+/**
+
 const VOICE_CHAT_PASSWORD = process.env.VOICE_CHAT_PASSWORD ?? "";
 
 const DOLBY_APP_KEY = process.env.DOLBY_APP_KEY ?? "";
@@ -78,6 +80,8 @@ if (LIVEKIT_WS_URL && LIVEKIT_API_KEY && LIVEKIT_API_SECRET && VOICE_CHAT_PASSWO
     VOICE_CHAT_PASSWORD,
   });
 }
+
+ */
 
 const networked3dWebExperienceServer = new Networked3dWebExperienceServer({
   networkPath: "/network",
@@ -102,6 +106,39 @@ const networked3dWebExperienceServer = new Networked3dWebExperienceServer({
   },
 });
 networked3dWebExperienceServer.registerExpressRoutes(app);
+
+// Native proxy to forward requests to the compressor server =================
+app.use("/asset-compressor/optimize", (req: express.Request, res: express.Response) => {
+  const proxyReq = http.request(
+    {
+      hostname: "localhost",
+      port: 8083,
+      path: req.originalUrl.replace("/asset-compressor", ""),
+      method: req.method,
+      headers: req.headers,
+    },
+    (proxyRes) => {
+      res.writeHead(proxyRes.statusCode || 500, proxyRes.headers);
+      proxyRes.pipe(res, { end: true });
+    },
+  );
+
+  req.pipe(proxyReq, { end: true });
+
+  proxyReq.on("error", (err) => {
+    console.error("Proxy error:", err);
+    res.status(500).send("Proxy error");
+  });
+});
+
+const assetCompressorBuildDir = path.resolve(dirname, "../../../web-asset-compress/client/build");
+// Serve compressor client at /asset-compressor
+app.use("/asset-compressor", express.static(assetCompressorBuildDir));
+// Handle direct URL access (SPA routing)
+app.get("/asset-compressor/*", (_req, res) => {
+  res.sendFile(path.join(assetCompressorBuildDir, "index.html"));
+});
+// ===========================================================================
 
 // Start listening
 console.log("Listening on port", PORT);

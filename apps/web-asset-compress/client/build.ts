@@ -1,4 +1,3 @@
-/* eslint-disable import/no-extraneous-dependencies */
 import * as esbuild from "esbuild";
 import { copy } from "esbuild-plugin-copy";
 
@@ -23,10 +22,9 @@ const buildOptions: esbuild.BuildOptions = {
   bundle: true,
   write: true,
   metafile: true,
-  sourcemap: "linked",
-  minify: true,
+  sourcemap: true,
   outdir: "./build/",
-  assetNames: "[dir]/[name]",
+  assetNames: "[dir]/[name]-[hash]",
   preserveSymlinks: true,
   loader: {
     ".svg": "file",
@@ -37,7 +35,7 @@ const buildOptions: esbuild.BuildOptions = {
   },
   outbase: "../../", // This is targeting the parent of the "assets" directory to avoid generated paths including a traversal
   sourceRoot: "./src",
-  publicPath: "/web-client/",
+  publicPath: "/",
   plugins: [
     copy({
       resolveFrom: "cwd",
@@ -58,7 +56,7 @@ switch (mode) {
       .context({
         ...buildOptions,
         banner: {
-          js: ` (() => new WebSocket((window.location.protocol === "https:" ? "wss://" : "ws://")+window.location.host+'/web-client-build').addEventListener('message', () => location.reload()))();`,
+          js: ` (() => new WebSocket((window.location.protocol === "https:" ? "wss://" : "ws://")+window.location.host+'/web-asset-compress').addEventListener('message', () => location.reload()))();`,
         },
       })
       .then((context) => context.watch())

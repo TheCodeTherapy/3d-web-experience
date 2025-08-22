@@ -283,7 +283,7 @@ export class Networked3dWebExperienceClient {
     });
 
     if (this.config.allowOrbitalCamera) {
-      this.keyInputManager.createKeyBinding(Key.C, () => {
+      this.keyInputManager.createKeyBinding(Key.V, () => {
         if (document.activeElement === document.body) {
           // No input is selected - accept the key press
           this.cameraManager.toggleFlyCamera();
@@ -390,13 +390,13 @@ export class Networked3dWebExperienceClient {
 
     if (config.allowOrbitalCamera !== undefined) {
       if (config.allowOrbitalCamera === false) {
-        this.keyInputManager.removeKeyBinding(Key.C);
+        this.keyInputManager.removeKeyBinding(Key.V);
         if (this.cameraManager.isFlyCameraOn() === true) {
           // Disable the fly camera if it was enabled
           this.cameraManager.toggleFlyCamera();
         }
       } else if (config.allowOrbitalCamera === true) {
-        this.keyInputManager.createKeyBinding(Key.C, () => {
+        this.keyInputManager.createKeyBinding(Key.V, () => {
           if (document.activeElement === document.body) {
             // No input is selected - accept the key press
             this.cameraManager.toggleFlyCamera();

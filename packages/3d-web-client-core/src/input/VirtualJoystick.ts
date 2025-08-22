@@ -134,6 +134,7 @@ export class VirtualJoystick {
     this.joystickBaseElement.addEventListener(
       "touchstart",
       this.preventDefaultAndStopPropagation.bind(this),
+      { passive: false },
     );
 
     this.jumpButton.addEventListener("pointerdown", this.onJumpPointerDown.bind(this));
@@ -144,6 +145,7 @@ export class VirtualJoystick {
     this.jumpButton.addEventListener(
       "touchstart",
       this.preventDefaultAndStopPropagation.bind(this),
+      { passive: false },
     );
     document.addEventListener("pointermove", this.onPointerMove.bind(this));
     document.addEventListener("pointerup", this.onPointerUp.bind(this));
@@ -220,17 +222,23 @@ export class VirtualJoystick {
     this.joystickOutput = { direction, isSprinting };
   }
 
-  public getOutput(): { direction: number | null; isSprinting: boolean; jump: boolean } | null {
+  public getOutput(): {
+    direction: number | null;
+    isSprinting: boolean;
+    jump: boolean;
+    slide: boolean;
+  } | null {
     const jump = this.jumpPointerId !== null;
     if (!this.joystickOutput) {
       if (jump) {
-        return { direction: null, isSprinting: false, jump: jump };
+        return { direction: null, isSprinting: false, jump: jump, slide: false };
       }
       return null;
     }
     return {
       ...this.joystickOutput,
       jump: jump,
+      slide: false, // VirtualJoystick doesn't support slide for now
     };
   }
 }

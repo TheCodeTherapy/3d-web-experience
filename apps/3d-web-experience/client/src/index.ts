@@ -2,11 +2,12 @@ import { Networked3dWebExperienceClient } from "@mml-io/3d-web-experience-client
 
 import hdrJpgUrl from "../../../assets/hdr/puresky_2k.jpg";
 import loadingBackground from "../../../assets/images/loading-bg.jpg";
-import airAnimationFileUrl from "../../../assets/models/anim_air.glb";
-import doubleJumpAnimationFileUrl from "../../../assets/models/anim_backflip.glb";
-import idleAnimationFileUrl from "../../../assets/models/anim_idle.glb";
-import jogAnimationFileUrl from "../../../assets/models/anim_jog.glb";
-import sprintAnimationFileUrl from "../../../assets/models/anim_run.glb";
+import airAnimationFileUrl from "../../../assets/models/anim_air_cleaned.glb";
+import doubleJumpAnimationFileUrl from "../../../assets/models/anim_backflip_cleaned.glb";
+import idleAnimationFileUrl from "../../../assets/models/anim_idle_cleaned.glb";
+import jogAnimationFileUrl from "../../../assets/models/anim_jog_cleaned.glb";
+import sprintAnimationFileUrl from "../../../assets/models/anim_run_cleaned.glb";
+import slideAnimationFileUrl from "../../../assets/models/anim_slide_cleaned.glb";
 
 const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 const host = window.location.host;
@@ -45,6 +46,12 @@ const animations = {
     loop: false,
     discardNonRotationTransform: true,
     playbackSpeed: 1.453, // 1.45
+  },
+  slideAnimationUrlOrConfig: {
+    fileUrl: slideAnimationFileUrl,
+    loop: false,
+    discardNonRotationTransform: false,
+    playbackSpeed: 1.0,
   },
 };
 

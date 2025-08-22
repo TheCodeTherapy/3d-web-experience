@@ -22,6 +22,7 @@ export type AnimationConfig = {
   sprintAnimationUrlOrConfig: string | AnimationSettings;
   airAnimationUrlOrConfig: string | AnimationSettings;
   doubleJumpAnimationUrlOrConfig: string | AnimationSettings;
+  slideAnimationUrlOrConfig: string | AnimationSettings;
 };
 
 export type CharacterDescription =

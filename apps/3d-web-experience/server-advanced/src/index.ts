@@ -65,6 +65,8 @@ const { app } = enableWs(express());
 app.enable("trust proxy");
 app.use(cors());
 
+/**
+
 const VOICE_CHAT_PASSWORD = process.env.VOICE_CHAT_PASSWORD ?? "";
 
 const DOLBY_APP_KEY = process.env.DOLBY_APP_KEY ?? "";
@@ -85,6 +87,8 @@ if (LIVEKIT_WS_URL && LIVEKIT_API_KEY && LIVEKIT_API_SECRET && VOICE_CHAT_PASSWO
     VOICE_CHAT_PASSWORD,
   });
 }
+
+ */
 
 // --- React MML Document WebSocket Endpoints ----------
 app.ws("/mml-document", (webSocket: ws.WebSocket) => {

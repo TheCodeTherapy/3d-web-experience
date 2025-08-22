@@ -9,6 +9,7 @@ export enum Key {
   SHIFT = "shift",
   SPACE = " ",
   C = "c",
+  V = "v",
 }
 
 type KeyCallback = () => void;
@@ -97,18 +98,28 @@ export class KeyInputManager {
     return this.isKeyPressed(Key.SPACE);
   }
 
-  public getOutput(): { direction: number | null; isSprinting: boolean; jump: boolean } | null {
+  private getSlide(): boolean {
+    return this.isKeyPressed(Key.C);
+  }
+
+  public getOutput(): {
+    direction: number | null;
+    isSprinting: boolean;
+    jump: boolean;
+    slide: boolean;
+  } | null {
     const dx = (this.getRight() ? 1 : 0) - (this.getLeft() ? 1 : 0);
     const dy = (this.getBackward() ? 1 : 0) - (this.getForward() ? 1 : 0);
     const jump = this.getJump();
+    const slide = this.getSlide();
     if (dx === 0 && dy === 0) {
-      if (this.getJump()) {
-        return { direction: null, isSprinting: false, jump };
+      if (this.getJump() || slide) {
+        return { direction: null, isSprinting: false, jump, slide };
       }
       return null;
     }
     const direction = Math.atan2(dx, dy);
-    return { direction, isSprinting: this.getRun(), jump };
+    return { direction, isSprinting: this.getRun(), jump, slide };
   }
 
   public dispose() {
