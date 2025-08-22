@@ -22,6 +22,9 @@
     "apps/**",
     "packages/*"
   ],
+  "overrides": {
+    "canvas": "3.1.0"
+  },
   "devDependencies": {
     "@types/jest": "29.5.14",
     "@types/jju": "^1.4.5",
