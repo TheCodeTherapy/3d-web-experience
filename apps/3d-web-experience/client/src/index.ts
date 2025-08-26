@@ -7,7 +7,7 @@ import doubleJumpAnimationFileUrl from "../../../assets/models/anim_backflip_cle
 import idleAnimationFileUrl from "../../../assets/models/anim_idle_cleaned.glb";
 import jogAnimationFileUrl from "../../../assets/models/anim_jog_cleaned.glb";
 import sprintAnimationFileUrl from "../../../assets/models/anim_run_cleaned.glb";
-import slideAnimationFileUrl from "../../../assets/models/anim_slide_cleaned.glb";
+import slideAnimationFileUrl from "../../../assets/models/anim_slide_cleaned_downroot.glb";
 
 const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 const host = window.location.host;
