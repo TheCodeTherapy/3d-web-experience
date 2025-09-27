@@ -192,7 +192,7 @@ export class Networked3dWebExperienceClient {
     this.element.appendChild(this.canvasHolder);
 
     this.cameraManager = new CameraManager(this.canvasHolder, this.collisionsManager);
-    this.cameraManager.camera.add(this.audioListener);
+    this.scene.add(this.audioListener);
 
     this.virtualJoystick = new VirtualJoystick(this.element, {
       radius: 70,
@@ -602,6 +602,9 @@ export class Networked3dWebExperienceClient {
       this.groundPlane!.update(this.timeManager.deltaTime);
     }
     this.cameraManager.update();
+
+    this.updateAudioListenerPosition();
+
     this.composer.sun?.updateCharacterPosition(this.characterManager.localCharacter?.position);
     this.composer.render(this.timeManager);
     if (this.tweakPane?.guiVisible) {
@@ -625,6 +628,21 @@ export class Networked3dWebExperienceClient {
     const min = value - variance;
     const max = value + variance;
     return Math.random() * (max - min) + min;
+  }
+
+  private updateAudioListenerPosition(): void {
+    const localCharacter = this.characterManager.localCharacter;
+    const headWorldPosition = localCharacter?.getHeadWorldPosition();
+
+    if (headWorldPosition) {
+      this.audioListener.position.copy(headWorldPosition);
+      this.audioListener.rotation.copy(this.cameraManager.camera.rotation);
+      this.audioListener.updateMatrixWorld();
+    } else {
+      this.audioListener.position.copy(this.cameraManager.camera.position);
+      this.audioListener.rotation.copy(this.cameraManager.camera.rotation);
+      this.audioListener.updateMatrixWorld();
+    }
   }
 
   private spawnCharacter() {

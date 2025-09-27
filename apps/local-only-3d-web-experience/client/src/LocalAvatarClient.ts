@@ -100,7 +100,7 @@ export class LocalAvatarClient {
       Math.PI / 2,
       Math.PI / 2,
     );
-    this.cameraManager.camera.add(this.audioListener);
+    this.scene.add(this.audioListener);
 
     this.composer = new Composer({
       scene: this.scene,
@@ -221,6 +221,21 @@ export class LocalAvatarClient {
     }
   }
 
+  private updateAudioListenerPosition(): void {
+    const localCharacter = this.characterManager.localCharacter;
+    const headWorldPosition = localCharacter?.getHeadWorldPosition();
+
+    if (headWorldPosition) {
+      this.audioListener.position.copy(headWorldPosition);
+      this.audioListener.rotation.copy(this.cameraManager.camera.rotation);
+      this.audioListener.updateMatrixWorld();
+    } else {
+      this.audioListener.position.copy(this.cameraManager.camera.position);
+      this.audioListener.rotation.copy(this.cameraManager.camera.rotation);
+      this.audioListener.updateMatrixWorld();
+    }
+  }
+
   public dispose() {
     if (this.animationFrameRequest !== null) {
       cancelAnimationFrame(this.animationFrameRequest);
@@ -242,6 +257,9 @@ export class LocalAvatarClient {
     this.timeManager.update();
     this.characterManager.update();
     this.cameraManager.update();
+
+    this.updateAudioListenerPosition();
+
     this.composer.sun?.updateCharacterPosition(this.characterManager.localCharacter?.position);
     this.composer.render(this.timeManager);
     this.animationFrameRequest = requestAnimationFrame(() => {

@@ -185,4 +185,13 @@ export class Character extends Group {
     }
     this.setTooltipHeights();
   }
+
+  public getHeadWorldPosition(): Vector3 | null {
+    if (this.model?.headBone) {
+      const worldPosition = new Vector3();
+      this.model.headBone.getWorldPosition(worldPosition);
+      return worldPosition;
+    }
+    return null;
+  }
 }
