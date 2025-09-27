@@ -26,7 +26,7 @@
     "@mml-io/3d-web-text-chat": "^0.22.0",
     "@mml-io/3d-web-user-networking": "^0.22.0",
     "@mml-io/mml-react-types": "0.19.3",
-    "@mml-io/networked-dom-server": "0.19.7",
+    "@mml-io/networked-dom-server": "0.21.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "chokidar": "^4.0.3",

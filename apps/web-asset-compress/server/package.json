@@ -29,11 +29,11 @@
     "express-ws": "^5.0.2",
     "meshoptimizer": "^0.22.0",
     "multer": "^1.4.5-lts.1",
-    "three": "0.163.0",
+    "three": "0.178.0",
     "yargs": "17.7.2"
   },
   "devDependencies": {
     "@types/multer": "^1.4.12",
-    "@types/three": "0.163.0"
+    "@types/three": "0.178.0"
   }
 }

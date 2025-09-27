@@ -46,6 +46,8 @@ import { VoiceChatManager } from "@mml-io/3d-web-voice-chat";
 import {
   IMMLScene,
   LoadingProgressManager,
+  MMLNetworkSource,
+  NetworkedDOMWebsocketStatus,
   registerCustomElementsToWindow,
   setGlobalDocumentTimeManager,
   setGlobalMMLScene,
@@ -69,11 +71,21 @@ type MMLDocumentConfiguration = {
     y: number;
     z: number;
   };
+  passAuthToken?: boolean;
+};
+
+type MMLDocumentState = {
+  docRef: unknown;
+  loadingProgressManager: LoadingProgressManager;
+  config: MMLDocumentConfiguration;
+  source: MMLNetworkSource;
+  dispose: () => void;
 };
 
 export type Networked3dWebExperienceClientConfig = {
   userNetworkAddress: string;
   sessionToken: string;
+  authToken?: string | null;
   chatVisibleByDefault?: boolean;
   userNameToColorOptions?: StringToHslOptions;
   animationConfig: AnimationConfig;
@@ -142,6 +154,7 @@ export class Networked3dWebExperienceClient {
 
   private mmlCompositionScene: MMLCompositionScene;
   private mmlFrames: { [key: string]: HTMLElement } = {};
+  private mmlDocumentStates: { [key: string]: MMLDocumentState } = {};
 
   private clientId: number | null = null;
   private networkClient: UserNetworkingClient;
@@ -712,9 +725,11 @@ export class Networked3dWebExperienceClient {
   public dispose() {
     this.networkClient.stop();
     this.networkChat?.stop();
-    for (const [key, element] of Object.entries(this.mmlFrames)) {
-      element.remove();
+
+    for (const mmlDocumentState of Object.values(this.mmlDocumentStates)) {
+      mmlDocumentState.dispose();
     }
+
     this.mmlFrames = {};
     this.textChatUI?.dispose();
     this.mmlCompositionScene.dispose();
@@ -756,70 +771,98 @@ export class Networked3dWebExperienceClient {
     mmlProgressManager.setInitialLoad(true);
   }
 
-  private createFrame(mmlDocument: MMLDocumentConfiguration) {
-    const frameElement = document.createElement("m-frame");
-    frameElement.setAttribute("src", mmlDocument.url);
-    this.updateFrameAttributes(frameElement, mmlDocument);
-    return frameElement;
+  private createMMLDocument(mmlDocConfig: MMLDocumentConfiguration): MMLDocumentState {
+    const mmlScene = this.mmlCompositionScene.mmlScene;
+    const loadingProgressManager = new LoadingProgressManager();
+    const docRef = {};
+    const mmlNetworkSource = MMLNetworkSource.create({
+      url: mmlDocConfig.url,
+      connectionToken: mmlDocConfig.passAuthToken ? (this.config.authToken ?? null) : null,
+      mmlScene,
+      statusUpdated: (status: NetworkedDOMWebsocketStatus) => {
+        // no-op
+      },
+      windowTarget: window,
+      targetForWrappers: document.body,
+    });
+
+    this.updateMMLDocumentAttributes(mmlNetworkSource, mmlDocConfig);
+    return {
+      docRef,
+      loadingProgressManager,
+      config: mmlDocConfig,
+      source: mmlNetworkSource,
+      dispose: () => {
+        mmlNetworkSource.dispose();
+      },
+    };
   }
 
-  private updateFrameAttributes(frameElement: HTMLElement, mmlDocument: MMLDocumentConfiguration) {
-    const existingSrc = frameElement.getAttribute("src");
-    if (existingSrc !== mmlDocument.url) {
-      frameElement.setAttribute("src", mmlDocument.url);
-    }
+  private updateMMLDocumentAttributes(
+    mmlNetworkSource: MMLNetworkSource,
+    mmlDocument: MMLDocumentConfiguration,
+  ) {
+    const remoteDocument = mmlNetworkSource.remoteDocumentWrapper.remoteDocument;
     if (mmlDocument.position) {
-      frameElement.setAttribute("x", mmlDocument.position.x.toString());
-      frameElement.setAttribute("y", mmlDocument.position.y.toString());
-      frameElement.setAttribute("z", mmlDocument.position.z.toString());
+      remoteDocument.setAttribute("x", mmlDocument.position.x.toString());
+      remoteDocument.setAttribute("y", mmlDocument.position.y.toString());
+      remoteDocument.setAttribute("z", mmlDocument.position.z.toString());
     } else {
-      frameElement.setAttribute("x", "0");
-      frameElement.setAttribute("y", "0");
-      frameElement.setAttribute("z", "0");
+      remoteDocument.setAttribute("x", "0");
+      remoteDocument.setAttribute("y", "0");
+      remoteDocument.setAttribute("z", "0");
     }
     if (mmlDocument.rotation) {
-      frameElement.setAttribute("rx", mmlDocument.rotation.x.toString());
-      frameElement.setAttribute("ry", mmlDocument.rotation.y.toString());
-      frameElement.setAttribute("rz", mmlDocument.rotation.z.toString());
+      remoteDocument.setAttribute("rx", mmlDocument.rotation.x.toString());
+      remoteDocument.setAttribute("ry", mmlDocument.rotation.y.toString());
+      remoteDocument.setAttribute("rz", mmlDocument.rotation.z.toString());
     } else {
-      frameElement.setAttribute("rx", "0");
-      frameElement.setAttribute("ry", "0");
-      frameElement.setAttribute("rz", "0");
+      remoteDocument.setAttribute("rx", "0");
+      remoteDocument.setAttribute("ry", "0");
+      remoteDocument.setAttribute("rz", "0");
     }
     if (mmlDocument.scale?.x !== undefined) {
-      frameElement.setAttribute("sx", mmlDocument.scale.x.toString());
+      remoteDocument.setAttribute("sx", mmlDocument.scale.x.toString());
     } else {
-      frameElement.setAttribute("sx", "1");
+      remoteDocument.setAttribute("sx", "1");
     }
     if (mmlDocument.scale?.y !== undefined) {
-      frameElement.setAttribute("sy", mmlDocument.scale.y.toString());
+      remoteDocument.setAttribute("sy", mmlDocument.scale.y.toString());
     } else {
-      frameElement.setAttribute("sy", "1");
+      remoteDocument.setAttribute("sy", "1");
     }
     if (mmlDocument.scale?.z !== undefined) {
-      frameElement.setAttribute("sz", mmlDocument.scale.z.toString());
+      remoteDocument.setAttribute("sz", mmlDocument.scale.z.toString());
     } else {
-      frameElement.setAttribute("sz", "1");
+      remoteDocument.setAttribute("sz", "1");
     }
+    return mmlNetworkSource;
   }
 
   private setMMLDocuments(mmlDocuments: { [key: string]: MMLDocumentConfiguration }) {
-    const newFramesMap: { [key: string]: HTMLElement } = {};
-    for (const [key, mmlDocSpec] of Object.entries(mmlDocuments)) {
-      const existing = this.mmlFrames[key];
+    const newMMLDocuments: { [key: string]: MMLDocumentState } = {};
+    for (const [key, mmlDocConfig] of Object.entries(mmlDocuments)) {
+      let existing: MMLDocumentState | undefined = this.mmlDocumentStates[key];
+      if (
+        existing &&
+        (existing.config.url !== mmlDocConfig.url ||
+          existing.config.passAuthToken !== mmlDocConfig.passAuthToken)
+      ) {
+        // URL or auth token changed - dispose of existing and create new
+        existing.dispose();
+        existing = undefined;
+      }
       if (!existing) {
-        const frameElement = this.createFrame(mmlDocSpec);
-        document.body.appendChild(frameElement);
-        newFramesMap[key] = frameElement;
+        newMMLDocuments[key] = this.createMMLDocument(mmlDocConfig);
       } else {
-        delete this.mmlFrames[key];
-        newFramesMap[key] = existing;
-        this.updateFrameAttributes(existing, mmlDocSpec);
+        delete this.mmlDocumentStates[key];
+        this.updateMMLDocumentAttributes(existing.source, mmlDocConfig);
+        newMMLDocuments[key] = existing;
       }
     }
-    for (const [key, element] of Object.entries(this.mmlFrames)) {
-      element.remove();
+    for (const element of Object.values(this.mmlDocumentStates)) {
+      element.dispose();
     }
-    this.mmlFrames = newFramesMap;
+    this.mmlDocumentStates = newMMLDocuments;
   }
 }

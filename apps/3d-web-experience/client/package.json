@@ -15,9 +15,9 @@
   },
   "dependencies": {
     "@mml-io/3d-web-experience-client": "^0.22.0",
-    "three": "0.163.0"
+    "three": "0.178.0"
   },
   "devDependencies": {
-    "@types/three": "0.163.0"
+    "@types/three": "0.178.0"
   }
 }

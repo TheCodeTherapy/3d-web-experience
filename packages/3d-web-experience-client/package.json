@@ -23,11 +23,11 @@
     "@mml-io/3d-web-text-chat": "^0.22.0",
     "@mml-io/3d-web-user-networking": "^0.22.0",
     "@mml-io/3d-web-voice-chat": "^0.22.0",
-    "@mml-io/mml-web": "0.19.7",
-    "three": "0.163.0"
+    "@mml-io/mml-web": "0.21.0",
+    "three": "0.178.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.1",
-    "@types/three": "0.163.0"
+    "@types/three": "0.178.0"
   }
 }

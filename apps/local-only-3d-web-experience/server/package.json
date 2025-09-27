@@ -19,7 +19,7 @@
   "dependencies": {
     "@apps/local-only-3d-web-experience-client": "^0.22.0",
     "@mml-io/3d-web-experience-server": "^0.22.0",
-    "@mml-io/networked-dom-server": "0.19.7",
+    "@mml-io/networked-dom-server": "0.21.0",
     "chokidar": "^4.0.3",
     "cors": "^2.8.5",
     "express": "4.21.2",

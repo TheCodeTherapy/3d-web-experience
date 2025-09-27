@@ -21,11 +21,11 @@
   "dependencies": {
     "esbuild-css-modules-plugin": "^3.1.4",
     "express": "^4.21.2",
-    "three": "0.163.0",
+    "three": "0.178.0",
     "tweakpane": "^4.0.5"
   },
   "devDependencies": {
-    "@types/three": "0.163.0",
+    "@types/three": "0.178.0",
     "esbuild-plugin-copy": "^2.1.1"
   }
 }
