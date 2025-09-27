@@ -43,3 +43,4 @@ dist
 .direnv
 renamed-packages.json
 example/web-asset-compress/server/uploads
+copyenv.sh
