@@ -1,0 +1,32 @@
+.dataGrid {
+  display: block;
+}
+
+.scrollable {
+  position: relative;
+  min-width: 100%;
+  width: 100%;
+  overflow-x: scroll;
+}
+
+.scrollableVertical {
+  overflow-x: scroll;
+  min-width: 100%;
+  width: 100%;
+}
+
+.scrollableHorizontal {
+  overflow-x: scroll;
+  overflow-y: hidden;
+  min-height: 100%;
+  white-space: nowrap;
+}
+
+.spacer {
+  width: 1px;
+  height: 1px;
+}
+
+.container {
+  position: absolute;
+} 

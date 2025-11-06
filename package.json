@@ -1,59 +1,58 @@
 {
   "name": "3d-web-experience",
   "private": true,
+  "packageManager": "npm@9.6.7",
   "type": "module",
   "engines": {
     "node": "20.x"
   },
   "scripts": {
-    "build": "lerna run --stream build",
-    "start": "concurrently \"npm run start -w @apps/3d-web-experience-server\" \"npm run start -w @mml-io/3d-web-asset-compress-server\"",
-    "iterate": "npm run build && lerna run --parallel --stream iterate",
-    "type-check-all": "lerna run --stream --no-bail type-check",
-    "test-all": "lerna run --parallel --stream --no-bail test",
-    "lint-all": "lerna run --stream --no-bail lint",
-    "lint-fix-all": "lerna run --stream --no-bail lint-fix",
+    "start": "npm run start -w @apps/multi-user-3d-web-experience-server",
     "link-all": "lerna exec \"npm link\" --no-private && npm run print-links",
     "print-links": "echo \"Run this command in the package you would like to link this repo's packages to:\n\"; echo \"npm link\" $(lerna ls --loglevel=error)",
     "version": "lerna version --no-push --force-publish",
-    "update-imports": "node update-references.js && node update-imports.js && npm install && npm run build && npm run lint-fix-all"
+    "build": "turbo run build --output-logs=full",
+    "clear-cache": "turbo clean",
+    "depcheck-all": "depcheck --quiet && turbo run depcheck --concurrency=5 --output-logs=full --continue=always",
+    "iterate": "npm run build && turbo run iterate --env-mode=loose --concurrency=1000 --output-logs=full",
+    "iterate:killall": "killall node esbuild",
+    "lint-all": "turbo run lint --concurrency=5 --output-logs=full --continue=always",
+    "lint-fix-all": "turbo run lint-fix --concurrency=5 --output-logs=full",
+    "test-all": "turbo run test --concurrency=5 --output-logs=full --continue=always",
+    "type-check-all": "turbo run type-check --concurrency=5 --output-logs=full --continue=always"
   },
   "workspaces": [
-    "apps/**",
-    "packages/*"
+    "packages/*",
+    "packages/deltanet/*",
+    "apps/**"
   ],
-  "overrides": {
-    "canvas": "3.1.0"
-  },
   "devDependencies": {
-    "@types/jest": "29.5.14",
     "@types/jju": "^1.4.5",
-    "@types/node": "^24.0.10",
+    "@types/resolve": "1.20.6",
     "@types/tmp": "^0.2.6",
     "@typescript-eslint/eslint-plugin": "^8.23.0",
     "@typescript-eslint/parser": "^8.23.0",
-    "concurrently": "^9.1.2",
+    "chokidar": "4.0.3",
     "cross-env": "^7.0.3",
+    "depcheck": "1.4.7",
     "esbuild": "0.24.2",
-    "esbuild-plugin-copy": "2.1.1",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-prettier": "^5.2.3",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.1.0",
-    "jest": "29.7.0",
-    "jest-environment-jsdom": "29.7.0",
+    "express-ws": "5.0.2",
     "jju": "^1.4.0",
     "lerna": "8.1.9",
     "prettier": "^3.4.2",
-    "rfc6902": "^5.1.2",
+    "resolve": "1.22.10",
     "rimraf": "^6.0.1",
     "tmp": "^0.2.3",
     "tree-kill": "^1.2.2",
-    "ts-jest": "29.2.5",
-    "ts-node": "^10.9.2",
     "tsx": "4.19.2",
-    "typescript": "^5.7.3"
+    "turbo": "2.5.0",
+    "typescript": "^5.7.3",
+    "ws": "8.18.0"
   }
 }

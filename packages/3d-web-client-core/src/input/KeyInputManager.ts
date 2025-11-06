@@ -12,6 +12,8 @@ export enum Key {
   V = "v",
 }
 
+export const toggleCameraKey = Key.V;
+
 type KeyCallback = () => void;
 type BindingsType = Map<Key, KeyCallback>;
 
@@ -113,7 +115,7 @@ export class KeyInputManager {
     const jump = this.getJump();
     const slide = this.getSlide();
     if (dx === 0 && dy === 0) {
-      if (this.getJump() || slide) {
+      if (this.getJump()) {
         return { direction: null, isSprinting: false, jump, slide };
       }
       return null;

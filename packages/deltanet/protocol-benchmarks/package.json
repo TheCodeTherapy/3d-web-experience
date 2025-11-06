@@ -1,0 +1,23 @@
+{
+  "name": "@mml-io/protocol-benchmarks",
+  "version": "0.24.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
+    "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix",
+    "bench": "tsx ./src/index.ts",
+    "bench-all": "npm run bench -- all",
+    "bench-integers": "npm run bench -- integers",
+    "bench-encoding": "npm run bench -- encoding",
+    "bench-decoding": "npm run bench -- decoding",
+    "bench-encoding-integers": "npm run bench -- encoding-integers",
+    "bench-decoding-integers": "npm run bench -- decoding-integers"
+  },
+  "devDependencies": {
+    "@mml-io/delta-net-protocol": "^0.24.2",
+    "@types/benchmark": "2.1.5",
+    "benchmark": "2.1.4"
+  }
+}

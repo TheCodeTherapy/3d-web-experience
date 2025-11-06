@@ -19,8 +19,8 @@ cd ~
 "
 EOF
 
-scp ./apps/3d-web-experience/server/.env ${vpsuser}@${vpsaddress}:${mmlappdir}/apps/3d-web-experience/server/.
-scp ./apps/3d-web-experience/server-advanced/.env ${vpsuser}@${vpsaddress}:${mmlappdir}/apps/3d-web-experience/server-advanced/.
+scp ./apps/multi-user-3d-web-experience/server/.env ${vpsuser}@${vpsaddress}:${mmlappdir}/apps/multi-user-3d-web-experience/server/.env
+# scp ./apps/3d-web-experience/server-advanced/.env ${vpsuser}@${vpsaddress}:${mmlappdir}/apps/3d-web-experience/server-advanced/.
 scp ./packages/3d-web-experience-server/.env ${vpsuser}@${vpsaddress}:${mmlappdir}/packages/3d-web-experience-server/.env
 scp ./.env ${vpsuser}@${vpsaddress}:${mmlappdir}/.
 

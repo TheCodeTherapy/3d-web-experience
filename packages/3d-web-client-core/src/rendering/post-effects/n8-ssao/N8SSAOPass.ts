@@ -34,7 +34,7 @@ import { EffectShader } from "./EffectShader";
 import { FullScreenTriangle } from "./FullScreenTriangle";
 import { PoissionBlur } from "./PoissionBlur";
 
-const bluenoiseBits = new Uint8Array(Uint8Array.from(atob(BlueNoise), (c) => c.charCodeAt(0)));
+const bluenoiseBits: Uint8Array = Uint8Array.from(atob(BlueNoise), (c) => c.charCodeAt(0));
 
 export type RenderModeType = "Combined" | "AO" | "No AO" | "Split" | "Split AO";
 

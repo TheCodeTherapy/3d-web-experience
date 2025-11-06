@@ -1,4 +1,4 @@
-import { PerspectiveCamera, Raycaster, Vector3 } from "three";
+import { Matrix4, PerspectiveCamera, Ray, Vector3 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { CollisionsManager } from "../collisions/CollisionsManager";
@@ -32,7 +32,7 @@ export class CameraManager {
   public fov: number = this.initialFOV;
   private targetFOV: number = this.initialFOV;
 
-  public minPolarAngle: number = Math.PI * 0.25;
+  public minPolarAngle: number = Math.PI * 0.05;
   private maxPolarAngle: number = Math.PI * 0.95;
 
   public distance: number = this.initialDistance;
@@ -47,7 +47,8 @@ export class CameraManager {
   private target: Vector3 = new Vector3(0, 1.55, 0);
   private hadTarget: boolean = false;
 
-  private rayCaster: Raycaster;
+  private cameraRay: Ray = new Ray();
+  private tempVec3: Vector3 = new Vector3();
 
   private eventHandlerCollection: EventHandlerCollection;
 
@@ -74,6 +75,7 @@ export class CameraManager {
     const aspect = window.innerWidth / window.innerHeight;
 
     this.camera = new PerspectiveCamera(this.fov, aspect, 0.1, 400);
+    this.camera.far = 10000;
     this.camera.position.set(0, 1.4, -this.initialDistance);
     this.camera.name = "MainCamera";
     this.flyCamera = new PerspectiveCamera(this.initialFOV, aspect, 0.1, 400);
@@ -87,8 +89,6 @@ export class CameraManager {
     this.orbitControls.enablePan = true;
     this.orbitControls.enabled = false;
 
-    this.rayCaster = new Raycaster();
-
     this.createEventHandlers();
   }
 
@@ -96,7 +96,7 @@ export class CameraManager {
     this.eventHandlerCollection = EventHandlerCollection.create([
       [this.targetElement, "pointerdown", this.onPointerDown.bind(this)],
       [this.targetElement, "gesturestart", this.preventDefaultAndStopPropagation.bind(this)],
-      [this.targetElement, "wheel", this.onMouseWheel.bind(this), { passive: false }],
+      [this.targetElement, "wheel", this.onMouseWheel.bind(this)],
       [this.targetElement, "contextmenu", this.onContextMenu.bind(this)],
       [document, "pointerup", this.onPointerUp.bind(this)],
       [document, "pointercancel", this.onPointerUp.bind(this)],
@@ -232,9 +232,10 @@ export class CameraManager {
   }
 
   public reverseUpdateFromPositions(): void {
-    const dx = this.camera.position.x - this.target.x;
-    const dy = this.camera.position.y - this.target.y;
-    const dz = this.camera.position.z - this.target.z;
+    const position = this.camera.position;
+    const dx = position.x - this.target.x;
+    const dy = position.y - this.target.y;
+    const dz = position.z - this.target.z;
     this.targetDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
     this.distance = this.targetDistance;
     this.desiredDistance = this.targetDistance;
@@ -248,13 +249,13 @@ export class CameraManager {
   public adjustCameraPosition(): void {
     const offsetDistance = 0.5;
     const offset = new Vector3(0, 0, offsetDistance);
-    offset.applyEuler(this.camera.rotation);
-    const rayOrigin = this.camera.position.clone().add(offset);
+    const rotationMatrix = new Matrix4().makeRotationFromQuaternion(this.camera.quaternion);
+    offset.applyMatrix4(rotationMatrix);
+    const rayOrigin = this.tempVec3.copy(this.camera.position).add(offset);
     const rayDirection = rayOrigin.sub(this.target.clone()).normalize();
 
-    this.rayCaster.set(this.target.clone(), rayDirection);
-    const firstRaycastHit = this.collisionsManager.raycastFirst(this.rayCaster.ray);
-
+    this.cameraRay.set(this.target.clone(), rayDirection);
+    const firstRaycastHit = this.collisionsManager.raycastFirst(this.cameraRay);
     if (firstRaycastHit !== null && firstRaycastHit[0] <= this.desiredDistance) {
       const distanceToCollision = firstRaycastHit[0] - 0.1;
       this.targetDistance = distanceToCollision;
@@ -298,14 +299,19 @@ export class CameraManager {
 
   public toggleFlyCamera(): void {
     this.isMainCameraActive = !this.isMainCameraActive;
-    this.orbitControls.enabled = !this.isMainCameraActive;
+    if (this.isMainCameraActive) {
+      this.orbitControls.enabled = false;
+    } else {
+      this.orbitControls.enabled = true;
+    }
 
     if (!this.isMainCameraActive) {
       this.updateAspect(window.innerWidth / window.innerHeight);
       this.flyCamera.position.copy(this.camera.position);
       this.flyCamera.rotation.copy(this.camera.rotation);
       const target = new Vector3();
-      this.camera.getWorldDirection(target);
+      const direction = this.camera.getWorldDirection(new Vector3());
+      target.set(direction.x, direction.y, direction.z);
       target.multiplyScalar(this.targetDistance).add(this.camera.position);
       this.orbitControls.target.copy(target);
       this.orbitControls.update();
@@ -347,7 +353,7 @@ export class CameraManager {
     this.camera.updateProjectionMatrix();
 
     this.camera.position.set(x, y, z);
-    this.camera.lookAt(this.target);
+    this.camera.lookAt(new Vector3(this.target.x, this.target.y, this.target.z));
 
     if (this.isLerping && this.lerpFactor >= 1) {
       this.isLerping = false;

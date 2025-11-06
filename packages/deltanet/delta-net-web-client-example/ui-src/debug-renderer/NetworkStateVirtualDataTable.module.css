@@ -1,0 +1,22 @@
+.row-list {
+  background: #161b22;
+  color: #c9d1d9;
+  height: 40px;
+  border-bottom: 1px solid #21262d;
+  transition: background-color 0.1s ease;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.row-list:hover {
+  background: #1c2128;
+}
+
+.row-list:nth-child(even) {
+  background: #0d1117;
+}
+
+.row-list:nth-child(even):hover {
+  background: #161b22;
+}

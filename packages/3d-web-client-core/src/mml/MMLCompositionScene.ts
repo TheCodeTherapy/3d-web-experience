@@ -17,8 +17,9 @@ import {
   ThreeJSGraphicsAdapter,
   ThreeJSGraphicsInterface,
   ThreeJSInteractionAdapter,
+  ThreeJSResourceManager,
 } from "@mml-io/mml-web-threejs";
-import { AudioListener, Group, Object3D, PerspectiveCamera, Scene, WebGLRenderer } from "three";
+import { PerspectiveCamera, Scene, WebGLRenderer, AudioListener, Group, Object3D } from "three";
 
 import { CollisionsManager } from "../collisions/CollisionsManager";
 
@@ -43,10 +44,12 @@ export class MMLCompositionScene {
   private readonly chatProbes = new Set<ChatProbe<ThreeJSGraphicsAdapter>>();
   private readonly clickTrigger: ThreeJSClickTrigger;
   private readonly loadingProgressManager: LoadingProgressManager;
+  private readonly resourceManager: ThreeJSResourceManager;
 
   constructor(private config: MMLCompositionSceneConfig) {
     this.group = new Group();
     this.promptManager = PromptManager.init(this.config.targetElement);
+    this.resourceManager = new ThreeJSResourceManager();
 
     const graphicsAdapter: ThreeJSGraphicsAdapter = {
       collisionType: null as unknown as Object3D,
@@ -57,9 +60,9 @@ export class MMLCompositionScene {
       getRootContainer: () => {
         return this.group;
       },
-      interactionShouldShowDistance: (
+      interactionShouldShowDistance(
         interaction: Interaction<ThreeJSGraphicsAdapter>,
-      ): number | null => {
+      ): number | null {
         return ThreeJSInteractionAdapter.interactionShouldShowDistance(
           interaction,
           this.config.camera,
@@ -68,16 +71,19 @@ export class MMLCompositionScene {
       },
       dispose(): void {},
       getAudioListener: () => {
-        return config.audioListener;
+        return this.config.audioListener;
       },
       getCamera: () => {
-        return config.camera;
+        return this.config.camera;
       },
       getThreeScene: () => {
-        return config.scene;
+        return this.config.scene;
       },
       getUserPositionAndRotation: () => {
         return this.config.getUserPositionAndRotation();
+      },
+      getResourceManager: () => {
+        return this.resourceManager;
       },
     };
 

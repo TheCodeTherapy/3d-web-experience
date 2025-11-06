@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "module": "es2022",
+    "target": "es2022",
+    "jsx": "react",
+    "lib": ["esnext", "dom"],
+    "sourceMap": true,
+    "allowJs": true,
+    "types": ["node"],
+    "strictNullChecks": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node",
+    "downlevelIteration": true,
+    "outDir": "./build",
+    "incremental": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*", "test/**/*", "./build.ts", "./jest.config.ts"],
+  "exclude": ["**/build/*", "types-src"]
+}

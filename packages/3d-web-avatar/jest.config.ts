@@ -14,6 +14,13 @@ const jestConfig: JestConfigWithTsJest = {
       },
     ],
   },
+  reporters: [
+    "default",
+    [
+      "jest-junit",
+      { outputDirectory: "./test-results", outputName: "@mml-io/3d-web-avatar" },
+    ],
+  ],
 };
 
 export default jestConfig;

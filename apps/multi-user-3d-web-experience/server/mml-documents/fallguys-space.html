@@ -1,0 +1,217 @@
+<m-group id="wrapper">
+  <m-group id="teleporter"></m-group>
+  <m-frame
+    src="wss:///mml-documents/fallguys-game.html"
+    y="1000"
+    min-x="-5000"
+    max-x="5000"
+    min-y="-60"
+    max-y="150"
+    min-z="-5000"
+    max-z="5000"
+    load-range="3"
+    unload-range="5"
+    debug="false"
+  ></m-frame>
+</m-group>
+<script>
+  const teleporterGroup = document.getElementById("teleporter");
+
+  function createTeleporter(parentElement, startX, startY, startZ, endX, endY, endZ) {
+    const transporterYOffset = -0.047;
+    const transporterAnimTravel = 0.047;
+    const transporterAnimDuration = 1200;
+
+    const usersColliding = new Set();
+    let telerportingStarted = false;
+
+    const animate = (element, attr, start, end, duration, easing, cb) => {
+      const anim = document.createElement("m-attr-anim");
+      anim.setAttribute("attr", attr);
+      anim.setAttribute("start", start);
+      anim.setAttribute("end", end);
+      anim.setAttribute("start-time", document.timeline.currentTime);
+      anim.setAttribute("end-time", document.timeline.currentTime + duration);
+      anim.setAttribute("duration", duration);
+      anim.setAttribute("easing", easing);
+      anim.setAttribute("loop", false);
+      element.appendChild(anim);
+      setTimeout(() => {
+        element.setAttribute(attr, end);
+        element.removeChild(anim);
+        cb();
+      }, duration);
+    };
+
+    const teleporterStart = document.createElement("m-model");
+    teleporterStart.setAttribute("src", "/assets/playground/base_plinth.glb");
+    teleporterStart.setAttribute("ry", 180);
+    teleporterStart.setAttribute("x", startX);
+    teleporterStart.setAttribute("y", startY);
+    teleporterStart.setAttribute("z", startZ);
+
+    const transporter = document.createElement("m-model");
+    transporter.setAttribute("src", "/assets/playground/base_plinth_platform.glb");
+    transporter.setAttribute("x", startX);
+    transporter.setAttribute("y", startY + transporterYOffset);
+    transporter.setAttribute("z", startZ);
+    parentElement.appendChild(transporter);
+
+    const teleporterEnd = document.createElement("m-model");
+    teleporterEnd.setAttribute("src", "/assets/playground/base_plinth.glb");
+    teleporterEnd.setAttribute("ry", 180);
+    teleporterEnd.setAttribute("x", endX);
+    teleporterEnd.setAttribute("y", endY);
+    teleporterEnd.setAttribute("z", endZ);
+    parentElement.appendChild(teleporterEnd);
+
+    const teleporterProbe = document.createElement("m-position-probe");
+    teleporterProbe.setAttribute("debug", false);
+    teleporterProbe.setAttribute("range", 1.32);
+    teleporterProbe.setAttribute("interval", 500);
+    teleporterProbe.setAttribute("x", startX);
+    teleporterProbe.setAttribute("y", startY + 0.3);
+    teleporterProbe.setAttribute("z", startZ);
+    parentElement.appendChild(teleporterProbe);
+
+    teleporterProbe.addEventListener("positionenter", (e) => {
+      teleport();
+    });
+    teleporterProbe.addEventListener("positionmove", (e) => {
+      teleport();
+    });
+
+    const createAudio = (src) => {
+      const sfx = document.createElement("m-audio");
+      sfx.setAttribute("loop", false);
+      sfx.setAttribute("volume", 0);
+      sfx.setAttribute("start-time", document.timeline.currentTime - 4000);
+      sfx.setAttribute("pause-time", document.timeline.currentTime - 100);
+      sfx.setAttribute("src", src);
+      sfx.setAttribute("y", 15);
+      sfx.setAttribute("rx", 90);
+      sfx.setAttribute("cone-angle", 45);
+      sfx.setAttribute("cone-falloff-angle", 100);
+      sfx.setAttribute("debug", false);
+      return sfx;
+    };
+
+    const sfxStart = createAudio("/assets/playground/charge.mp3");
+    const sfxEnd = createAudio("/assets/playground/charge.mp3");
+    teleporterStart.appendChild(sfxStart);
+    teleporterEnd.appendChild(sfxEnd);
+
+    const stopSFX = () => {
+      sfxStart.setAttribute("volume", 0);
+      sfxStart.setAttribute("start-time", document.timeline.currentTime - 4000);
+      sfxStart.setAttribute("pause-time", document.timeline.currentTime - 100);
+      sfxEnd.setAttribute("volume", 0);
+      sfxEnd.setAttribute("start-time", document.timeline.currentTime - 4000);
+      sfxEnd.setAttribute("pause-time", document.timeline.currentTime - 100);
+    };
+
+    const playSFX = () => {
+      sfxStart.setAttribute("volume", 6);
+      sfxStart.setAttribute("start-time", document.timeline.currentTime);
+      sfxStart.setAttribute("pause-time", document.timeline.currentTime + 4000);
+      sfxEnd.setAttribute("volume", 6);
+      sfxEnd.setAttribute("start-time", document.timeline.currentTime);
+      sfxEnd.setAttribute("pause-time", document.timeline.currentTime + 4000);
+      setTimeout(() => {
+        stopSFX();
+      }, 3100);
+    };
+
+    const teleport = () => {
+      if (telerportingStarted) {
+        return;
+      }
+      telerportingStarted = true;
+      playSFX();
+      animate(
+        transporter,
+        "y",
+        startY + transporterYOffset,
+        startY + transporterYOffset + transporterAnimTravel,
+        transporterAnimDuration,
+        "EaseInOutCubic",
+        () => {
+          transporter.setAttribute("y", endY + 5000);
+          transporter.setAttribute("x", endX);
+          transporter.setAttribute("z", endZ);
+          transporter.setAttribute("y", endY - 0.003);
+          animate(
+            transporter,
+            "y",
+            endY + transporterYOffset + transporterAnimTravel,
+            endY + transporterYOffset,
+            transporterAnimDuration,
+            "EaseInOutCubuc",
+            () => {
+              transporter.setAttribute("x", startX);
+              transporter.setAttribute("y", startY + transporterYOffset);
+              transporter.setAttribute("z", startZ);
+              telerportingStarted = false;
+            },
+          );
+        },
+      );
+    };
+
+    parentElement.appendChild(teleporterStart);
+
+    const randomFloatBetween = (a, b) => {
+      return Math.random() * (b - a) + a;
+    };
+
+    const createParticles = (parentElement, maxParticles, radius) => {
+      const particles = new Map();
+      const goldenRatio = (1 + Math.sqrt(5)) / 2;
+      const angleIncrement = Math.PI * 2 * goldenRatio;
+      for (let i = 0; i < maxParticles; i++) {
+        const t = i / maxParticles;
+        const inc = Math.acos(1 - 2 * t);
+        const azimuth = angleIncrement * i;
+        const x = radius * Math.sin(inc) * Math.cos(azimuth);
+        const z = radius * Math.sin(inc) * Math.sin(azimuth);
+        const image = document.createElement("m-image");
+        image.setAttribute("src", "/assets/playground/particle.png");
+        image.setAttribute("emissive", 200);
+        image.setAttribute("x", x);
+        image.setAttribute("y", -Math.random() * 4);
+        image.setAttribute("z", z);
+        image.setAttribute("rx", randomFloatBetween(-45, 45));
+        image.setAttribute("ry", randomFloatBetween(-180, 180));
+        image.setAttribute("rz", randomFloatBetween(-45, 45));
+        image.setAttribute("width", randomFloatBetween(0.03, 0.08));
+        image.setAttribute("collide", false);
+        image.setAttribute("cast-shadows", false);
+        const anim = document.createElement("m-attr-anim");
+        anim.setAttribute("attr", "y");
+        anim.setAttribute("start", 0);
+        anim.setAttribute("end", 3 + Math.random() * 2);
+        anim.setAttribute("duration", 3000 + Math.random() * 3000);
+        anim.setAttribute("start-time", document.timeline.currentTime - Math.random() * 2000);
+        image.appendChild(anim);
+        particles.set(i, image);
+        parentElement.appendChild(image);
+      }
+    };
+    createParticles(teleporterStart, 12, 1);
+  }
+
+  const cylinder = document.createElement("m-cylinder");
+  cylinder.setAttribute("color", "#888888");
+  cylinder.setAttribute("radius", 0.7);
+  cylinder.setAttribute("height", 2);
+  cylinder.setAttribute("y", 0);
+  cylinder.setAttribute("z", -15);
+  teleporterGroup.appendChild(cylinder);
+
+  const gameYPos = 1000;
+  const partsYPos = 90;
+  const teleporterSkin = 0.02;
+
+  createTeleporter(teleporterGroup, 0, -0.05, 0, 0, gameYPos + partsYPos - teleporterSkin, -8);
+  createTeleporter(teleporterGroup, -20, gameYPos + partsYPos - teleporterSkin, -8, 0, 1, -15);
+</script>

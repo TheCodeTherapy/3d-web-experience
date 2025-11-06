@@ -15,6 +15,7 @@ export class ErrorScreen {
     this.element.style.flexDirection = "column";
     this.element.style.width = "100%";
     this.element.style.height = "100%";
+    this.element.style.zIndex = "10000";
     this.element.style.background = "linear-gradient(45deg, #111111 0%, #444444 100%)";
     this.element.style.color = "white";
 

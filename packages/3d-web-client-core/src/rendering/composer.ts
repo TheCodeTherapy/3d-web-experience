@@ -6,22 +6,21 @@ import {
   EquirectangularReflectionMapping,
   Euler,
   Fog,
+  HalfFloatType,
+  LinearMipmapLinearFilter,
   LinearSRGBColorSpace,
   LoadingManager,
   MathUtils,
+  PerspectiveCamera,
   PMREMGenerator,
   Scene,
   ShadowMapType,
   SRGBColorSpace,
   Texture,
   ToneMapping,
-  Vector2,
   Vector3,
   WebGLCubeRenderTarget,
-  HalfFloatType,
-  LinearMipmapLinearFilter,
   WebGLRenderer,
-  PerspectiveCamera,
 } from "three";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
@@ -40,6 +39,7 @@ type ComposerContructorArgs = {
   cameraManager: CameraManager;
   spawnSun: boolean;
   environmentConfiguration?: EnvironmentConfiguration;
+  postProcessingEnabled?: boolean;
 };
 
 export type EnvironmentConfiguration = {
@@ -87,7 +87,6 @@ export class Composer {
   private width: number = 1;
   private height: number = 1;
   private resizeListener: () => void;
-  public resolution: Vector2 = new Vector2(this.width, this.height);
 
   private readonly scene: Scene;
   public postPostScene: Scene;
@@ -111,19 +110,34 @@ export class Composer {
   public sun: Sun | null = null;
   public spawnSun: boolean;
   private sky: Sky | null = null;
+  private skyDirty = true;
   private skyCubeCamera: CubeCamera | null = null;
   private skyRenderTarget: WebGLCubeRenderTarget | null = null;
+
+  // Lerping properties for smooth sun angle transitions
+  private currentAzimuthalAngle: number = 0;
+  private currentPolarAngle: number = 0;
+  private targetAzimuthalAngle: number = 0;
+  private targetPolarAngle: number = 0;
+  private currentIntensity: number = 0;
+  private targetIntensity: number = 0;
+  private readonly lerpSpeed: number = 0.05;
+
+  private postProcessingEnabled: boolean | undefined;
 
   constructor({
     scene,
     cameraManager,
     spawnSun = false,
     environmentConfiguration,
+    postProcessingEnabled,
   }: ComposerContructorArgs) {
     this.scene = scene;
     this.cameraManager = cameraManager;
     this.postPostScene = new Scene();
     this.spawnSun = spawnSun;
+    this.postProcessingEnabled = postProcessingEnabled;
+
     this.renderer = new WebGLRenderer({
       powerPreference: "high-performance",
       antialias: true,
@@ -138,6 +152,14 @@ export class Composer {
 
     this.environmentConfiguration = environmentConfiguration;
 
+    // Initialize lerping values
+    this.currentAzimuthalAngle = MathUtils.degToRad(sunValues.sunPosition.sunAzimuthalAngle);
+    this.currentPolarAngle = MathUtils.degToRad(sunValues.sunPosition.sunPolarAngle);
+    this.targetAzimuthalAngle = this.currentAzimuthalAngle;
+    this.targetPolarAngle = this.currentPolarAngle;
+    this.currentIntensity = sunValues.sunIntensity;
+    this.targetIntensity = this.currentIntensity;
+
     this.currentCamera = this.cameraManager.activeCamera;
     this.postProcessingManager = new PostProcessingManager(
       this.renderer,
@@ -146,6 +168,7 @@ export class Composer {
       this.width,
       this.height,
       {
+        enabled: this.postProcessingEnabled,
         bloom: { intensity: environmentConfiguration?.postProcessing?.bloomIntensity },
       },
     );
@@ -173,7 +196,9 @@ export class Composer {
     this.resizeListener = () => {
       this.fitContainer();
     };
+
     window.addEventListener("resize", this.resizeListener, false);
+
     this.fitContainer();
   }
 
@@ -260,10 +285,6 @@ export class Composer {
   }
 
   public fitContainer() {
-    if (!this) {
-      console.warn("Composer not initialized");
-      return;
-    }
     const parentElement = this.renderer.domElement.parentNode as HTMLElement;
     if (!parentElement) {
       return;
@@ -273,10 +294,6 @@ export class Composer {
     this.cameraManager.activeCamera.aspect = this.width / this.height;
     this.cameraManager.activeCamera.updateProjectionMatrix();
     this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.resolution.set(
-      this.width * window.devicePixelRatio,
-      this.height * window.devicePixelRatio,
-    );
 
     // delegate post-processing resize to manager
     this.postProcessingManager.resizeActiveEffects(this.width, this.height);
@@ -294,9 +311,14 @@ export class Composer {
       this.postProcessingManager.updateCamera(this.currentCamera);
     }
 
+    this.updateSun();
+
     this.renderer.info.reset();
     if (this.sky && this.skyCubeCamera && this.skyRenderTarget) {
-      this.skyCubeCamera?.update(this.renderer, this.sky);
+      if (this.skyDirty) {
+        this.skyDirty = false;
+        this.skyCubeCamera?.update(this.renderer, this.sky);
+      }
       this.scene.environment = this.skyRenderTarget.texture;
     }
     if (this.postProcessingManager.isGloballyEnabled) {
@@ -375,7 +397,7 @@ export class Composer {
     });
   }
 
-  public useHDRJPG(url: string, fromFile: boolean = false): void {
+  public useHDRJPG(url: string): void {
     if (this.skyboxState.src.hdrJpgUrl === url) {
       return;
     }
@@ -478,12 +500,12 @@ export class Composer {
     this.sky.material.uniforms.rayleigh.value = sunValues.skyRayleigh;
     this.sky.material.uniforms.mieCoefficient.value = sunValues.skyMieCoefficient;
     this.sky.material.uniforms.mieDirectionalG.value = sunValues.skyMieDirectionalG;
+    this.skyDirty = true;
   }
 
   public updateSunValues() {
     if (typeof this.environmentConfiguration?.sun?.intensity === "number") {
       sunValues.sunIntensity = this.environmentConfiguration.sun.intensity;
-      this.sun?.setIntensity(this.environmentConfiguration.sun.intensity);
     }
     if (typeof this.environmentConfiguration?.sun?.azimuthalAngle === "number") {
       sunValues.sunPosition.sunAzimuthalAngle = this.environmentConfiguration.sun.azimuthalAngle;
@@ -492,26 +514,118 @@ export class Composer {
       sunValues.sunPosition.sunPolarAngle = this.environmentConfiguration.sun.polarAngle;
     }
     const { sunAzimuthalAngle, sunPolarAngle } = sunValues.sunPosition;
-    const radAzimuthalAngle = MathUtils.degToRad(sunAzimuthalAngle);
-    const radPolarAngle = MathUtils.degToRad(sunPolarAngle);
-    this.sun?.setAzimuthalAngle(radAzimuthalAngle);
-    this.sun?.setPolarAngle(radPolarAngle);
-    if (this.sky) {
-      this.updateSkyShaderValues();
-    }
+    // Update target angles for lerping
+    this.targetAzimuthalAngle = MathUtils.degToRad(sunAzimuthalAngle);
+    this.targetPolarAngle = MathUtils.degToRad(sunPolarAngle);
+    // Update target intensity for lerping
+    this.targetIntensity = sunValues.sunIntensity;
   }
 
   public updateSun() {
     if (!this.sun) {
       return;
     }
-    this.sun.setAzimuthalAngle(MathUtils.degToRad(sunValues.sunPosition.sunAzimuthalAngle));
-    this.sun.setPolarAngle(MathUtils.degToRad(sunValues.sunPosition.sunPolarAngle));
-    this.sun.setIntensity(sunValues.sunIntensity);
-    this.sun.setColor();
-    if (this.sky) {
-      this.updateSkyShaderValues();
+
+    // Update target angles from sunValues (in case they were changed via tweakpane)
+    this.targetAzimuthalAngle = MathUtils.degToRad(sunValues.sunPosition.sunAzimuthalAngle);
+    this.targetPolarAngle = MathUtils.degToRad(sunValues.sunPosition.sunPolarAngle);
+    this.targetIntensity = sunValues.sunIntensity;
+
+    let hasDiff = false;
+
+    // Lerp towards target angles and intensity
+    if (this.currentAzimuthalAngle !== this.targetAzimuthalAngle) {
+      hasDiff = true;
     }
+
+    this.currentAzimuthalAngle = this.lerpAngle(
+      this.currentAzimuthalAngle,
+      this.targetAzimuthalAngle,
+      this.lerpSpeed,
+    );
+
+    if (Math.abs(this.currentAzimuthalAngle - this.targetAzimuthalAngle) < 0.001) {
+      this.currentAzimuthalAngle = this.targetAzimuthalAngle;
+    }
+
+    if (this.currentPolarAngle !== this.targetPolarAngle) {
+      hasDiff = true;
+    }
+
+    this.currentPolarAngle = this.lerpAngle(
+      this.currentPolarAngle,
+      this.targetPolarAngle,
+      this.lerpSpeed,
+    );
+
+    if (Math.abs(this.currentPolarAngle - this.targetPolarAngle) < 0.001) {
+      this.currentPolarAngle = this.targetPolarAngle;
+    }
+
+    if (this.currentIntensity !== this.targetIntensity) {
+      hasDiff = true;
+    }
+
+    this.currentIntensity = this.lerp(this.currentIntensity, this.targetIntensity, this.lerpSpeed);
+
+    if (Math.abs(this.currentIntensity - this.targetIntensity) < 0.001) {
+      this.currentIntensity = this.targetIntensity;
+    }
+
+    this.sun.setColor();
+
+    if (!hasDiff) {
+      return; // No changes, skip update
+    }
+
+    // Update sun with lerped values
+    this.sun.setAzimuthalAngle(this.currentAzimuthalAngle);
+    this.sun.setPolarAngle(this.currentPolarAngle);
+    this.sun.setIntensity(this.currentIntensity);
+
+    // Update sky shader with lerped angles
+    if (this.sky) {
+      this.updateSkyShaderValuesWithLerpedAngles();
+    }
+  }
+
+  private lerp(current: number, target: number, speed: number): number {
+    return current + (target - current) * speed;
+  }
+
+  private lerpAngle(current: number, target: number, speed: number): number {
+    // Calculate the shortest angular distance
+    let diff = target - current;
+
+    // Normalize the difference to [-π, π]
+    while (diff > Math.PI) {
+      diff -= 2 * Math.PI;
+    }
+    while (diff < -Math.PI) {
+      diff += 2 * Math.PI;
+    }
+
+    // Lerp using the shortest path
+    return current + diff * speed;
+  }
+
+  private updateSkyShaderValuesWithLerpedAngles() {
+    if (!this.sky) {
+      return;
+    }
+    // Use lerped angles for sky shader instead of sunValues directly
+    const sunPosition = new Vector3().setFromSphericalCoords(
+      1,
+      this.currentPolarAngle,
+      this.currentAzimuthalAngle,
+    );
+
+    this.sky.material.uniforms.sunPosition.value = sunPosition;
+    this.sky.material.uniforms.turbidity.value = sunValues.skyTurbidity;
+    this.sky.material.uniforms.rayleigh.value = sunValues.skyRayleigh;
+    this.sky.material.uniforms.mieCoefficient.value = sunValues.skyMieCoefficient;
+    this.sky.material.uniforms.mieDirectionalG.value = sunValues.skyMieDirectionalG;
+    this.skyDirty = true;
   }
 
   private updateFogValues() {
@@ -574,6 +688,10 @@ export class Composer {
         this.environmentConfiguration.ambientLight.intensity;
     }
     this.setAmbientLight();
+  }
+
+  public togglePostProcessing(enabled: boolean) {
+    this.postProcessingManager.toggleGlobalPostProcessing(enabled);
   }
 
   private applyEnvMap(envMap: Texture) {

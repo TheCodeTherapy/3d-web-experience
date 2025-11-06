@@ -1,6 +1,6 @@
 {
   "name": "@mml-io/3d-web-avatar",
-  "version": "0.22.0",
+  "version": "0.24.2",
   "publishConfig": {
     "access": "public"
   },
@@ -11,6 +11,7 @@
     "/build"
   ],
   "scripts": {
+    "depcheck": "depcheck --quiet",
     "build": "tsx ./build.ts --build",
     "iterate": "tsx ./build.ts --watch",
     "start": "cross-env NODE_ENV=production node build/index.js 2>error.log",
@@ -20,16 +21,17 @@
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "dependencies": {
-    "@mml-io/model-loader": "0.21.0",
+    "@mml-io/model-loader": "0.22.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "three": "0.178.0"
+    "three": "0.180.0"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.12",
     "@types/node": "^22.13.1",
-    "@types/react": "^19.0.8",
-    "@types/react-dom": "^19.0.3",
-    "@types/three": "0.178.0",
-    "esbuild-css-modules-plugin": "3.1.4"
+    "@types/three": "0.180.0",
+    "esbuild-css-modules-plugin": "3.1.4",
+    "jest-environment-jsdom": "29.7.0",
+    "jest-junit": "16.0.0",
+    "ts-jest": "^29.1.5"
   }
 }

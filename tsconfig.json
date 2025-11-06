@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "noImplicitAny": true,
-    "module": "esnext",
+    "module": "es2022",
     "target": "es2022",
     "sourceMap": true,
     "esModuleInterop": true,
@@ -15,5 +15,12 @@
     "baseUrl": ".",
     "incremental": true,
     "skipLibCheck": true
-  }
+  },
+  "include": [
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "packages/**/*.js",
+    "packages/**/*.jsx",
+    "packages/**/*.json"
+  ]
 }

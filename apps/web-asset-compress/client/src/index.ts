@@ -38,18 +38,10 @@ const showToast = (
   };
 };
 
-// ---------------------------------------
-// 📝 Style Injection for Tweakpane
-// ---------------------------------------
-
 const styleElement = document.createElement("style");
 styleElement.type = "text/css";
 styleElement.appendChild(document.createTextNode(tweakPaneStyle));
 document.head.appendChild(styleElement);
-
-// ---------------------------------------
-// 🧮 Utility Functions
-// ---------------------------------------
 
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return "0.00 B";
@@ -86,10 +78,6 @@ const countVerticesAndTrianglesFromGLTF = (gltf: GLTF) => {
 
   return { vertexCount, triangleCount };
 };
-
-// ---------------------------------------
-// 🎛️ Tweakpane Setup
-// ---------------------------------------
 
 const compressionValues = {
   simplifyRatio: 0.7,
@@ -135,7 +123,7 @@ simplifyFolder.addBinding(compressionValues, "simplifyError", {
 textureFolder.addBinding(compressionValues, "textureFormat", {
   options: { webp: "webp", jpeg: "jpeg", png: "png" },
 });
-textureFolder.addBinding(compressionValues, "textureResize", { min: 128, max: 2048, step: 128 });
+textureFolder.addBinding(compressionValues, "textureResize", { min: 128, max: 4096, step: 128 });
 
 // Results folder with separators
 resultsFolder.addBinding(resultValues, "originalSize", { readonly: true });
@@ -190,10 +178,6 @@ downloadButton.on("click", () => {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 });
-
-// ---------------------------------------
-// 🖼️ ThreeJS Setup
-// ---------------------------------------
 
 const container = document.createElement("div");
 container.style.display = "flex";
@@ -273,10 +257,6 @@ const loadGLTF = (arrayBuffer: ArrayBuffer, scene: THREE.Scene, isCompressed: bo
     pane.refresh();
   });
 };
-
-// ---------------------------------------
-// 📦 File Handling & Compression
-// ---------------------------------------
 
 let currentFile: File | null = null;
 
@@ -361,10 +341,6 @@ const handleFile = async (file: File): Promise<void> => {
   handleCompression(file);
 };
 
-// ---------------------------------------
-// 🖱️ Drag & Drop Setup
-// ---------------------------------------
-
 ["dragenter", "dragover", "drop"].forEach((eventName) => {
   window.addEventListener(eventName, (e) => {
     e.preventDefault();
@@ -386,10 +362,6 @@ window.addEventListener("drop", (e) => {
     setCompressButtonState("Compress", false);
   }
 });
-
-// ---------------------------------------
-// 🔄 Resize & Animation
-// ---------------------------------------
 
 window.addEventListener("resize", () => {
   const width = window.innerWidth / 2 - 0.5;

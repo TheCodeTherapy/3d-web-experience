@@ -79,7 +79,7 @@ const EffectCompositer = {
     highp float linearize_depth(highp float d, highp float zNear,highp float zFar) {
       return (zFar * zNear) / (zFar - d * (zFar - zNear));
     }
-
+   
     highp float linearize_depth_ortho(highp float d, highp float nearZ, highp float farZ) {
       return nearZ + (farZ - nearZ) * d;
     }
@@ -134,6 +134,7 @@ const EffectCompositer = {
       return mix(higher, lower, cutoff);
     }
 
+
     vec3 computeNormal(vec3 worldPos, vec2 vUv) {
       ivec2 p = ivec2(vUv * resolution);
       float c0 = texelFetch(sceneDepth, p, 0).x;
@@ -169,8 +170,8 @@ const EffectCompositer = {
     void main(void) {
       vec4 sceneTexel = texture2D(sceneDiffuse, vUv);
       float depth = texture2D(sceneDepth, vUv).x;
-
-      #ifdef HALFRES
+     
+      #ifdef HALFRES 
         vec4 texel;
         if (depth == 1.0) {
           texel = vec4(0.0, 0.0, 0.0, 1.0);

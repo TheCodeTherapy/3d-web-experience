@@ -20,6 +20,9 @@ tsconfig.tsbuildinfo
 build
 dist
 
+# Coverage
+coverage
+
 # IDEs and editors
 .idea
 .project
@@ -38,9 +41,8 @@ dist
 
 .nx
 
-*.copy.html
 .envrc
 .direnv
-renamed-packages.json
-example/web-asset-compress/server/uploads
-copyenv.sh
+.turbo/
+test-results/
+apps/web-asset-compress/server/uploads

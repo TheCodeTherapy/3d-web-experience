@@ -1,0 +1,34 @@
+.columnar_virtual_data_row {
+  display: flex;
+  white-space: nowrap;
+  align-items: stretch;
+  min-width: 100%;
+  width: 100%;
+  position: relative;
+  background: #0d1117;
+  border-bottom: 1px solid #21262d;
+}
+
+.columnar_virtual_data_row:hover {
+  background: #1c2128;
+}
+
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cell_content_wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  min-width: 0;
+} 

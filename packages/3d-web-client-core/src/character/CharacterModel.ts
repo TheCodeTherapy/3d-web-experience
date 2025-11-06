@@ -3,13 +3,13 @@ import {
   type MMLCharacterDescription,
   parseMMLDescription,
 } from "@mml-io/3d-web-avatar";
-import { ModelLoader } from "@mml-io/model-loader";
 import {
   AnimationAction,
   AnimationClip,
   AnimationMixer,
   Bone,
-  Box3,
+  Color,
+  Group,
   LoopRepeat,
   Mesh,
   MeshStandardMaterial,
@@ -18,28 +18,98 @@ import {
   Vector3,
   VectorKeyframeTrack,
 } from "three";
-import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
-import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import { CameraManager } from "../camera/CameraManager";
 
-import { AnimationConfig, AnimationSettings, CharacterDescription } from "./Character";
+import { AnimationConfigMetadata, CharacterDescription, LoadedAnimations } from "./Character";
 import { CharacterMaterial } from "./CharacterMaterial";
-import { CharacterModelLoader } from "./CharacterModelLoader";
 import { AnimationState } from "./CharacterState";
+import { captureCharacterColorsFromObject3D } from "./instancing/CharacterColourSamplingUtils";
+import { CharacterModelLoader } from "./loading/CharacterModelLoader";
+
+export const colorPartNamesIndex = [
+  "hair",
+  "shirt_short",
+  "shirt_long",
+  "pants_short",
+  "pants_long",
+  "shoes",
+  "skin",
+  "lips",
+] as const;
+
+export type ColorPartName = (typeof colorPartNamesIndex)[number];
+
+export function colorsToColorArray(
+  colors: Map<ColorPartName, Color>,
+): Array<[number, number, number]> {
+  const colorArray: Array<[number, number, number]> = [];
+  for (const partName of colorPartNamesIndex) {
+    const color = colors.get(partName);
+    if (color) {
+      colorArray.push([
+        Math.round(color.r * 255),
+        Math.round(color.g * 255),
+        Math.round(color.b * 255),
+      ]);
+    }
+  }
+  return colorArray;
+}
+
+export function colorArrayToColors(
+  colorArray: Array<[number, number, number]>,
+): Map<ColorPartName, Color> {
+  const colors = new Map<ColorPartName, Color>();
+  for (let i = 0; i < colorPartNamesIndex.length; i++) {
+    const color = colorArray[i];
+    if (color) {
+      colors.set(colorPartNamesIndex[i], new Color(color[0] / 255, color[1] / 255, color[2] / 255));
+    }
+  }
+  return colors;
+}
+
+const tempVector = new Vector3();
+
+function getSimpleHeight(mesh: Object3D): number {
+  let maxY = -Infinity;
+  let minY = Infinity;
+
+  mesh.traverse((child) => {
+    if (child instanceof Mesh || (child as Mesh).isMesh) {
+      const geometry = (child as Mesh).geometry;
+      if (geometry) {
+        const positionAttribute = geometry.getAttribute("position");
+        for (let i = 0; i < positionAttribute.count; i++) {
+          const y = (child as Mesh).getVertexPosition(i, tempVector).y;
+          maxY = Math.max(maxY, y);
+          minY = Math.min(minY, y);
+        }
+      }
+    }
+  });
+  if (maxY === -Infinity || minY === Infinity) {
+    console.warn("No valid vertices found in the mesh to calculate height.");
+    return 0;
+  }
+  return maxY - minY;
+}
 
 export type CharacterModelConfig = {
   characterDescription: CharacterDescription;
-  animationConfig: AnimationConfig;
+  animationsPromise: Promise<LoadedAnimations>;
   characterModelLoader: CharacterModelLoader;
   cameraManager: CameraManager;
   characterId: number;
   isLocal: boolean;
+  abortController?: AbortController;
 };
 
-export class CharacterModel {
-  public static ModelLoader: ModelLoader = new ModelLoader();
+const remoteMaxTextureSize = 128;
+const localMaxTextureSize = 1024;
 
+export class CharacterModel {
   public mesh: Object3D | null = null;
   public headBone: Bone | null = null;
   public characterHeight: number | null = null;
@@ -54,132 +124,82 @@ export class CharacterModel {
 
   private isPostDoubleJump = false;
   private isPostSlide = false;
+  private postSlideTargetAnimation: AnimationState = AnimationState.walking;
+
+  private colors: Array<[number, number, number]> | null = null;
 
   constructor(private config: CharacterModelConfig) {}
 
   public async init(): Promise<void> {
-    await this.loadMainMesh();
+    // Check if operation was canceled before starting
+    if (this.config.abortController?.signal.aborted) {
+      console.log(`CharacterModel init canceled for ${this.config.characterId}`);
+      return;
+    }
+
+    let mainMesh: Object3D | null = null;
+    try {
+      mainMesh = await this.loadCharacterFromDescription();
+    } catch (error) {
+      if (this.config.abortController?.signal.aborted) {
+        return;
+      }
+      console.error("Failed to load character from description", error);
+    }
+    if (this.config.abortController?.signal.aborted) {
+      return;
+    }
+
+    if (mainMesh) {
+      this.mesh = mainMesh;
+      this.mesh.position.set(0, -0.01, 0);
+      this.mesh.traverse((child: Object3D) => {
+        if (child.type === "SkinnedMesh") {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      this.animationMixer = new AnimationMixer(this.mesh);
+    }
+
+    // Check if operation was canceled after mesh loading
+    if (this.config.abortController?.signal.aborted) {
+      console.log(`CharacterModel init canceled after mesh loading for ${this.config.characterId}`);
+      return;
+    }
+
     if (this.mesh) {
-      if (typeof this.config.animationConfig.idleAnimationUrlOrConfig === "string") {
-        await this.setAnimationFromFile(
-          this.config.animationConfig.idleAnimationUrlOrConfig as string,
-          AnimationState.idle,
-          true,
-        );
-      } else {
-        const animationSetting = this.config.animationConfig
-          .idleAnimationUrlOrConfig as AnimationSettings;
-        await this.setAnimationFromFile(
-          animationSetting.fileUrl,
-          AnimationState.idle,
-          animationSetting.loop,
-          animationSetting.playbackSpeed,
-          animationSetting.discardNonRotationTransform,
-        );
+      const animationConfig = await this.config.animationsPromise;
+
+      // Check if operation was canceled after animation loading
+      if (this.config.abortController?.signal.aborted) {
+        return;
       }
 
-      if (typeof this.config.animationConfig.jogAnimationUrlOrConfig === "string") {
-        await this.setAnimationFromFile(
-          this.config.animationConfig.jogAnimationUrlOrConfig as string,
-          AnimationState.walking,
-          true,
-        );
-      } else {
-        const animationSetting = this.config.animationConfig
-          .jogAnimationUrlOrConfig as AnimationSettings;
-        await this.setAnimationFromFile(
-          animationSetting.fileUrl,
-          AnimationState.walking,
-          animationSetting.loop,
-          animationSetting.playbackSpeed,
-          animationSetting.discardNonRotationTransform,
-        );
+      this.setAnimationFromFile(animationConfig.idleAnimation, AnimationState.idle);
+      this.setAnimationFromFile(animationConfig.jogAnimation, AnimationState.walking);
+      this.setAnimationFromFile(animationConfig.sprintAnimation, AnimationState.running);
+      this.setAnimationFromFile(animationConfig.airAnimation, AnimationState.air);
+      this.setAnimationFromFile(animationConfig.doubleJumpAnimation, AnimationState.doubleJump);
+
+      // Add slide animation if present
+      if (animationConfig.slideAnimation) {
+        this.setAnimationFromFile(animationConfig.slideAnimation, AnimationState.slide);
       }
 
-      if (typeof this.config.animationConfig.sprintAnimationUrlOrConfig === "string") {
-        await this.setAnimationFromFile(
-          this.config.animationConfig.sprintAnimationUrlOrConfig as string,
-          AnimationState.running,
-          true,
-        );
-      } else {
-        const animationSetting = this.config.animationConfig
-          .sprintAnimationUrlOrConfig as AnimationSettings;
-        await this.setAnimationFromFile(
-          animationSetting.fileUrl,
-          AnimationState.running,
-          animationSetting.loop,
-          animationSetting.playbackSpeed,
-          animationSetting.discardNonRotationTransform,
-        );
+      this.characterHeight = getSimpleHeight(this.mesh);
+      if (this.config.isLocal) {
+        // Capture the colors before applying custom materials
+        this.getColors();
       }
-
-      if (typeof this.config.animationConfig.airAnimationUrlOrConfig === "string") {
-        await this.setAnimationFromFile(
-          this.config.animationConfig.airAnimationUrlOrConfig as string,
-          AnimationState.air,
-          true,
-        );
-      } else {
-        const animationSetting = this.config.animationConfig
-          .airAnimationUrlOrConfig as AnimationSettings;
-        await this.setAnimationFromFile(
-          animationSetting.fileUrl,
-          AnimationState.air,
-          animationSetting.loop,
-          animationSetting.playbackSpeed,
-          animationSetting.discardNonRotationTransform,
-        );
-      }
-
-      if (typeof this.config.animationConfig.doubleJumpAnimationUrlOrConfig === "string") {
-        await this.setAnimationFromFile(
-          this.config.animationConfig.doubleJumpAnimationUrlOrConfig as string,
-          AnimationState.doubleJump,
-          false,
-          1.45,
-        );
-      } else {
-        const animationSetting = this.config.animationConfig
-          .doubleJumpAnimationUrlOrConfig as AnimationSettings;
-        await this.setAnimationFromFile(
-          animationSetting.fileUrl,
-          AnimationState.doubleJump,
-          false,
-          animationSetting.playbackSpeed || 1.45,
-          animationSetting.discardNonRotationTransform,
-        );
-      }
-
-      if (typeof this.config.animationConfig.slideAnimationUrlOrConfig === "string") {
-        await this.setAnimationFromFile(
-          this.config.animationConfig.slideAnimationUrlOrConfig as string,
-          AnimationState.slide,
-          true,
-        );
-      } else {
-        const animationSetting = this.config.animationConfig
-          .slideAnimationUrlOrConfig as AnimationSettings;
-        await this.setAnimationFromFile(
-          animationSetting.fileUrl,
-          AnimationState.slide,
-          animationSetting.loop,
-          animationSetting.playbackSpeed,
-          animationSetting.discardNonRotationTransform,
-          false,
-        );
-      }
-
       this.applyCustomMaterials();
     }
   }
 
   private applyCustomMaterials(): void {
-    if (!this.mesh) return;
-    const boundingBox = new Box3();
-    this.mesh.updateWorldMatrix(true, true);
-    boundingBox.expandByObject(this.mesh);
-    this.characterHeight = boundingBox.max.y - boundingBox.min.y;
+    if (!this.mesh) {
+      return;
+    }
 
     this.mesh.traverse((child: Object3D) => {
       if ((child as Bone).isBone) {
@@ -195,29 +215,19 @@ export class CharacterModel {
         if (this.materials.has(originalMaterial.name)) {
           asMesh.material = this.materials.get(originalMaterial.name)!;
         } else {
-          const material =
-            originalMaterial.name === "body_replaceable_color"
-              ? new CharacterMaterial({
-                  isLocal: this.config.isLocal,
-                  cameraManager: this.config.cameraManager,
-                  characterId: this.config.characterId,
-                  originalMaterial,
-                })
-              : new CharacterMaterial({
-                  isLocal: this.config.isLocal,
-                  cameraManager: this.config.cameraManager,
-                  characterId: this.config.characterId,
-                  originalMaterial,
-                  colorOverride: originalMaterial.color,
-                });
+          const material = new CharacterMaterial({
+            isLocal: this.config.isLocal,
+            cameraManager: this.config.cameraManager,
+            characterId: this.config.characterId,
+            originalMaterial,
+            colorOverride: originalMaterial.color,
+          });
           this.materials.set(originalMaterial.name, material);
           asMesh.material = material;
         }
       }
     });
   }
-
-  private postSlideTargetAnimation: AnimationState = AnimationState.walking;
 
   public updateAnimation(targetAnimation: AnimationState) {
     if (this.isPostDoubleJump) {
@@ -246,11 +256,8 @@ export class CharacterModel {
       targetAnimation === AnimationState.slide &&
       this.currentAnimation !== AnimationState.slide
     ) {
-      // We're about to start sliding, but we need to know what animation to return to
-      // Since LocalController still sends the slide animation even after it finishes,
-      // we can't use the targetAnimation here. We need another approach.
-      // For now, let's default to walking and let the system correct itself
-      this.postSlideTargetAnimation = AnimationState.walking;
+      // We're about to start sliding, store the current animation to return to later
+      this.postSlideTargetAnimation = this.currentAnimation;
     }
 
     if (this.currentAnimation !== targetAnimation) {
@@ -258,21 +265,9 @@ export class CharacterModel {
     }
   }
 
-  private setMainMesh(mainMesh: Object3D): void {
-    this.mesh = mainMesh;
-    this.mesh.position.set(0, -0.44, 0);
-    this.mesh.traverse((child: Object3D) => {
-      if (child.type === "SkinnedMesh") {
-        child.castShadow = true;
-        child.receiveShadow = true;
-      }
-    });
-    this.animationMixer = new AnimationMixer(this.mesh);
-  }
-
   private async composeMMLCharacter(
     mmlCharacterDescription: MMLCharacterDescription,
-  ): Promise<Object3D | undefined> {
+  ): Promise<Object3D | null> {
     if (mmlCharacterDescription.base?.url.length === 0) {
       throw new Error(
         "ERROR: An MML Character Description was provided, but it's not a valid <m-character> string, or a valid URL",
@@ -284,31 +279,56 @@ export class CharacterModel {
       const characterBase = mmlCharacterDescription.base?.url || null;
       if (characterBase) {
         this.mmlCharacterDescription = mmlCharacterDescription;
-        const mmlCharacter = new MMLCharacter(CharacterModel.ModelLoader);
-        mergedCharacter = await mmlCharacter.mergeBodyParts(
+        mergedCharacter = await MMLCharacter.load(
           characterBase,
           mmlCharacterDescription.parts,
+          {
+            load: async (url: string, abortController?: AbortController) => {
+              const model = await this.config.characterModelLoader.loadModel(
+                url,
+                this.config.isLocal ? localMaxTextureSize : remoteMaxTextureSize,
+                abortController,
+              );
+              if (this.config.abortController?.signal.aborted) {
+                return null;
+              }
+              if (!model) {
+                return null;
+              }
+              return {
+                group: new Group().add(model as Object3D),
+                animations: [],
+              };
+            },
+          },
+          this.config.abortController,
         );
         if (mergedCharacter) {
           return mergedCharacter;
         }
       }
     }
+    return null;
   }
 
   private async loadCharacterFromDescription(): Promise<Object3D | null> {
     if (this.config.characterDescription.meshFileUrl) {
       return (
-        (await this.config.characterModelLoader.load(
+        (await this.config.characterModelLoader.loadModel(
           this.config.characterDescription.meshFileUrl,
-          "model",
+          this.config.isLocal ? localMaxTextureSize : remoteMaxTextureSize,
+          this.config.abortController,
         )) || null
       );
     }
 
     let mmlCharacterSource: string;
+    let mmlCharacterUrl: string | null = null;
     if (this.config.characterDescription.mmlCharacterUrl) {
-      const res = await fetch(this.config.characterDescription.mmlCharacterUrl);
+      mmlCharacterUrl = this.config.characterDescription.mmlCharacterUrl;
+      const res = await fetch(mmlCharacterUrl, {
+        signal: this.config.abortController?.signal,
+      });
       mmlCharacterSource = await res.text();
     } else if (this.config.characterDescription.mmlCharacterString) {
       mmlCharacterSource = this.config.characterDescription.mmlCharacterString;
@@ -318,7 +338,7 @@ export class CharacterModel {
       );
     }
 
-    const parsedMMLDescription = parseMMLDescription(mmlCharacterSource);
+    const parsedMMLDescription = parseMMLDescription(mmlCharacterSource, mmlCharacterUrl);
     const mmlCharacterDescription = parsedMMLDescription[0];
     if (parsedMMLDescription[1].length > 0) {
       console.warn("Errors parsing MML Character Description: ", parsedMMLDescription[1]);
@@ -330,16 +350,20 @@ export class CharacterModel {
     return null;
   }
 
-  private async loadMainMesh(): Promise<void> {
-    let mainMesh: Object3D | null = null;
-    try {
-      mainMesh = await this.loadCharacterFromDescription();
-    } catch (error) {
-      console.error("Failed to load character from description", error);
+  public getColors(): Array<[number, number, number]> {
+    if (!this.mesh) {
+      return [];
     }
-    if (mainMesh) {
-      this.setMainMesh(mainMesh as Object3D);
+    if (this.colors) {
+      return this.colors;
     }
+    const colors = captureCharacterColorsFromObject3D(this.mesh, {
+      circularSamplingRadius: 12,
+      topDownSamplingSize: { width: 5, height: 150 },
+      debug: false, // Reduced debug spam
+    });
+    this.colors = colorsToColorArray(colors);
+    return this.colors;
   }
 
   private cleanAnimationClips(
@@ -359,7 +383,7 @@ export class CharacterModel {
       });
     }
 
-    // Apply root bone position transformation if specified - BEFORE filtering
+    // apply root bone position transformation if specified before filtering
     if (transformRootBonePosition) {
       console.log(
         `Applying root bone transformation: ${JSON.stringify(transformRootBonePosition)}`,
@@ -469,242 +493,35 @@ export class CharacterModel {
     return animationClip;
   }
 
-  private async setAnimationFromFile(
-    animationFileUrl: string,
+  private setAnimationFromFile(
+    animationData: { clip: AnimationClip; config: AnimationConfigMetadata },
     animationType: AnimationState,
-    loop: boolean = true,
-    playbackSpeed: number = 1.0,
-    discardNonRotationTransform: boolean = true,
-    exportCleanAnimationFiles?: boolean | undefined,
-    transformRootBonePosition?: Vector3,
-  ): Promise<void> {
-    return new Promise(async (resolve, reject) => {
-      const animation = await this.config.characterModelLoader.load(animationFileUrl, "animation");
-      const cleanAnimation = this.cleanAnimationClips(
-        this.mesh,
-        animation as AnimationClip,
-        false,
-        discardNonRotationTransform,
-        transformRootBonePosition,
-      );
+  ) {
+    const { clip, config } = animationData;
 
-      // Export the cleaned animation using the original filename
-      if (cleanAnimation instanceof AnimationClip && exportCleanAnimationFiles) {
-        try {
-          // Extract filename from URL (remove extension and path)
-          const urlParts = animationFileUrl.split("/");
-          const filenameWithExt = urlParts[urlParts.length - 1];
-          const filename = filenameWithExt.replace(/\.[^/.]+$/, ""); // Remove extension
-          const cleanedFilename = `${filename}_cleaned`;
+    const keepRootBonePositionAnimation =
+      !config.discardNonRotationTransform || animationType === AnimationState.idle;
 
-          // Export the cleaned animation directly from the clip
-          await this.exportAnimationClipToGLB(cleanAnimation, cleanedFilename);
-        } catch (exportError) {
-          console.warn(`Failed to export cleaned animation for ${animationType}:`, exportError);
-          // Don't reject the main promise, just log the warning
-        }
-      }
+    const cleanAnimation = this.cleanAnimationClips(
+      this.mesh,
+      clip,
+      keepRootBonePositionAnimation,
+      config.discardNonRotationTransform,
+      config.transformRootBonePosition,
+    );
 
-      if (typeof animation !== "undefined" && cleanAnimation instanceof AnimationClip) {
-        this.animations[animationType] = this.animationMixer!.clipAction(cleanAnimation);
-        this.animations[animationType].stop();
-        this.animations[animationType].timeScale = playbackSpeed;
-        if (animationType === AnimationState.idle) {
-          this.animations[animationType].play();
-        }
-        if (!loop) {
-          this.animations[animationType].setLoop(LoopRepeat, 1); // Ensure non-looping
-          this.animations[animationType].clampWhenFinished = true;
-        }
-        resolve();
-      } else {
-        reject(`failed to load ${animationType} from ${animationFileUrl}`);
-      }
-    });
-  }
+    this.animations[animationType] = this.animationMixer!.clipAction(cleanAnimation);
+    this.animations[animationType].stop();
+    this.animations[animationType].timeScale = config.playbackSpeed;
 
-  /**
-   * Exports a cleaned animation clip to a GLB file
-   * @param animationType - The animation type to export
-   * @param filename - The desired filename (without extension)
-   * @returns Promise that resolves when the file is downloaded
-   */
-  public async exportCleanedAnimationToGLB(
-    animationType: AnimationState,
-    filename: string = "cleaned_animation",
-  ): Promise<void> {
-    if (!this.mesh) {
-      throw new Error("No mesh loaded. Cannot export animation without a character mesh.");
+    if (animationType === AnimationState.idle) {
+      this.animations[animationType].play();
     }
 
-    const animationAction = this.animations[animationType];
-    if (!animationAction) {
-      throw new Error(`Animation ${animationType} not found. Load the animation first.`);
+    if (!config.loop) {
+      this.animations[animationType].setLoop(LoopRepeat, 1); // Ensure non-looping
+      this.animations[animationType].clampWhenFinished = true;
     }
-
-    // Get the cleaned animation clip from the action
-    const cleanedClip = animationAction.getClip();
-
-    // Use SkeletonUtils.clone to properly clone the skeletal mesh with its bone structure
-    const meshClone = SkeletonUtils.clone(this.mesh);
-
-    // Create a scene with just the mesh and the cleaned animation
-    const exportScene = new Object3D();
-    exportScene.add(meshClone);
-
-    // Create the exporter
-    const exporter = new GLTFExporter();
-
-    return new Promise((resolve, reject) => {
-      exporter.parse(
-        exportScene,
-        (result) => {
-          // Convert the result to a blob and download it
-          const blob = new Blob([result as ArrayBuffer], { type: "application/octet-stream" });
-          const url = URL.createObjectURL(blob);
-
-          // Create a temporary download link
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = `${filename}.glb`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-
-          // Clean up
-          URL.revokeObjectURL(url);
-          resolve();
-        },
-        (error) => {
-          reject(error);
-        },
-        {
-          binary: true,
-          animations: [cleanedClip], // Include the cleaned animation
-          includeCustomExtensions: false,
-        },
-      );
-    });
-  }
-
-  /**
-   * Exports just the cleaned animation clip data as a GLB file (without the mesh)
-   * @param animationType - The animation type to export
-   * @param filename - The desired filename (without extension)
-   * @returns Promise that resolves when the file is downloaded
-   */
-  public async exportCleanedAnimationOnlyToGLB(
-    animationType: AnimationState,
-    filename: string = "cleaned_animation_only",
-  ): Promise<void> {
-    if (!this.mesh) {
-      throw new Error("No mesh loaded. Cannot export animation without a character mesh.");
-    }
-
-    const animationAction = this.animations[animationType];
-    if (!animationAction) {
-      throw new Error(`Animation ${animationType} not found. Load the animation first.`);
-    }
-
-    // Get the cleaned animation clip
-    const cleanedClip = animationAction.getClip();
-
-    // Use SkeletonUtils.clone to properly clone the skeletal mesh with its bone structure
-    const meshClone = SkeletonUtils.clone(this.mesh);
-
-    // Create a scene with the cloned mesh
-    const exportScene = new Object3D();
-    exportScene.add(meshClone);
-
-    // Create the exporter
-    const exporter = new GLTFExporter();
-
-    return new Promise((resolve, reject) => {
-      exporter.parse(
-        exportScene,
-        (result) => {
-          // Convert the result to a blob and download it
-          const blob = new Blob([result as ArrayBuffer], { type: "application/octet-stream" });
-          const url = URL.createObjectURL(blob);
-
-          // Create a temporary download link
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = `${filename}.glb`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-
-          // Clean up
-          URL.revokeObjectURL(url);
-          resolve();
-        },
-        (error) => {
-          reject(error);
-        },
-        {
-          binary: true,
-          animations: [cleanedClip], // Include only the cleaned animation
-          includeCustomExtensions: false,
-        },
-      );
-    });
-  }
-
-  /**
-   * Exports an animation clip directly to a GLB file
-   * @param animationClip - The animation clip to export
-   * @param filename - The desired filename (without extension)
-   * @returns Promise that resolves when the file is downloaded
-   */
-  private async exportAnimationClipToGLB(
-    animationClip: AnimationClip,
-    filename: string,
-  ): Promise<void> {
-    if (!this.mesh) {
-      throw new Error("No mesh loaded. Cannot export animation without a character mesh.");
-    }
-
-    // Use SkeletonUtils.clone to properly clone the skeletal mesh with its bone structure
-    const meshClone = SkeletonUtils.clone(this.mesh);
-
-    // Create a scene with the cloned mesh
-    const exportScene = new Object3D();
-    exportScene.add(meshClone);
-
-    // Create the exporter
-    const exporter = new GLTFExporter();
-
-    return new Promise((resolve, reject) => {
-      exporter.parse(
-        exportScene,
-        (result) => {
-          // Convert the result to a blob and download it
-          const blob = new Blob([result as ArrayBuffer], { type: "application/octet-stream" });
-          const url = URL.createObjectURL(blob);
-
-          // Create a temporary download link
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = `${filename}.glb`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-
-          // Clean up
-          URL.revokeObjectURL(url);
-          resolve();
-        },
-        (error) => {
-          reject(error);
-        },
-        {
-          binary: true,
-          animations: [animationClip], // Include the animation clip
-          includeCustomExtensions: false,
-        },
-      );
-    });
   }
 
   private transitionToAnimation(
@@ -716,12 +533,12 @@ export class CharacterModel {
     }
 
     const currentAction = this.animations[this.currentAnimation];
-    this.currentAnimation = targetAnimation;
     const targetAction = this.animations[targetAnimation];
 
     if (!targetAction) {
       return;
     }
+    this.currentAnimation = targetAnimation;
 
     if (currentAction) {
       currentAction.fadeOut(transitionDuration);
@@ -761,5 +578,33 @@ export class CharacterModel {
       this.animationMixer.update(time);
       this.materials.forEach((material) => material.update());
     }
+  }
+
+  dispose() {
+    if (this.animationMixer) {
+      this.animationMixer.stopAllAction();
+      this.animationMixer.uncacheRoot(this.mesh as SkinnedMesh);
+      this.animationMixer = null;
+    }
+    this.mesh?.traverse((child: Object3D) => {
+      if (child instanceof SkinnedMesh || (child as SkinnedMesh).isSkinnedMesh) {
+        const asSkinnedMesh = child as SkinnedMesh;
+        if (asSkinnedMesh.geometry) {
+          asSkinnedMesh.geometry.dispose();
+        }
+        if (asSkinnedMesh.material) {
+          if (Array.isArray(asSkinnedMesh.material)) {
+            asSkinnedMesh.material.forEach((material) => material.dispose());
+          } else {
+            asSkinnedMesh.material.dispose();
+          }
+        }
+      }
+    });
+    this.mesh = null;
+    this.headBone = null;
+    this.characterHeight = null;
+    this.animations = {};
+    this.colors = null;
   }
 }

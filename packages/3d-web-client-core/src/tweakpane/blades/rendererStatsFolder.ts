@@ -18,8 +18,6 @@ type StatsData = {
 
 export class RendererStatsFolder {
   private folder: FolderApi;
-  private performance: FolderApi;
-  private defails: FolderApi;
 
   private statsData: StatsData = {
     triangles: "0",
@@ -53,8 +51,8 @@ export class RendererStatsFolder {
     this.statsData.geometries = geometries.toString();
     this.statsData.textures = textures.toString();
     this.statsData.shaders = renderer.info.programs!.length.toString();
-    this.statsData.postPasses =
-      composer.passes.length === 1 ? "0" : composer.passes.length.toString();
+    const passesMinusRender = composer.passes.length - 1;
+    this.statsData.postPasses = passesMinusRender.toString();
     this.statsData.drawCalls = calls.toString();
     this.statsData.rawDeltaTime = (
       Math.round(timeManager.rawDeltaTime * 100000) / 100000

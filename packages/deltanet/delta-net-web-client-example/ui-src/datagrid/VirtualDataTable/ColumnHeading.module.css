@@ -1,0 +1,152 @@
+.column_heading {
+  height: 38px;
+  display: flex;
+  justify-content: space-between;
+  overflow: hidden;
+  background: #21262d;
+  border-right: 1px solid #30363d;
+  color: #f0f6fc;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-sizing: border-box;
+}
+
+.column_heading:last-child {
+  border-right: none;
+}
+
+.resize_handle {
+  height: 100%;
+  user-select: none;
+  cursor: col-resize;
+  float: right;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  background: #30363d;
+  color: #8b949e;
+  border-left: 1px solid #21262d;
+}
+
+.resize_handle:hover {
+  background: #484f58;
+  color: #c9d1d9;
+}
+
+.resize_content {
+  padding: 2px;
+  font-size: 8px;
+}
+
+.label {
+  display: flex;
+  overflow: hidden;
+  padding: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.sortable_label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.sortable_label:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+}
+
+.active_sort {
+  color: #58a6ff;
+}
+
+.label_text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.sort_button {
+  font-size: 10px;
+  padding: 2px 4px;
+  border-radius: 2px;
+  background: #30363d;
+  color: #8b949e;
+  border: 1px solid #21262d;
+  flex-shrink: 0;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1;
+}
+
+.sort_button:hover {
+  background: #484f58;
+  color: #c9d1d9;
+}
+
+.close_button {
+  cursor: pointer;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: #21262d;
+  color: #8b949e;
+  border: 1px solid #30363d;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.close_button:hover {
+  background: #f85149;
+  color: #ffffff;
+  border-color: #f85149;
+}
+
+/* Remove custom theme overrides - use base styles */
+.custom_column_heading {
+  /* Inherit from base */
+}
+
+.custom_resize_handle {
+  /* Inherit from base */
+}
+
+.custom_label {
+  /* Inherit from base */
+}
+
+.custom_sortable_label {
+  /* Inherit from base */
+}
+
+.custom_active_sort {
+  /* Inherit from base */
+}
+
+.custom_label_text {
+  /* Inherit from base */
+}
+
+.custom_sort_button {
+  /* Inherit from base */
+}
+
+.custom_close_button {
+  /* Inherit from base */
+}
+
+.custom_resize_content {
+  /* Inherit from base */
+}

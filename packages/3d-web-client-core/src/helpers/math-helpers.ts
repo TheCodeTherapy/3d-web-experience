@@ -1,20 +1,17 @@
-import { Quaternion, Vector3, Vector4 } from "three";
+import { Quaternion, Vector3 } from "three";
 
 export const roundToDecimalPlaces = (value: number, decimalPlaces: number): number => {
   const mult = 10 ** decimalPlaces;
   return Math.round(value * mult) / mult;
 };
 
-export const toArray = (
-  origin: Vector3 | Vector4 | Quaternion,
-  precision: number = 3,
-): number[] => {
+export const toArray = (origin: Vector3 | Quaternion, precision: number = 3): number[] => {
   const array = [];
   array[0] = roundToDecimalPlaces(origin.x, precision);
   array[1] = roundToDecimalPlaces(origin.y, precision);
   array[2] = roundToDecimalPlaces(origin.z, precision);
-  if (origin instanceof Vector4 || origin instanceof Quaternion) {
-    array[3] = roundToDecimalPlaces(origin.w, precision);
+  if ((origin as Quaternion).w !== undefined) {
+    array[3] = roundToDecimalPlaces((origin as Quaternion).w, precision);
   }
   return array;
 };

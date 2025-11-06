@@ -30,6 +30,7 @@ export interface EffectState {
 }
 
 export interface PostProcessingConfig {
+  enabled?: boolean;
   bloom?: { intensity?: number };
   bcs?: {
     brightness?: number;
@@ -88,6 +89,7 @@ export class PostProcessingManager {
     private height: number,
     initialConfig?: PostProcessingConfig,
   ) {
+    this.isGloballyEnabled = initialConfig?.enabled ?? PP_GLOBALLY_ENABLED;
     this.resolution = new Vector2(this.width, this.height);
 
     this.effectComposer = new EffectComposer(this.renderer, {
@@ -313,13 +315,11 @@ export class PostProcessingManager {
       this.height * window.devicePixelRatio,
     );
 
-    this.effectComposer.setSize(
-      this.width / window.devicePixelRatio,
-      this.height / window.devicePixelRatio,
-    );
+    // EffectComposer should match renderer size (without devicePixelRatio division)
+    this.effectComposer.setSize(this.width, this.height);
     this.renderPass.setSize(this.width, this.height);
 
-    // only resize currently enabled effects
+    // only resize currently enabled effects with the same dimensions
     this.effectStates.forEach((state) => {
       if (state.enabled && state.instance.setSize) {
         state.instance.setSize(this.width, this.height);

@@ -337,3 +337,35 @@ export const validMCharacterWithNoSocketExpectedData = {
     },
   ],
 };
+
+export const validMCharacterWithHostRelativeUrl = `
+<m-character src="/assets/avatar/parts/SK_Outfit_Body_Male.glb">
+  <m-model src="/assets/avatar/parts/SK_Outfit_Hat_02.glb"></m-model>
+</m-character>
+`;
+
+export const validMCharacterWithHostRelativeUrlExpectedData = {
+  base: { url: "https://example.com/assets/avatar/parts/SK_Outfit_Body_Male.glb" },
+  parts: [
+    {
+      url: "https://example.com/assets/avatar/parts/SK_Outfit_Hat_02.glb",
+      socket: undefined,
+    },
+  ],
+};
+
+export const validMCharacterWithPathRelativeUrl = `
+<m-character src="SK_Outfit_Body_Male.glb">
+  <m-model src="SK_Outfit_Hat_02.glb"></m-model>
+</m-character>
+`;
+
+export const validMCharacterWithPathRelativeUrlExpectedData = {
+  base: { url: "https://example.com/foo/SK_Outfit_Body_Male.glb" },
+  parts: [
+    {
+      url: "https://example.com/foo/SK_Outfit_Hat_02.glb",
+      socket: undefined,
+    },
+  ],
+};

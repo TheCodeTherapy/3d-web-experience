@@ -26,16 +26,6 @@ export const n8ssaoOptions = {
   viewMode: ["Combined", "AO", "No AO", "Split", "Split AO", "No AO"],
 };
 
-const ssaoMaterialParams = [
-  "fade",
-  "bias",
-  "minRadiusScale",
-  "worldDistanceThreshold",
-  "worldDistanceFalloff",
-  "worldProximityThreshold",
-  "worldProximityFalloff",
-];
-
 export class SSAOFolder {
   private folder: FolderApi;
 

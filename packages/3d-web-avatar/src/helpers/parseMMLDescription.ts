@@ -18,6 +18,7 @@ export type LoadingErrors = string[];
 
 export const parseMMLDescription = (
   mmlDescription: string,
+  mmlCharacterUrl: string | null,
 ): [MMLCharacterDescription, LoadingErrors] => {
   const parser: DOMParser = new DOMParser();
   const doc = parser.parseFromString(mmlDescription, "text/html");
@@ -67,14 +68,22 @@ export const parseMMLDescription = (
   let parts: MMLCharacterDescriptionPart[] = [];
 
   if (validCharacter) {
-    const baseSrc = validCharacter.getAttribute("src") ?? "";
+    let baseSrc = validCharacter.getAttribute("src") ?? "";
+    if (mmlCharacterUrl) {
+      // Make the baseSrc relative to the mmlCharacterUrl if it's a relative URL
+      baseSrc = new URL(baseSrc, mmlCharacterUrl).toString();
+    }
     base = { url: baseSrc };
 
     const directModelChildren = Array.from(validCharacter.children).filter(
       (child) => child.tagName.toLowerCase() === "m-model",
     );
     parts = directModelChildren.map((model) => {
-      const partSrc = model.getAttribute("src") ?? "";
+      let partSrc = model.getAttribute("src") ?? "";
+      if (mmlCharacterUrl) {
+        // Make the partSrc relative to the mmlCharacterUrl if it's a relative URL
+        partSrc = new URL(partSrc, mmlCharacterUrl).toString();
+      }
 
       const socketAttr = model.getAttribute("socket");
       const position = {

@@ -1,0 +1,30 @@
+/* Professional Message Styles */
+
+.messageContainer {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-size: 14px;
+  padding: 4px 8px;
+  overflow-x: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  direction: ltr;
+  margin: 6px auto 6px 2px;
+  width: fit-content;
+  margin-right: auto;
+  word-break: break-word;
+  color: rgba(255, 255, 255, 0.9);
+  transition: all 0.2s ease-in-out;
+}
+
+.messageContainer:hover {
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.userName {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-right: 4px;
+}

@@ -14,15 +14,6 @@ const getMmlDocumentContent = (documentPath: string) => {
   return fs.readFileSync(documentPath, { encoding: "utf8", flag: "r" });
 };
 
-const checkDevEnv = (mmlDocumentContent: string): string => {
-  let content = mmlDocumentContent;
-  if (process.env.NODE_ENV !== "production") {
-    const regex = /wss:\/\/\//g;
-    content = content.replace(regex, "ws:///");
-  }
-  return content;
-};
-
 const checkAPIKey = (mmlDocumentContent: string): string => {
   let content = mmlDocumentContent;
   if (process.env.OPENAI_API_KEY && process.env.OPENAI_AGENT_ID) {
@@ -52,6 +43,15 @@ const checkAPIKey = (mmlDocumentContent: string): string => {
           : "https://mml.mgz.me/live-status",
       );
     }
+  }
+  return content;
+};
+
+const checkDevEnv = (mmlDocumentContent: string): string => {
+  let content = mmlDocumentContent;
+  if (process.env.NODE_ENV !== "production") {
+    const regex = /wss:\/\/\//g;
+    content = content.replace(regex, "ws:///");
   }
   return content;
 };

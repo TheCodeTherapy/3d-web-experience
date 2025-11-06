@@ -1,17 +1,4 @@
-export const USER_NETWORKING_DISCONNECTED_MESSAGE_TYPE = "disconnected";
-export const USER_NETWORKING_IDENTITY_MESSAGE_TYPE = "identity";
-export const USER_NETWORKING_USER_AUTHENTICATE_MESSAGE_TYPE = "user_auth";
-export const USER_NETWORKING_USER_PROFILE_MESSAGE_TYPE = "user_profile";
-export const USER_NETWORKING_USER_UPDATE_MESSAGE_TYPE = "user_update";
-export const USER_NETWORKING_SERVER_BROADCAST_MESSAGE_TYPE = "broadcast";
-export const USER_NETWORKING_SERVER_ERROR_MESSAGE_TYPE = "error";
-export const USER_NETWORKING_PING_MESSAGE_TYPE = "ping";
-export const USER_NETWORKING_PONG_MESSAGE_TYPE = "pong";
-
-export type UserNetworkingIdentityMessage = {
-  type: typeof USER_NETWORKING_IDENTITY_MESSAGE_TYPE;
-  id: number;
-};
+import { DeltaNetServerError } from "@mml-io/delta-net-server";
 
 export type CharacterDescription =
   | {
@@ -30,75 +17,89 @@ export type CharacterDescription =
       mmlCharacterUrl: string;
     };
 
-export type UserNetworkingProfileMessage = {
-  type: typeof USER_NETWORKING_USER_PROFILE_MESSAGE_TYPE;
-  id: number;
-  username: string;
-  characterDescription: CharacterDescription;
-};
+export class UserNetworkingServerError extends DeltaNetServerError {}
 
-export type UserNetworkingDisconnectedMessage = {
-  type: typeof USER_NETWORKING_DISCONNECTED_MESSAGE_TYPE;
-  id: number;
-};
-
-export const USER_NETWORKING_CONNECTION_LIMIT_REACHED_ERROR_TYPE = "CONNECTION_LIMIT_REACHED";
-export const USER_NETWORKING_AUTHENTICATION_FAILED_ERROR_TYPE = "AUTHENTICATION_FAILED";
-export const USER_NETWORKING_SERVER_SHUTDOWN_ERROR_TYPE = "SERVER_SHUTDOWN";
-export const USER_NETWORKING_UNKNOWN_ERROR = "UNKNOWN_ERROR";
-
-export type UserNetworkingServerErrorType =
-  | typeof USER_NETWORKING_CONNECTION_LIMIT_REACHED_ERROR_TYPE
-  | typeof USER_NETWORKING_AUTHENTICATION_FAILED_ERROR_TYPE
-  | typeof USER_NETWORKING_SERVER_SHUTDOWN_ERROR_TYPE
-  | typeof USER_NETWORKING_UNKNOWN_ERROR;
-
-export type UserNetworkingServerError = {
-  type: typeof USER_NETWORKING_SERVER_ERROR_MESSAGE_TYPE;
-  errorType: UserNetworkingServerErrorType;
+export type ClientChatMessage = {
   message: string;
 };
 
-export type UserNetworkingServerBroadcast = {
-  type: typeof USER_NETWORKING_SERVER_BROADCAST_MESSAGE_TYPE;
+export type ServerChatMessage = {
+  fromUserId: number;
+  message: string;
+};
+
+export type ServerBroadcastMessage = {
   broadcastType: string;
   payload: any;
 };
 
-export type UserNetworkingServerPingMessage = {
-  type: typeof USER_NETWORKING_PING_MESSAGE_TYPE;
-};
+// Custom message types
+export const SERVER_BROADCAST_MESSAGE_TYPE = 1;
+export const FROM_CLIENT_CHAT_MESSAGE_TYPE = 2;
+export const FROM_SERVER_CHAT_MESSAGE_TYPE = 3;
 
-export type FromUserNetworkingServerMessage =
-  | UserNetworkingIdentityMessage
-  | UserNetworkingProfileMessage
-  | UserNetworkingDisconnectedMessage
-  | UserNetworkingServerPingMessage
-  | UserNetworkingServerBroadcast
-  | UserNetworkingServerError;
+export function parseClientChatMessage(contents: string): ClientChatMessage | Error {
+  try {
+    const parsed = JSON.parse(contents) as unknown;
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "message" in parsed &&
+      typeof parsed.message === "string"
+    ) {
+      return {
+        message: parsed.message as string,
+      };
+    } else {
+      throw new Error("Invalid chat message");
+    }
+  } catch (error) {
+    return new Error(`Invalid chat message: ${error}`);
+  }
+}
 
-export type UserNetworkingClientPongMessage = {
-  type: typeof USER_NETWORKING_PONG_MESSAGE_TYPE;
-};
+export function parseServerChatMessage(contents: string): ServerChatMessage | Error {
+  try {
+    const parsed = JSON.parse(contents) as unknown;
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "fromUserId" in parsed &&
+      typeof parsed.fromUserId === "number" &&
+      "message" in parsed &&
+      typeof parsed.message === "string"
+    ) {
+      return {
+        fromUserId: parsed.fromUserId as number,
+        message: parsed.message as string,
+      };
+    } else {
+      throw new Error("Invalid server chat message");
+    }
+  } catch (error) {
+    return new Error(`Invalid server chat message: ${error}`);
+  }
+}
 
-export type UserIdentity = {
-  characterDescription: CharacterDescription | null;
-  username: string | null;
-};
-
-export type UserNetworkingAuthenticateMessage = {
-  type: typeof USER_NETWORKING_USER_AUTHENTICATE_MESSAGE_TYPE;
-  sessionToken: string;
-  // The client can send a UserIdentity to use as the initial user profile and the server can choose to accept it or not
-  userIdentity?: UserIdentity;
-};
-
-export type UserNetworkingUserUpdateMessage = {
-  type: typeof USER_NETWORKING_USER_UPDATE_MESSAGE_TYPE;
-  userIdentity: UserIdentity;
-};
-
-export type FromUserNetworkingClientMessage =
-  | UserNetworkingClientPongMessage
-  | UserNetworkingAuthenticateMessage
-  | UserNetworkingUserUpdateMessage;
+export function parseServerBroadcastMessage(contents: string): ServerBroadcastMessage | Error {
+  try {
+    const parsed = JSON.parse(contents) as unknown;
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "broadcastType" in parsed &&
+      typeof parsed.broadcastType === "string" &&
+      "payload" in parsed &&
+      typeof parsed.payload === "object"
+    ) {
+      return {
+        broadcastType: parsed.broadcastType as string,
+        payload: parsed.payload as any,
+      };
+    } else {
+      throw new Error("Invalid server broadcast message");
+    }
+  } catch (error) {
+    return new Error(`Invalid server broadcast message: ${error}`);
+  }
+}

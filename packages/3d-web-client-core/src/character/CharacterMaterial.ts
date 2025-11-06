@@ -135,14 +135,16 @@ export class CharacterMaterial extends MeshStandardMaterial {
         this.opacity = this.currentAlpha;
       }
     }
-    this.metalness = characterValues.metalness;
-    this.roughness = characterValues.roughness;
-    this.emissive = new Color().setRGB(
-      characterValues.emissive.r,
-      characterValues.emissive.g,
-      characterValues.emissive.b,
-    );
-    this.emissiveIntensity = characterValues.emissiveIntensity;
-    this.envMapIntensity = characterValues.envMapIntensity;
+    if (characterValues.overrideMaterialParams) {
+      this.metalness = characterValues.metalness;
+      this.roughness = characterValues.roughness;
+      this.emissive = new Color().setRGB(
+        characterValues.emissive.r,
+        characterValues.emissive.g,
+        characterValues.emissive.b,
+      );
+      this.emissiveIntensity = characterValues.emissiveIntensity;
+      this.envMapIntensity = characterValues.envMapIntensity;
+    }
   }
 }

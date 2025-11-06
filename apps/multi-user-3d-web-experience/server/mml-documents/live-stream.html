@@ -1,0 +1,166 @@
+<m-group id="wrapper" y="4.5" z="-9">
+  <m-group id="video-wrapper" y="1.5" sx="0.2" sy="0.2" sz="0.2">
+    <m-image
+      id="stream-offline-label"
+      src="/assets/playground/stream_offline.jpg"
+      z="0.1"
+      emissive="0.7"
+      visible="true"
+    ></m-image>
+    <m-cube id="tv" depth="0.02" z="-0.03" color="#ffffff"></m-cube>
+  </m-group>
+</m-group>
+
+<script>
+  const streamURL = "whep://CLOUDFLARE_STREAM_URL_GOES_HERE";
+  const streamCheckURL = "//localhost/live-status";
+
+  let lastStreamRequestTime = 0;
+  const minimumRequestIntervalInSeconds = 15;
+
+  let streamIsLive = false;
+  let stream = null;
+  let streamCheckInProgress = false;
+
+  const width = 21;
+  let videoExpanded = false;
+
+  const wrapper = document.getElementById("wrapper");
+  const videoWrapper = document.getElementById("video-wrapper");
+  const streamOfflineLabel = document.getElementById("stream-offline-label");
+  const tv = document.getElementById("tv");
+
+  const playersInProbe = new Set();
+  const probe = document.createElement("m-position-probe");
+  probe.setAttribute("debug", false);
+  probe.setAttribute("range", 100);
+  probe.setAttribute("interval", 2000);
+  probe.setAttribute("z", 9);
+  probe.addEventListener("positionenter", (event) => {
+    const { connectionId } = event.detail;
+    if (!playersInProbe.has(connectionId)) playersInProbe.add(connectionId);
+  });
+  probe.addEventListener("positionmove", (event) => {
+    const { connectionId } = event.detail;
+    if (!playersInProbe.has(connectionId)) playersInProbe.add(connectionId);
+  });
+  probe.addEventListener("positionleave", (event) => {
+    const { connectionId } = event.detail;
+    if (playersInProbe.has(connectionId)) playersInProbe.delete(connectionId);
+  });
+  window.addEventListener("disconnected", (event) => {
+    const { connectionId } = event.detail;
+    if (playersInProbe.has(connectionId)) playersInProbe.delete(connectionId);
+  });
+  wrapper.appendChild(probe);
+
+  function expandVideo() {
+    if (videoExpanded === true) return;
+    videoExpanded = true;
+    animate(videoWrapper, "sx", 0.2, 1, 1000, "easeOutBack", false);
+    animate(videoWrapper, "sy", 0.2, 1, 1000, "easeOutBack", false);
+    animate(videoWrapper, "sz", 0.2, 1, 1000, "easeOutBack", false);
+  }
+
+  function shrinkVideo() {
+    if (videoExpanded === false) return;
+    videoExpanded = false;
+    animate(videoWrapper, "sx", 1, 0.2, 1000, "easeInOutBack", false);
+    animate(videoWrapper, "sy", 1, 0.2, 1000, "easeInOutBack", false);
+    animate(videoWrapper, "sz", 1, 0.2, 1000, "easeInOutBack", false);
+  }
+
+  function watchStream() {
+    if (!streamURL.includes("cloudflare")) {
+      // checks for server-side URL replacement
+      return;
+    }
+
+    if (!streamCheckURL.includes("http")) {
+      // checks for server-side URL replacement
+      return;
+    }
+    const now = document.timeline.currentTime;
+    if (now - lastStreamRequestTime < minimumRequestIntervalInSeconds * 1000) return;
+
+    if (streamCheckInProgress) {
+      return;
+    }
+
+    streamCheckInProgress = true;
+    lastStreamRequestTime = now;
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", streamCheckURL, true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+
+    xhr.onreadystatechange = function () {
+      if (this.readyState === XMLHttpRequest.DONE) {
+        streamCheckInProgress = false;
+
+        if (this.status === 200) {
+          if (streamIsLive === false) {
+            streamIsLive = true;
+            streamOfflineLabel.setAttribute("visible", false);
+            var jsonData = JSON.parse(xhr.responseText);
+            stream = document.createElement("m-video");
+            make16x9(stream, width);
+            stream.setAttribute("id", "live-stream");
+            stream.setAttribute("emissive", 0.12);
+            stream.setAttribute("volume", 3.5);
+            stream.setAttribute("src", streamURL);
+            videoWrapper.appendChild(stream);
+            expandVideo();
+          }
+        } else {
+          streamIsLive = false;
+          streamOfflineLabel.setAttribute("visible", true);
+          if (stream !== null) {
+            videoWrapper.removeChild(stream);
+            stream = null;
+          }
+          shrinkVideo();
+        }
+      }
+    };
+    xhr.send();
+  }
+
+  setInterval(() => {
+    const hasWatchers = playersInProbe.size > 0;
+    if (hasWatchers) {
+      watchStream();
+    }
+  }, 1000);
+
+  function animate(element, attr, start, end, duration, easing, loop = false) {
+    const anim = document.createElement("m-attr-anim");
+    anim.setAttribute("attr", attr);
+    anim.setAttribute("start", start);
+    anim.setAttribute("end", end);
+    anim.setAttribute("start-time", document.timeline.currentTime);
+    anim.setAttribute("end-time", document.timeline.currentTime + duration);
+    anim.setAttribute("duration", duration);
+    anim.setAttribute("easing", easing);
+    anim.setAttribute("loop", loop);
+    element.appendChild(anim);
+    setTimeout(() => {
+      element.setAttribute(attr, end);
+      element.removeChild(anim);
+    }, duration);
+    return anim;
+  }
+
+  function getAspectHeight(width) {
+    return (width * 9) / 16;
+  }
+
+  function make16x9(element, width, addBorder = false) {
+    element.setAttribute("width", width);
+    const height = getAspectHeight(width);
+    element.setAttribute("height", addBorder ? height + height * ((9 / 16) * 0.05) : height);
+  }
+
+  make16x9(tv, width + 0.5, true);
+  make16x9(streamOfflineLabel, width);
+</script>

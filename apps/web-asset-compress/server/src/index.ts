@@ -78,7 +78,7 @@ optimizationApp.post(
           targetFormat: textureFormat,
           resize: textureResizeParsed.map(Number),
         }),
-        draco(),
+        // draco(),
       );
 
       const compressedArrayBuffer = await io.writeBinary(doc);
@@ -99,7 +99,7 @@ optimizationApp.post(
 );
 
 optimizationApp.listen(optimizationPort, () => {
-  console.log(`✅ Optimization server running at: http://localhost:${optimizationPort}`);
+  console.log(`Optimization server running at: http://localhost:${optimizationPort}`);
 });
 
 const dirname = url.fileURLToPath(new URL(".", import.meta.url));
@@ -117,5 +117,5 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-console.log("Listening on port", PORT);
+console.log("Asset Compressor Listening on port", PORT);
 app.listen(PORT);

@@ -30,8 +30,6 @@ This repository includes the following published packages:
   - An MML avatar editor (using `m-character`).
 - [`@mml-io/3d-web-text-chat`](./packages/3d-web-text-chat)
   - Contains WebSocket server and client implementations for text chat.
-- [`@mml-io/3d-web-voice-chat`](./packages/3d-web-voice-chat)
-  - Client implementation for spatial voice chat.
 
 ## Main features
 
@@ -61,21 +59,16 @@ npm install
 npm run iterate
 ```
 
-## Examples
+## Apps
 
-- [`example/multi-user-3d-web-experience`](./example/multi-user-3d-web-experience)
+- [`apps/multi-user-3d-web-experience`](./apps/multi-user-3d-web-experience)
   - Once the server is running (see [above](#running-examples--iterating-locally)), open
     `http://localhost:8080`.
   - A client and server pair of packages that uses the `@mml-io/3d-web-experience-client` and
     `@mml-io/3d-web-experience-server` packages to create a multi-user 3d web experience that
     includes MML hosting and text chat.
-- [`example/local-only-multi-user-3d-web-experience`](./example/local-only-multi-user-3d-web-experience)
+- [`apps/local-only-multi-user-3d-web-experience`](./apps/local-only-multi-user-3d-web-experience)
   - Once the server is running (see [above](#running-examples--iterating-locally)), open
     `http://localhost:8081`.
   - A client that uses the various packages to create a 3d web experience that only works locally.
     No server is needed, but there is a server to serve the client.
-- [`example/web-avatar-editor`](./example/web-avatar-editor)
-  - Once the server is running (see [above](#running-examples--iterating-locally)), open
-    `http://localhost:8082`.
-  - An avatar editor that uses the `@mml-io/3d-web-standalone-avatar-editor` to create and edit MML
-    avatars and a simple Express server that hosts the editor.

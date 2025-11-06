@@ -1,0 +1,124 @@
+.container {
+  background: #0a0e13;
+  padding: 8px;
+  color: #c9d1d9;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  box-sizing: border-box;
+  min-height: 0;
+}
+
+.header {
+  display: none;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 350px 1fr;
+  gap: 12px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+.section {
+  background: #161b22;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  padding: 12px;
+  transition: border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.section:hover {
+  border-color: #30363d;
+}
+
+.section h2 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #f0f6fc;
+  border-bottom: 1px solid #21262d;
+  padding-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.tableContainer {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.coordinateContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.bandwidthContainer {
+  display: flex;
+  flex-direction: column;
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+}
+
+/* Make sure content areas are scrollable when they overflow */
+.section > *:last-child {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Coordinate container specific styling */
+.coordinateContainer > *:last-child {
+  overflow: visible;
+}
+
+@media (max-width: 1024px) {
+  .grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: 300px 400px 1fr;
+  }
+  
+  .tableContainer {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  
+  .coordinateContainer {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  
+  .bandwidthContainer {
+    grid-column: 1;
+    grid-row: 3;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+  
+  .section {
+    padding: 16px;
+  }
+  
+  .grid {
+    grid-template-rows: 250px 350px 1fr;
+  }
+} 

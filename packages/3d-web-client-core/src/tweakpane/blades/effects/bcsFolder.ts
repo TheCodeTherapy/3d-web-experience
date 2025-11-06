@@ -4,9 +4,9 @@ import { BladeApi, FolderApi, TpChangeEvent } from "tweakpane";
 import { BrightnessContrastSaturation } from "../../../rendering/post-effects/bright-contrast-sat";
 
 export const bcsValues = {
-  brightness: 0.06,
-  contrast: 1.2,
-  saturation: 1,
+  brightness: 0.03,
+  contrast: 1.3,
+  saturation: 0.91,
 };
 
 const bcsOptions = {

@@ -1,6 +1,6 @@
 {
   "name": "@mml-io/3d-web-user-networking",
-  "version": "0.22.0",
+  "version": "0.24.2",
   "publishConfig": {
     "access": "public"
   },
@@ -11,22 +11,32 @@
     "/build"
   ],
   "scripts": {
+    "depcheck": "depcheck --quiet",
     "build": "tsx ./build.ts --build",
     "iterate": "tsx ./build.ts --watch",
     "type-check": "tsc --noEmit",
     "lint": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
     "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix",
-    "test": "jest"
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "dependencies": {
-    "ws": "^8.18.0"
+    "@mml-io/delta-net-protocol": "^0.24.2",
+    "@mml-io/delta-net-server": "^0.24.2",
+    "@mml-io/delta-net-web": "^0.24.2"
   },
   "devDependencies": {
+    "@jest/globals": "29.7.0",
     "@types/express": "^5.0.0",
     "@types/express-ws": "^3.0.5",
+    "@types/jest": "^29.5.12",
     "@types/node": "^22.13.1",
     "@types/ws": "^8.5.14",
+    "cross-env": "^7.0.3",
     "express": "4.21.2",
-    "express-ws": "5.0.2"
+    "express-ws": "5.0.2",
+    "jest": "^29.7.0",
+    "jest-junit": "16.0.0",
+    "ts-jest": "^29.1.2",
+    "ws": "^8.18.0"
   }
 }

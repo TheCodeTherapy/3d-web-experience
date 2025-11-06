@@ -1,0 +1,224 @@
+.uiHover {
+  width: 58px;
+  min-height: 58px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 102;
+  pointer-events: all;
+}
+
+.textChatUi {
+  position: absolute;
+  display: flex;
+  bottom: 0px;
+  left: 0px;
+  width: 100%;
+  max-width: 500px;
+  height: 0px;
+  flex-direction: row;
+  align-items: flex-end;
+}
+
+.textChat {
+  z-index: -1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin-left: 60px;
+  max-height: 500px;
+  color: #ffffff;
+  padding: 5px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  user-select: none;
+  opacity: 0;
+  transform: translateX(-100%);
+  transition: opacity 0.25s ease-in-out, transform 0.2s ease-in-out;
+  margin-bottom: 8px;
+}
+
+.fadeIn {
+  transform: translateX(0%);
+  opacity: 1;
+}
+
+.fadeOut {
+  transform: translateX(calc(-100% - 72px));
+  opacity: 0.6;
+}
+
+.controls {
+  position: absolute;
+  right: 0px;
+  top: 2px;
+}
+
+.openTab {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  z-index: 102;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.openTab:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.openTab:active {
+  transform: scale(0.95);
+}
+
+.openTab img {
+  filter: invert(80%);
+  width: 24px;
+  height: 24px;
+  transition: all 0.2s ease-in-out;
+}
+
+.stickyButton {
+  z-index: 103;
+  position: absolute;
+  left: 38px;
+  bottom: 38px;
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  opacity: 1;
+}
+
+.stickyButton:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.stickyButtonFadeOut {
+  z-index: 103;
+  position: absolute;
+  left: 42px;
+  bottom: 42px;
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stickyButtonEnabled {
+  z-index: 103;
+  position: absolute;
+  left: 42px;
+  bottom: 42px;
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 50%;
+  border: 1px solid rgba(34, 197, 94, 0.6);
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+}
+
+.stickyButtonEnabled:hover {
+  border-color: rgba(34, 197, 94, 0.8);
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+}
+
+.stickyButton img,
+.stickyButtonFadeOut img {
+  width: 12px;
+  height: 12px;
+  filter: invert(70%);
+  transition: all 0.2s ease-in-out;
+}
+
+.stickyButtonEnabled img {
+  width: 12px;
+  height: 12px;
+  filter: invert(70%);
+  transition: all 0.2s ease-in-out;
+}
+
+.stickyButton:hover img,
+.stickyButtonEnabled:hover img {
+  filter: invert(90%);
+}
+
+.controls .closeButton {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeButton:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+  transform: scale(1.05);
+}
+
+.closeButton:active {
+  transform: scale(0.95);
+}
+
+.messagesWrapper {
+  position: relative;
+  max-height: 450px;
+  direction: rtl;
+  width: fit-content;
+  margin-bottom: 8px;
+}

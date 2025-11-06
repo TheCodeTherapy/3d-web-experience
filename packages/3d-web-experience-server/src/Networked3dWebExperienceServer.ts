@@ -1,19 +1,12 @@
 import {
-  CHAT_NETWORKING_SERVER_ERROR_MESSAGE_TYPE,
-  CHAT_NETWORKING_SERVER_SHUTDOWN_ERROR_TYPE,
-  ChatNetworkingServer,
-} from "@mml-io/3d-web-text-chat";
-import {
-  USER_NETWORKING_SERVER_ERROR_MESSAGE_TYPE,
-  USER_NETWORKING_SERVER_SHUTDOWN_ERROR_TYPE,
   UserData,
-  UserIdentity,
   UserNetworkingServer,
+  UserNetworkingServerError,
 } from "@mml-io/3d-web-user-networking";
 import cors from "cors";
 import express from "express";
 import enableWs from "express-ws";
-import WebSocket from "ws";
+import ws from "ws";
 
 import { MMLDocumentsServer } from "./MMLDocumentsServer";
 import { websocketDirectoryChangeListener } from "./websocketDirectoryChangeListener";
@@ -26,16 +19,15 @@ type UserAuthenticator = {
   onClientConnect(
     clientId: number,
     sessionToken: string,
-    userIdentityPresentedOnConnection?: UserIdentity,
-  ): Promise<UserData | null> | UserData | null;
-  onClientUserIdentityUpdate(clientId: number, userIdentity: UserIdentity): UserData | null;
+    userIdentityPresentedOnConnection?: UserData,
+  ): Promise<UserData | true | Error> | UserData | true | Error;
+  onClientUserIdentityUpdate(clientId: number, userIdentity: UserData): UserData | true | Error;
   onClientDisconnect(clientId: number): void;
 };
 
 export const defaultSessionTokenPlaceholder = "SESSION.TOKEN.PLACEHOLDER";
 
 export type Networked3dWebExperienceServerConfig = {
-  connectionLimit?: number;
   networkPath: string;
   webClientServing: {
     indexUrl: string;
@@ -46,7 +38,7 @@ export type Networked3dWebExperienceServerConfig = {
     clientUrl: string;
     clientWatchWebsocketPath?: string;
   };
-  chatNetworkPath?: string;
+  enableChat?: boolean;
   assetServing?: {
     assetsDir: string;
     assetsUrl: string;
@@ -62,8 +54,6 @@ export type Networked3dWebExperienceServerConfig = {
 export class Networked3dWebExperienceServer {
   public userNetworkingServer: UserNetworkingServer;
 
-  public chatNetworkingServer?: ChatNetworkingServer;
-
   public mmlDocumentsServer?: MMLDocumentsServer;
 
   constructor(private config: Networked3dWebExperienceServerConfig) {
@@ -72,21 +62,13 @@ export class Networked3dWebExperienceServer {
       this.mmlDocumentsServer = new MMLDocumentsServer(documentsDirectoryRoot, documentsWatchPath);
     }
 
-    if (this.config.chatNetworkPath) {
-      this.chatNetworkingServer = new ChatNetworkingServer({
-        getChatUserIdentity: (sessionToken: string) => {
-          return this.config.userAuthenticator.getClientIdForSessionToken(sessionToken);
-        },
-      });
-    }
-
     this.userNetworkingServer = new UserNetworkingServer({
-      connectionLimit: config.connectionLimit,
+      legacyAdapterEnabled: true,
       onClientConnect: (
         clientId: number,
         sessionToken: string,
-        userIdentityPresentedOnConnection?: UserIdentity,
-      ): Promise<UserData | null> | UserData | null => {
+        userIdentityPresentedOnConnection?: UserData,
+      ): Promise<UserData | true | Error> | UserData | true | Error => {
         return this.config.userAuthenticator.onClientConnect(
           clientId,
           sessionToken,
@@ -95,17 +77,13 @@ export class Networked3dWebExperienceServer {
       },
       onClientUserIdentityUpdate: (
         clientId: number,
-        userIdentity: UserIdentity,
-      ): UserData | null => {
+        userIdentity: UserData,
+      ): UserData | true | Error => {
         // Called whenever a user connects or updates their character/identity
         return this.config.userAuthenticator.onClientUserIdentityUpdate(clientId, userIdentity);
       },
       onClientDisconnect: (clientId: number): void => {
         this.config.userAuthenticator.onClientDisconnect(clientId);
-        // Disconnect the corresponding chat client to avoid later conflicts of client ids
-        if (this.chatNetworkingServer) {
-          this.chatNetworkingServer.disconnectClientId(clientId);
-        }
       },
     });
   }
@@ -115,27 +93,8 @@ export class Networked3dWebExperienceServer {
     this.userNetworkingServer.updateUserCharacter(clientId, userData);
   }
 
-  public dispose(errorMessage?: string) {
-    this.userNetworkingServer.dispose(
-      errorMessage
-        ? {
-            type: USER_NETWORKING_SERVER_ERROR_MESSAGE_TYPE,
-            errorType: USER_NETWORKING_SERVER_SHUTDOWN_ERROR_TYPE,
-            message: errorMessage,
-          }
-        : undefined,
-    );
-    if (this.chatNetworkingServer) {
-      this.chatNetworkingServer.dispose(
-        errorMessage
-          ? {
-              type: CHAT_NETWORKING_SERVER_ERROR_MESSAGE_TYPE,
-              errorType: CHAT_NETWORKING_SERVER_SHUTDOWN_ERROR_TYPE,
-              message: errorMessage,
-            }
-          : undefined,
-      );
-    }
+  public dispose(error?: UserNetworkingServerError) {
+    this.userNetworkingServer.dispose(error);
     if (this.mmlDocumentsServer) {
       this.mmlDocumentsServer.dispose();
     }
@@ -143,15 +102,8 @@ export class Networked3dWebExperienceServer {
 
   registerExpressRoutes(app: enableWs.Application) {
     app.ws(this.config.networkPath, (ws) => {
-      this.userNetworkingServer.connectClient(ws);
+      this.userNetworkingServer.connectClient(ws as unknown as WebSocket);
     });
-
-    if (this.config.chatNetworkPath && this.chatNetworkingServer) {
-      const chatServer = this.chatNetworkingServer;
-      app.ws(this.config.chatNetworkPath, (ws) => {
-        chatServer.connectClient(ws);
-      });
-    }
 
     const webClientServing = this.config.webClientServing;
     if (webClientServing) {
@@ -181,7 +133,7 @@ export class Networked3dWebExperienceServer {
     const mmlServing = this.config.mmlServing;
     // Handle example document sockets
     if (mmlServing && mmlDocumentsServer) {
-      app.ws(`${mmlServing.documentsUrl}*`, (ws: WebSocket, req: express.Request) => {
+      app.ws(`${mmlServing.documentsUrl}*`, (ws: ws.WebSocket, req: express.Request) => {
         const path = req.params[0];
         console.log("document requested", { path });
         mmlDocumentsServer.handle(path, ws);

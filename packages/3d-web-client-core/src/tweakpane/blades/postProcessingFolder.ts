@@ -25,8 +25,8 @@ interface BenchmarkResults {
   };
 }
 
-const benchmarkFrameCount = 960;
-const benchmarkWarmupFrames = 240;
+const benchmarkFrameCount = 480;
+const benchmarkWarmupFrames = 120;
 
 interface BenchmarkState {
   isRunning: boolean;
@@ -74,8 +74,9 @@ export class PostProcessingFolder {
     testedFirst: "N/A",
   };
 
-  constructor(parentFolder: FolderApi, expand: boolean = false) {
+  constructor(parentFolder: FolderApi, enabled: boolean | undefined, expand: boolean = false) {
     this.folder = parentFolder.addFolder({ title: "postProcessing toggler", expanded: expand });
+    postProcessingGlobalValues.enabled = enabled ?? PP_GLOBALLY_ENABLED;
 
     this.globalToggleBinding = this.folder.addBinding(postProcessingGlobalValues, "enabled", {
       label: "Global Post-Processing",
@@ -139,7 +140,7 @@ export class PostProcessingFolder {
   public setupChangeEvent(postProcessingManager: PostProcessingManager): void {
     this.postProcessingManager = postProcessingManager;
 
-    postProcessingGlobalValues.enabled = postProcessingManager.isGloballyEnabled;
+    postProcessingGlobalValues.enabled = postProcessingGlobalValues.enabled ?? PP_GLOBALLY_ENABLED;
     this.globalToggleBinding.on(
       "change",
       (e: TpChangeEvent<unknown, BladeApi<BladeController<View>>>) => {

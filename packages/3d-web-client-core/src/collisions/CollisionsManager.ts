@@ -1,22 +1,22 @@
 import { MElement, MMLCollisionTrigger } from "@mml-io/mml-web";
 import {
-  Box3,
   BufferGeometry,
-  Color,
-  DoubleSide,
-  Euler,
-  Group,
   InstancedMesh,
-  Line3,
-  LineBasicMaterial,
+  DoubleSide,
   Matrix4,
+  Group,
+  Scene,
+  Ray,
+  Vector3,
   Mesh,
   MeshBasicMaterial,
+  LineBasicMaterial,
+  Color,
   Object3D,
+  Box3,
+  Line3,
   Quaternion,
-  Ray,
-  Scene,
-  Vector3,
+  Euler,
 } from "three";
 import { VertexNormalsHelper } from "three/examples/jsm/helpers/VertexNormalsHelper.js";
 import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -37,13 +37,14 @@ export class CollisionsManager {
   private scene: Scene;
   private tempVector: Vector3 = new Vector3();
   private tempVector2: Vector3 = new Vector3();
-  private tempVector3: Vector3 = new Vector3();
-  private tempQuaternion: Quaternion = new Quaternion();
+  private tempVect3: Vector3 = new Vector3();
+  private tempQuat: Quaternion = new Quaternion();
   private tempRay: Ray = new Ray();
   private tempMatrix = new Matrix4();
-  private tempMatrix2 = new Matrix4();
+  private tempMatrixThree = new Matrix4();
+  private tempMatrix2Three = new Matrix4();
   private tempBox = new Box3();
-  private tempEuler = new Euler();
+  private tempEulXYZ = new Euler();
   private tempSegment = new Line3();
   private tempSegment2 = new Line3();
 
@@ -57,6 +58,38 @@ export class CollisionsManager {
   constructor(scene: Scene) {
     this.scene = scene;
     this.collisionTrigger = MMLCollisionTrigger.init();
+    this.toggleDebug = this.toggleDebug.bind(this);
+  }
+
+  public toggleDebug(enabled: boolean) {
+    this.debug = enabled;
+
+    this.collisionMeshState.forEach((meshState) => {
+      if (this.debug) {
+        if (!meshState.debugGroup) {
+          meshState.debugGroup = this.createDebugVisuals(meshState);
+          this.scene.add(meshState.debugGroup);
+        }
+      } else {
+        if (meshState.debugGroup) {
+          this.scene.remove(meshState.debugGroup);
+          // Dispose of all resources used by the debug visuals, including materials and geometries.
+          meshState.debugGroup.traverse((object) => {
+            // Because MeshBVH can have its own variable complexity in terms of creating geometries
+            // and materials for its Helper, insteach of checking for instanceof Meshes and disposing
+            // their materials and geometries, we'll check for the existence of a dispose() function.
+            // During tests, this revealed to be safe, and an effective way to toggle the debug
+            // on and off while ending up with the original number of geometries on the scene, with no
+            // leftovers (no memory leak).
+            if (typeof (object as any).dispose === "function") {
+              (object as any).dispose();
+            }
+          });
+          meshState.debugGroup.clear();
+          meshState.debugGroup = undefined;
+        }
+      }
+    });
   }
 
   public raycastFirst(
@@ -68,10 +101,14 @@ export class CollisionsManager {
     let minimumNormal: Vector3 | null = null;
     let minimumPoint: Vector3 | null = null;
     for (const [, collisionMeshState] of this.collisionMeshState) {
-      this.tempRay.copy(ray).applyMatrix4(this.tempMatrix.copy(collisionMeshState.matrix).invert());
-      const hit = collisionMeshState.meshBVH.raycastFirst(this.tempRay, DoubleSide);
+      const invertedMatrix = this.tempMatrix.copy(collisionMeshState.matrix).invert();
+
+      const originalRay = this.tempRay.copy(ray);
+      originalRay.applyMatrix4(invertedMatrix);
+
+      const hit = collisionMeshState.meshBVH.raycastFirst(originalRay, DoubleSide);
       if (hit) {
-        this.tempSegment.start.copy(this.tempRay.origin);
+        this.tempSegment.start.copy(originalRay.origin);
         this.tempSegment.end.copy(hit.point);
         this.tempSegment.applyMatrix4(collisionMeshState.matrix);
         const dist = this.tempSegment.distance();
@@ -89,7 +126,7 @@ export class CollisionsManager {
           }
           minimumNormal = (hit.normal ? minimumNormal.copy(hit.normal) : minimumNormal)
             // Apply the rotation of the mesh to the normal
-            .applyQuaternion(this.tempQuaternion.setFromRotationMatrix(collisionMeshState.matrix))
+            .applyQuaternion(this.tempQuat.setFromRotationMatrix(collisionMeshState.matrix))
             .normalize();
           minimumPoint = minimumPoint.copy(hit.point).applyMatrix4(collisionMeshState.matrix);
         }
@@ -106,15 +143,48 @@ export class CollisionsManager {
     return [minimumDistance, minimumNormal, minimumHit, minimumPoint];
   }
 
+  private createDebugVisuals(meshState: CollisionMeshState): Group {
+    const geometry = meshState.meshBVH.geometry;
+
+    // Cast to add the boundsTree property to the geometry so that the MeshBVHHelper can find it
+    (geometry as any).boundsTree = meshState.meshBVH;
+    const wireframeMesh = new Mesh(geometry, new MeshBasicMaterial({ wireframe: true }));
+    wireframeMesh.name = "wireframe mesh";
+    const normalsHelper = new VertexNormalsHelper(wireframeMesh, 0.25, 0x00ff00);
+    normalsHelper.name = "normals helper";
+    const visualizer = new MeshBVHHelper(wireframeMesh, 4);
+    visualizer.name = "meshBVH visualizer";
+    (visualizer.edgeMaterial as LineBasicMaterial).color = new Color("blue");
+
+    const debugGroup = new Group();
+    debugGroup.add(wireframeMesh, normalsHelper, visualizer as unknown as Object3D);
+    meshState.source.matrixWorld.decompose(
+      debugGroup.position,
+      debugGroup.quaternion,
+      debugGroup.scale,
+    );
+    visualizer.update();
+
+    return debugGroup;
+  }
+
   private createCollisionMeshState(group: Group, trackCollisions: boolean): CollisionMeshState {
     const geometries: Array<BufferGeometry> = [];
     group.updateWorldMatrix(true, false);
-    const invertedRootMatrix = this.tempMatrix.copy(group.matrixWorld).invert();
     group.traverse((child: Object3D) => {
       const asMesh = child as Mesh;
       if (asMesh.isMesh) {
         const asInstancedMesh = asMesh as InstancedMesh;
         if (asInstancedMesh.isInstancedMesh) {
+          // Compute the InstancedMesh's transformation relative to the group
+          const instancedMeshRelativeMatrix = new Matrix4();
+          let currentObject: Object3D | null = asInstancedMesh;
+          while (currentObject && currentObject !== group) {
+            currentObject.updateMatrix();
+            instancedMeshRelativeMatrix.premultiply(currentObject.matrix);
+            currentObject = currentObject.parent;
+          }
+
           for (let i = 0; i < asInstancedMesh.count; i++) {
             const clonedGeometry = asInstancedMesh.geometry.clone();
             for (const key in clonedGeometry.attributes) {
@@ -122,9 +192,11 @@ export class CollisionsManager {
                 clonedGeometry.deleteAttribute(key);
               }
             }
+            // Apply instance matrix first, then the InstancedMesh's relative transformation
             clonedGeometry.applyMatrix4(
-              this.tempMatrix2.fromArray(asInstancedMesh.instanceMatrix.array, i * 16),
+              this.tempMatrix2Three.fromArray(asInstancedMesh.instanceMatrix.array, i * 16),
             );
+            clonedGeometry.applyMatrix4(instancedMeshRelativeMatrix);
             if (clonedGeometry.index) {
               geometries.push(clonedGeometry.toNonIndexed());
             } else {
@@ -133,15 +205,22 @@ export class CollisionsManager {
           }
         } else {
           const clonedGeometry = asMesh.geometry.clone();
-          asMesh.updateWorldMatrix(true, false);
           for (const key in clonedGeometry.attributes) {
             if (key !== "position") {
               clonedGeometry.deleteAttribute(key);
             }
           }
-          clonedGeometry.applyMatrix4(
-            this.tempMatrix2.multiplyMatrices(invertedRootMatrix, asMesh.matrixWorld),
-          );
+
+          // Compute the mesh's transformation relative to the group by accumulating local matrices
+          this.tempMatrix2Three.identity();
+          let currentObject: Object3D | null = asMesh;
+          while (currentObject && currentObject !== group) {
+            currentObject.updateMatrix();
+            this.tempMatrix2Three.premultiply(currentObject.matrix);
+            currentObject = currentObject.parent;
+          }
+
+          clonedGeometry.applyMatrix4(this.tempMatrix2Three);
           if (clonedGeometry.index) {
             geometries.push(clonedGeometry.toNonIndexed());
           } else {
@@ -158,28 +237,17 @@ export class CollisionsManager {
     const meshState: CollisionMeshState = {
       source: group,
       meshBVH,
-      matrix: group.matrixWorld.clone(),
+      matrix: new Matrix4().fromArray(group.matrixWorld.elements),
       trackCollisions,
+      debugGroup: this.debug
+        ? this.createDebugVisuals({
+            source: group,
+            meshBVH: meshBVH,
+            matrix: new Matrix4().fromArray(group.matrixWorld.elements),
+            trackCollisions,
+          })
+        : undefined,
     };
-    if (this.debug) {
-      // Have to cast to add the boundsTree property to the geometry so that the MeshBVHHelper can find it
-      (newBufferGeometry as any).boundsTree = meshBVH;
-
-      const wireframeMesh = new Mesh(newBufferGeometry, new MeshBasicMaterial({ wireframe: true }));
-
-      const normalsHelper = new VertexNormalsHelper(wireframeMesh, 0.25, 0x00ff00);
-
-      const visualizer = new MeshBVHHelper(wireframeMesh, 4);
-      (visualizer.edgeMaterial as LineBasicMaterial).color = new Color("blue");
-
-      const debugGroup = new Group();
-      debugGroup.add(wireframeMesh, normalsHelper, visualizer as unknown as Object3D);
-
-      group.matrixWorld.decompose(debugGroup.position, debugGroup.quaternion, debugGroup.scale);
-      visualizer.update();
-
-      meshState.debugGroup = debugGroup;
-    }
     return meshState;
   }
 
@@ -198,7 +266,7 @@ export class CollisionsManager {
     const meshState = this.collisionMeshState.get(group);
     if (meshState) {
       group.updateWorldMatrix(true, false);
-      meshState.matrix.copy(group.matrixWorld);
+      meshState.matrix.fromArray(group.matrixWorld.elements);
       if (meshState.debugGroup) {
         group.matrixWorld.decompose(
           meshState.debugGroup.position,
@@ -243,7 +311,7 @@ export class CollisionsManager {
     meshRelativeCapsuleSegment.applyMatrix4(meshMatrix);
 
     // Keep track of where the segment started in mesh-space so that we can calculate the delta later
-    const initialMeshRelativeCapsuleSegmentStart = this.tempVector3.copy(
+    const initialMeshRelativeCapsuleSegmentStart = this.tempVect3.copy(
       meshRelativeCapsuleSegment.start,
     );
 
@@ -336,7 +404,7 @@ export class CollisionsManager {
         const relativePosition = getRelativePositionAndRotationRelativeToObject(
           {
             position: collisionPosition,
-            rotation: this.tempEuler.set(0, 0, 0),
+            rotation: this.tempEulXYZ.set(0, 0, 0),
           },
           meshState.source,
         );

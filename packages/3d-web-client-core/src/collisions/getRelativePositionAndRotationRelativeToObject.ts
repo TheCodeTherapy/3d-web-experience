@@ -16,7 +16,7 @@ export function getRelativePositionAndRotationRelativeToObject(
   const { x: rx, y: ry, z: rz } = positionAndRotation.rotation;
 
   container.updateWorldMatrix(true, false);
-  tempContainerMatrix.copy(container.matrixWorld).invert();
+  tempContainerMatrix.fromArray(container.matrixWorld.elements).invert();
 
   tempPositionVector.set(x, y, z);
   tempRotationEuler.set(rx, ry, rz);
@@ -30,7 +30,7 @@ export function getRelativePositionAndRotationRelativeToObject(
   tempRotationEuler.setFromQuaternion(tempRotationQuaternion);
 
   // Correct for the container's local scale
-  tempPositionVector.multiply(container.scale);
+  tempPositionVector.multiply(new Vector3(container.scale.x, container.scale.y, container.scale.z));
 
   return {
     position: {

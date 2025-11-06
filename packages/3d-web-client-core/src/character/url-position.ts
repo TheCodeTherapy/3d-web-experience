@@ -4,10 +4,10 @@ import { toArray } from "../helpers/math-helpers";
 
 export function encodeCharacterAndCamera(character: Object3D, camera: Object3D): string {
   return [
-    ...toArray(character.position),
-    ...toArray(character.quaternion),
-    ...toArray(camera.position),
-    ...toArray(camera.quaternion),
+    ...toArray(new Vector3().copy(character.position)),
+    ...toArray(new Quaternion().setFromEuler(character.rotation)),
+    ...toArray(new Vector3().copy(camera.position)),
+    ...toArray(new Quaternion().setFromEuler(camera.rotation)),
   ].join(",");
 }
 

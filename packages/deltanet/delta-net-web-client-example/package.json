@@ -1,0 +1,44 @@
+{
+  "name": "delta-net-web-client-example",
+  "version": "0.24.2",
+  "private": true,
+  "main": "./src/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:ui && npm run build:server",
+    "build:server": "tsx ./build.ts --build",
+    "build:ui": "tsx ./ui-build.ts --build",
+    "depcheck": "depcheck --quiet",
+    "iterate": "concurrently \"npm run iterate:ui\" \"npm run iterate:server\"",
+    "iterate:server": "tsx ./build.ts --watch",
+    "iterate:ui": "tsx ./ui-build.ts --watch",
+    "link": "npm link",
+    "lint": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
+    "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix",
+    "pre:build": "npm run build",
+    "start-bots": "tsx ./src/startBots.ts",
+    "start-bots-web-world": "tsx ./src/startBots.ts --config=web-world",
+    "start-server": "node --enable-source-maps ./build/server/src/index.js",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ez-elements/core": "^0.0.6",
+    "@mml-io/delta-net-protocol": "^0.24.2",
+    "@mml-io/delta-net-server": "^0.24.2",
+    "@mml-io/delta-net-web": "^0.24.2",
+    "chokidar": "4.0.3",
+    "express": "4.21.2",
+    "express-ws": "5.0.2",
+    "ws": "8.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/express-ws": "^3.0.5",
+    "@types/node": "^22.13.1",
+    "concurrently": "9.1.2",
+    "esbuild": "0.24.2",
+    "esbuild-css-modules-plugin": "3.1.5",
+    "esbuild-plugin-copy": "2.1.1",
+    "tree-kill": "^1.2.2"
+  }
+}

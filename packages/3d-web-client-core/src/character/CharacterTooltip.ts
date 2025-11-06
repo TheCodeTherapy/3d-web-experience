@@ -15,7 +15,6 @@ const defaultLabelAlignment = LabelAlignment.center;
 const defaultLabelFontSize = 10;
 const defaultLabelPadding = 10;
 const defaultVisibleOpacity = 0.85;
-const defaultHeightOffset = 1.4;
 const defaultSecondsToFadeOut = null;
 
 export type CharacterTooltipConfig = {
@@ -158,5 +157,12 @@ export class CharacterTooltip extends Sprite {
         this.visible = false;
       }
     }
+  }
+
+  dispose() {
+    if (this.material.map) {
+      this.material.map.dispose();
+    }
+    this.material.dispose();
   }
 }

@@ -1,0 +1,5 @@
+ignores: [
+    "rimraf",
+    "cross-env",
+    "tsx"
+]

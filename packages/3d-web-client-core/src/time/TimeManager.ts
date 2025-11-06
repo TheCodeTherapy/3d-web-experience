@@ -1,9 +1,6 @@
-import { Clock } from "three";
-
 import { ease } from "../helpers/math-helpers";
 
 export class TimeManager {
-  private clock: Clock = new Clock();
   private roundMagnitude: number = 200000;
   private maxAverageFrames: number = 150;
   private deltaTimes: number[] = [];
@@ -12,6 +9,8 @@ export class TimeManager {
   private lerpedAverageMagDelta: number = 0;
   private fpsUpdateTime: number = 0;
   private framesSinceLastFPSUpdate: number = 0;
+
+  private previousTime: number = 0;
 
   public time: number = 0;
   public deltaTime: number = 0;
@@ -23,11 +22,17 @@ export class TimeManager {
 
   public static maxDeltaTime = 0.1; // 100ms
 
+  public static MILLISECONDS_TO_SECONDS = 1000;
+
   update() {
-    this.rawDeltaTime = this.clock.getDelta();
+    const now = performance.now();
+    this.rawDeltaTime = (now - this.previousTime) / TimeManager.MILLISECONDS_TO_SECONDS;
+    this.previousTime = now;
+
     if (this.rawDeltaTime > TimeManager.maxDeltaTime) {
       this.rawDeltaTime = TimeManager.maxDeltaTime;
     }
+
     this.frame++;
     this.time += this.rawDeltaTime;
     this.deltaTimes.push(this.rawDeltaTime);

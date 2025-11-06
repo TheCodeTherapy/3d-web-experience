@@ -1,0 +1,24 @@
+{
+  "name": "@apps/multi-user-3d-web-experience-client",
+  "private": true,
+  "version": "0.24.2",
+  "files": [
+    "/build"
+  ],
+  "type": "module",
+  "scripts": {
+    "depcheck": "depcheck --quiet",
+    "build": "rimraf ./build && tsx ./build.ts --build",
+    "iterate": "tsx ./build.ts --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
+    "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
+  },
+  "dependencies": {
+    "@mml-io/3d-web-experience-client": "^0.24.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.2",
+    "esbuild-plugin-copy": "2.1.1"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "name": "@apps/multi-user-3d-web-experience-server",
+  "private": true,
+  "version": "0.24.2",
+  "engines": {
+    "node": "20.x"
+  },
+  "main": "./src/index.js",
+  "type": "module",
+  "scripts": {
+    "depcheck": "depcheck --quiet",
+    "build": "rimraf ./build && tsx ./build.ts --build",
+    "iterate": "tsx ./build.ts --watch",
+    "iterate:start": "node ./build/index.js",
+    "start": "cross-env NODE_ENV=production node build/index.js",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --max-warnings 0",
+    "lint-fix": "eslint \"./{src,test}/**/*.{js,jsx,ts,tsx}\" --fix"
+  },
+  "dependencies": {
+    "@mml-io/3d-web-experience-server": "^0.24.2",
+    "@mml-io/3d-web-user-networking": "^0.24.2",
+    "cors": "^2.8.5",
+    "dotenv": "16.4.5",
+    "express": "4.21.2",
+    "express-ws": "5.0.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/express-ws": "^3.0.5",
+    "@types/node": "^22.13.1",
+    "esbuild": "0.24.2"
+  }
+}

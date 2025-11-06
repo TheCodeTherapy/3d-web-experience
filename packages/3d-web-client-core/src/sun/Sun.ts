@@ -20,6 +20,7 @@ export class Sun extends Group {
 
   constructor() {
     super();
+
     this.shadowCamera = new OrthographicCamera(
       -this.shadowCamFrustum,
       this.shadowCamFrustum,
@@ -32,7 +33,7 @@ export class Sun extends Group {
       this.camHelper = new CameraHelper(this.shadowCamera);
     }
     this.directionalLight = new DirectionalLight(0xffffff);
-    this.directionalLight.intensity = sunValues.sunIntensity;
+    this.setIntensity(sunValues.sunIntensity);
     this.directionalLight.shadow.normalBias = 0.1;
     this.directionalLight.shadow.radius = 0.02;
     this.directionalLight.shadow.camera = this.shadowCamera;
@@ -55,13 +56,17 @@ export class Sun extends Group {
   }
 
   public setAzimuthalAngle(angle: number) {
-    if (this.sunOffset) this.sunOffset.x = angle;
-    if (this.target) this.updateCharacterPosition(this.target);
+    this.sunOffset.x = angle;
+    if (this.target) {
+      this.setSunPosition(this.sunOffset.x, this.sunOffset.y);
+    }
   }
 
   public setPolarAngle(angle: number) {
-    if (this.sunOffset) this.sunOffset.y = angle;
-    if (this.target) this.updateCharacterPosition(this.target);
+    this.sunOffset.y = angle;
+    if (this.target) {
+      this.setSunPosition(this.sunOffset.x, this.sunOffset.y);
+    }
   }
 
   public setIntensity(intensity: number) {

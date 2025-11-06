@@ -1,0 +1,18 @@
+.column_headings {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 38px;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex-shrink: 0;
+  background: #21262d;
+  border-bottom: 1px solid #30363d;
+}
+
+/* Custom theme styles */
+.custom_column_headings {
+  background-color: orange;
+} 

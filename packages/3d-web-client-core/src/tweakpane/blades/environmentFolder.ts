@@ -2,8 +2,6 @@ import { BladeController, View } from "@tweakpane/core";
 import { Scene } from "three";
 import { BladeApi, ButtonApi, FolderApi, TpChangeEvent } from "tweakpane";
 
-import { Sun } from "../../sun/Sun";
-
 export const sunValues = {
   sunIntensity: 2.1,
   sunPosition: {
@@ -20,7 +18,7 @@ export const sunValues = {
 const sunOptions = {
   sunPosition: {
     sunAzimuthalAngle: { min: 0, max: 360, step: 1 },
-    sunPolarAngle: { min: -90, max: 90, step: 1 },
+    sunPolarAngle: { min: -95, max: 95, step: 1 },
   },
   sunIntensity: { min: 0, max: 10, step: 0.1 },
   skyTurbidity: { min: 1, max: 30, step: 0.1 },
@@ -32,11 +30,11 @@ const sunOptions = {
 export const envValues = {
   skyboxAzimuthalAngle: 0,
   skyboxPolarAngle: 0,
-  envMapIntensity: 0.21,
+  envMapIntensity: 0.5,
   skyboxIntensity: 0.9,
   skyboxBlurriness: 0.0,
   ambientLight: {
-    ambientLightIntensity: 0.17,
+    ambientLightIntensity: 0.07,
     ambientLightColor: { r: 1, g: 1, b: 1 },
   },
   fog: {
