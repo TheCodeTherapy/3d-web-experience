@@ -8,7 +8,12 @@ import dotenv from "dotenv";
 import micromatch from "micromatch";
 import WebSocket from "ws";
 
+// Load .env first (base configuration)
 dotenv.config();
+// Load .env.local from the package directory (overrides .env, not committed to git)
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const packageRoot = path.resolve(__dirname, "..");
+dotenv.config({ path: path.join(packageRoot, ".env.local") });
 
 const getMmlDocumentContent = (documentPath: string) => {
   return fs.readFileSync(documentPath, { encoding: "utf8", flag: "r" });
@@ -49,6 +54,11 @@ const checkAPIKey = (mmlDocumentContent: string): string => {
 
 const checkDevEnv = (mmlDocumentContent: string): string => {
   let content = mmlDocumentContent;
+  if (process.env.USE_CLOUDFLARED === "true") {
+    const regex = /wss:\/\/\//g;
+    content = content.replace(regex, "wss:///");
+    return content;
+  }
   if (process.env.NODE_ENV !== "production") {
     const regex = /wss:\/\/\//g;
     content = content.replace(regex, "ws:///");
